@@ -1,0 +1,26 @@
+name: Inspect Phase1 Bundle
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Inspect staged bundle
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const zlib = require('zlib');
+          const src = fs.readFileSync('.phase1/part00','utf8').trim();
+          const out = zlib.gunzipSync(Buffer.from(src,'base64'));
+          console.log('UNCOMPRESSED_BYTES=' + out.length);
+          console.log('PREFIX_START');
+          console.log(out.subarray(0, 1200).toString('utf8'));
+          console.log('PREFIX_END');
+          NODE
