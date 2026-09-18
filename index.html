@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Utility OS — useful browser-native tools with local processing wherever possible.">
+  <title>Utility OS</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Utility OS home"><span class="brand-mark">U</span><span>Utility OS</span></a>
+    <button class="ghost-button" id="clear-workspace" type="button">Clear workspace</button>
+  </header>
+  <main class="home-shell">
+    <section class="hero" aria-labelledby="hero-title">
+      <p class="eyebrow">Browser-native utility layer</p>
+      <h1 id="hero-title">Useful tools. Running locally. No unnecessary uploads.</h1>
+      <p class="hero-copy">A modular toolbox built for fast, private work in the browser. Core utilities stay on your device wherever technically possible.</p>
+      <div class="privacy-pill"><span class="privacy-dot" aria-hidden="true"></span> No account · No analytics · No backend processor</div>
+    </section>
+    <section aria-labelledby="tools-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">Utilities</p><h2 id="tools-title">Your local toolbox</h2></div>
+        <p>Each utility loads independently, so the homepage stays lightweight.</p>
+      </div>
+      <div class="tool-grid" id="tool-grid"></div>
+    </section>
+    <section class="security-strip" aria-labelledby="security-title">
+      <div><p class="eyebrow">Security kernel</p><h2 id="security-title">One security layer for every tool.</h2></div>
+      <p>Hostile-file assumptions, signature checks, worker isolation, resource budgets, safe exports, strict CSP, and controlled failures are shared infrastructure—not optional per-tool code.</p>
+    </section>
+  </main>
+  <footer class="site-footer">Utility OS · Local-first by architecture</footer>
+  <script type="module" src="/assets/home.js"></script>
+</body>
+</html>
