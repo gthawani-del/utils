@@ -35,84 +35,83 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat > /tmp/phase1-fix.patch <<'PATCH'
-          --- a/src/components/image/ImageStudio.tsx
-          +++ b/src/components/image/ImageStudio.tsx
-          @@ -67,7 +67,7 @@
-             const [targetEnabled, setTargetEnabled] = useState(false);
-             const [targetKb, setTargetKb] = useState(500);
-             const [notice, setNotice] = useState<string>();
-          -  const abortRef = useRef<AbortController>();
-          +  const abortRef = useRef<AbortController | undefined>(undefined);
-             const inputRef = useRef<HTMLInputElement>(null);
-             const itemsRef = useRef<FileItem[]>([]);
-           
-          @@ -179,21 +179,22 @@
-                   patchItem(item.id, { state: 'processing', message: undefined });
-                   const result = await processFile(item.file, config, controller.signal);
-                   if (result.state === 'completed' && result.result) {
-          -          if (accumulatedOutput + result.result.blob.size > SECURITY_LIMITS.maxZipBytes) {
-          +          const output = result.result;
-          +          if (accumulatedOutput + output.blob.size > SECURITY_LIMITS.maxZipBytes) {
-                       patchItem(item.id, { state: 'failed', message: 'Batch output memory budget reached. Earlier files remain available.' });
-                       return;
-                     }
-          -          accumulatedOutput += result.result.blob.size;
-          -          const outputUrl = URL.createObjectURL(result.result.blob);
-          +          accumulatedOutput += output.blob.size;
-          +          const outputUrl = URL.createObjectURL(output.blob);
-                     setItems((current) => current.map((currentItem) => {
-                       if (currentItem.id !== item.id) return currentItem;
-                       if (currentItem.outputUrl) URL.revokeObjectURL(currentItem.outputUrl);
-                       return {
-                         ...currentItem,
-                         state: 'completed',
-          -              output: result.result,
-          +              output,
-                         outputUrl,
-          -              message: result.result.warning
-          +              message: output.warning
-                       };
-                     }));
-                   } else {
-          @@ -215,7 +216,7 @@
-               const done = items.filter((item): item is FileItem & { output: NonNullable<FileItem['output']> } => Boolean(item.output));
-               if (!done.length) return;
-               if (done.length === 1) {
-          -      downloadOne(done[0]);
-          +      downloadOne(done[0]!);
-                 return;
-               }
-           
-          --- a/src/workers/image.worker.ts
-          +++ b/src/workers/image.worker.ts
-          @@ -96,7 +96,9 @@
-             if (typeof createImageBitmap !== 'function' || typeof OffscreenCanvas === 'undefined') {
-               fail('This browser lacks the isolated image-processing APIs required by Utility OS.', 'BROWSER_UNSUPPORTED');
-             }
-          -  const blob = new Blob([bytes], { type: mime });
-          +  const copy = new ArrayBuffer(bytes.byteLength);
-          +  new Uint8Array(copy).set(bytes);
-          +  const blob = new Blob([copy], { type: mime });
-             try {
-               const bitmap = await createImageBitmap(blob, {
-                 imageOrientation: 'from-image',
-          --- a/src/workers/zip.worker.ts
-          +++ b/src/workers/zip.worker.ts
-          @@ -35,7 +35,9 @@
-               const entries: Record<string, Uint8Array> = {};
-               for (const file of event.data.files) entries[file.name] = new Uint8Array(file.buffer);
-               const zipped = zipSync(entries, { level: 6 });
-          -    const blob = new Blob([zipped], { type: 'application/zip' });
-          +    const copy = new ArrayBuffer(zipped.byteLength);
-          +    new Uint8Array(copy).set(zipped);
-          +    const blob = new Blob([copy], { type: 'application/zip' });
-               ctx.postMessage({ state: 'completed', result: blob } satisfies Response);
-             } catch {
-               ctx.postMessage({ state: 'failed', message: 'ZIP export failed safely.' } satisfies Response);
-          PATCH
-          sed -i 's/^          //' /tmp/phase1-fix.patch
-          patch -p1 < /tmp/phase1-fix.patch
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"Expected source fragment not found: {path}")
+              p.write_text(text.replace(old, new, 1))
+
+          replace_exact(
+              "src/components/image/ImageStudio.tsx",
+              "const abortRef = useRef<AbortController>();",
+              "const abortRef = useRef<AbortController | undefined>(undefined);",
+          )
+          replace_exact(
+              "src/components/image/ImageStudio.tsx",
+              """        if (result.state === 'completed' && result.result) {
+          if (accumulatedOutput + result.result.blob.size > SECURITY_LIMITS.maxZipBytes) {
+            patchItem(item.id, { state: 'failed', message: 'Batch output memory budget reached. Earlier files remain available.' });
+            return;
+          }
+          accumulatedOutput += result.result.blob.size;
+          const outputUrl = URL.createObjectURL(result.result.blob);
+          setItems((current) => current.map((currentItem) => {
+            if (currentItem.id !== item.id) return currentItem;
+            if (currentItem.outputUrl) URL.revokeObjectURL(currentItem.outputUrl);
+            return {
+              ...currentItem,
+              state: 'completed',
+              output: result.result,
+              outputUrl,
+              message: result.result.warning
+            };
+          }));""",
+              """        if (result.state === 'completed' && result.result) {
+          const output = result.result;
+          if (accumulatedOutput + output.blob.size > SECURITY_LIMITS.maxZipBytes) {
+            patchItem(item.id, { state: 'failed', message: 'Batch output memory budget reached. Earlier files remain available.' });
+            return;
+          }
+          accumulatedOutput += output.blob.size;
+          const outputUrl = URL.createObjectURL(output.blob);
+          setItems((current) => current.map((currentItem) => {
+            if (currentItem.id !== item.id) return currentItem;
+            if (currentItem.outputUrl) URL.revokeObjectURL(currentItem.outputUrl);
+            return {
+              ...currentItem,
+              state: 'completed',
+              output,
+              outputUrl,
+              message: output.warning
+            };
+          }));""",
+          )
+          replace_exact(
+              "src/components/image/ImageStudio.tsx",
+              "downloadOne(done[0]);",
+              "downloadOne(done[0]!);",
+          )
+          replace_exact(
+              "src/workers/image.worker.ts",
+              "const blob = new Blob([bytes], { type: mime });",
+              """const copy = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(copy).set(bytes);
+  const blob = new Blob([copy], { type: mime });""",
+          )
+          replace_exact(
+              "src/workers/zip.worker.ts",
+              """const zipped = zipSync(entries, { level: 6 });
+    const blob = new Blob([zipped], { type: 'application/zip' });""",
+              """const zipped = zipSync(entries, { level: 6 });
+    const copy = new ArrayBuffer(zipped.byteLength);
+    new Uint8Array(copy).set(zipped);
+    const blob = new Blob([copy], { type: 'application/zip' });""",
+          )
+          PY
 
       - name: Lock dependencies
         run: npm install --package-lock-only --ignore-scripts
