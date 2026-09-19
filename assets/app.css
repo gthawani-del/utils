@@ -359,4 +359,32 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
   .preview-stage { min-height: 260px; }
   .security-note { max-width: none; }
   .action-row > button { flex: 1 1 45%; }
+
+  /* Mobile readability pass: roughly 2× the original micro typography. */
+  body.mobile-editing .mobile-editor-chrome { inset-bottom: 108px; }
+  body.mobile-editing .control-card { bottom: 108px; }
+  body.mobile-editing .mobile-tool-dock { height: 108px; padding-top: 8px; }
+  body.mobile-editing .mobile-tool-button { flex-basis: 82px; min-width: 82px; gap: 5px; }
+  body.mobile-editing .mobile-tool-button span { width: 42px; height: 42px; font-size: 24px; }
+  body.mobile-editing .mobile-tool-button small { font-size: 20px; line-height: 1.05; }
+  body.mobile-editing .mobile-sheet-header { min-height: 62px; padding-block: 9px 12px; }
+  body.mobile-editing .mobile-sheet-header strong { font-size: 28px; line-height: 1.1; }
+  body.mobile-editing .mobile-adjust-button { flex-basis: 88px; min-height: 82px; }
+  body.mobile-editing .mobile-adjust-button span { width: 44px; height: 44px; font-size: 22px; }
+  body.mobile-editing .mobile-adjust-button small { font-size: 18px; }
+  body.mobile-editing .mobile-adjust-context strong { font-size: 22px; }
+  body.mobile-editing .mobile-adjust-context span { font-size: 20px; }
+  body.mobile-editing .mobile-crop-chip { min-height: 52px; padding-inline: 16px; font-size: 20px; }
+  body.mobile-editing .control-card label,
+  body.mobile-editing .control-card input,
+  body.mobile-editing .control-card select,
+  body.mobile-editing .control-card textarea,
+  body.mobile-editing .control-card summary,
+  body.mobile-editing .control-card button { font-size: 20px; }
+  body.mobile-editing .control-card .microcopy,
+  body.mobile-editing .control-card small { font-size: 18px; line-height: 1.35; }
+  body.mobile-editing .control-card h3,
+  body.mobile-editing .control-card h4 { font-size: 22px; }
+  body.mobile-editing .mobile-pill-button { font-size: 18px; min-height: 46px; }
+  body.mobile-editing .mobile-batch-chip { font-size: 18px; padding: 9px 14px; }
 }
