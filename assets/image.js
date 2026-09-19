@@ -14,7 +14,7 @@ import { shouldUseBrowserProcessor, processBrowserImage, optimizeBrowserImage } 
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
-const state = { items: [], selectedId: null, busy: false, useBrowserProcessor: shouldUseBrowserProcessor(), editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, layerDrag: null, replaceDrag: null, mobilePrecision: false, compilerCustomOutputs: [], compilerSelectedIds: new Set(), redoHistory: [], previewTimer: 0, previewAbort: null };
+const state = { items: [], selectedId: null, busy: false, useBrowserProcessor: shouldUseBrowserProcessor(), mobileStartOpen: true, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, layerDrag: null, replaceDrag: null, mobilePrecision: false, compilerCustomOutputs: [], compilerSelectedIds: new Set(), redoHistory: [], previewTimer: 0, previewAbort: null };
 const $ = (selector) => document.querySelector(selector);
 const EDIT_KEYS = ['brightness','exposure','contrast','saturation','vibrance','highlights','shadows','temperature','tint','gamma','sharpen','blur','grayscale','sepia','straighten'];
 const MOBILE_ADJUST_LABELS = { brightness:'Brightness', exposure:'Exposure', contrast:'Contrast', saturation:'Saturation', vibrance:'Vibrance', highlights:'Highlights', shadows:'Shadows', temperature:'Warmth', tint:'Tint', gamma:'Gamma', sharpen:'Sharpen', blur:'Blur', grayscale:'Black & White', sepia:'Sepia', straighten:'Straighten', rotate:'Rotate', flipX:'Flip Horizontal', flipY:'Flip Vertical' };
@@ -60,6 +60,7 @@ function initialize() {
 function wireEvents() {
   els.choose.addEventListener('click', openImagePicker);
   els.add.addEventListener('click', openImagePicker);
+  els.mobileContinue.addEventListener('click', enterMobileEditor);
   els.input.addEventListener('change', () => addFiles([...els.input.files]));
   for (const type of ['dragenter', 'dragover']) els.drop.addEventListener(type, (event) => { event.preventDefault(); els.drop.classList.add('dragging'); });
   for (const type of ['dragleave', 'drop']) els.drop.addEventListener(type, (event) => { event.preventDefault(); els.drop.classList.remove('dragging'); });
@@ -172,6 +173,7 @@ async function addFiles(files) {
         if (result.value.kind !== 'svg') item.originalUrl = trackObjectUrl(file);
         if (!state.selectedId) {
           state.selectedId = item.id;
+          state.mobileStartOpen = false;
           syncMobileEditingState();
           try { resetToOriginal(); } catch { showCompatibility('The image loaded, but some editor controls could not be initialized. The original image remains available.'); }
         }
@@ -193,6 +195,7 @@ async function addFiles(files) {
       const firstReady = state.items.find((item) => item.status === 'ready');
       if (firstReady) {
         state.selectedId = firstReady.id;
+        state.mobileStartOpen = false;
         syncMobileEditingState();
         try { resetToOriginal(); } catch {}
       }
@@ -207,6 +210,7 @@ function makeRejectedItem(file, reason) {
 
 function selectItem(id, reset = false) {
   state.selectedId = id;
+  state.mobileStartOpen = false;
   syncMobileEditingState();
   if (state.selectedLayerId && !layersForItem().some((layer) => layer.id === state.selectedLayerId)) state.selectedLayerId = null;
   if (reset) {
@@ -402,7 +406,7 @@ async function downloadAll() {
 function triggerDownload(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.rel = 'noopener'; document.body.append(a); a.click(); a.remove(); }
 
 async function clearAll() {
-  closeMobileFiles(); state.previewAbort?.abort(); clearTimeout(state.previewTimer); runner.terminateAll(); cleanupUrls(); state.items = []; state.selectedId = null; state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.layers = []; state.selectedLayerId = null; state.watermarkLogoFile = null; state.compilerCustomOutputs = []; state.compilerSelectedIds = new Set(); state.redoHistory = []; renderCompiler(); renderLayerList(); renderLayerProperties(); resetWatermarkControls(); await clearWorkspace(); els.workspace.classList.add('hidden'); els.list.replaceChildren(); els.input.value = ''; syncMobileEditingState(); els.clear.textContent = 'Workspace cleared'; setTimeout(() => { els.clear.textContent = 'Clear workspace'; }, 1600);
+  closeMobileFiles(); state.mobileStartOpen = true; state.previewAbort?.abort(); clearTimeout(state.previewTimer); runner.terminateAll(); cleanupUrls(); state.items = []; state.selectedId = null; state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.layers = []; state.selectedLayerId = null; state.watermarkLogoFile = null; state.compilerCustomOutputs = []; state.compilerSelectedIds = new Set(); state.redoHistory = []; renderCompiler(); renderLayerList(); renderLayerProperties(); resetWatermarkControls(); await clearWorkspace(); els.workspace.classList.add('hidden'); els.list.replaceChildren(); els.input.value = ''; syncMobileEditingState(); els.clear.textContent = 'Workspace cleared'; setTimeout(() => { els.clear.textContent = 'Clear workspace'; }, 1600);
 }
 
 function cleanupUrls() { for (const item of state.items) { revokeObjectUrl(item.originalUrl); revokeObjectUrl(item.outputUrl); revokeObjectUrl(item.editPreviewUrl); revokeObjectUrl(item.performanceResultUrl); item.originalUrl = ''; item.outputUrl = ''; item.editPreviewUrl = ''; item.performanceResultUrl = ''; } }
@@ -871,15 +875,34 @@ function syncMobileEditingState() {
   const mobile = window.matchMedia('(max-width: 700px)').matches;
   const readyItems = state.items.filter((item) => item.inspect);
   if (!state.selectedId && readyItems.length) state.selectedId = readyItems[0].id;
-  document.body.classList.toggle('mobile-editing', mobile && readyItems.length > 0);
+  const hasReady = readyItems.length > 0;
+  const editing = mobile && hasReady && !state.mobileStartOpen;
+  document.body.classList.toggle('mobile-editing', editing);
+  document.body.classList.toggle('mobile-start', mobile && !editing);
   const count = readyItems.length;
   if (els.mobileBatchChip) { els.mobileBatchChip.textContent = `${count} image${count === 1 ? '' : 's'}`; els.mobileBatchChip.classList.toggle('hidden', count < 2); }
   if (els.mobileExportAll) { els.mobileExportAll.textContent = `Export all ${count} as ZIP`; els.mobileExportAll.classList.toggle('hidden', count < 2); }
+  if (els.mobileContinue) els.mobileContinue.classList.toggle('hidden', !hasReady);
+  if (els.mobileStartCount) {
+    els.mobileStartCount.textContent = hasReady ? `${count} image${count === 1 ? '' : 's'} ready locally` : '';
+    els.mobileStartCount.classList.toggle('hidden', !hasReady);
+  }
+}
+
+function enterMobileEditor() {
+  const firstReady = state.items.find((item) => item.inspect);
+  if (!firstReady) return openImagePicker();
+  if (!selectedItem()?.inspect) state.selectedId = firstReady.id;
+  state.mobileStartOpen = false;
+  syncMobileEditingState();
+  renderSelectedSafely();
 }
 
 function exitMobileEditor() {
-  closeMobileFiles(); document.body.classList.remove('mobile-editing');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  closeMobileFiles();
+  state.mobileStartOpen = true;
+  syncMobileEditingState();
+  window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 function renderMobileCanvas(item) {
