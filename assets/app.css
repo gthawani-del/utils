@@ -209,12 +209,37 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
 }
 @media (max-width: 700px) {
   .site-header { padding-inline: 14px; }
-  body.mobile-editing { height: 100dvh; overflow: hidden; background: #eef0f3; }
+  body.mobile-editing {
+    --mobile-dock-height: 108px;
+    --mobile-sheet-height: min(43dvh, 360px);
+    height: 100dvh;
+    overflow: hidden;
+    background: #eef0f3;
+  }
+  body[data-mobile-tool="crop"].mobile-editing { --mobile-sheet-height: 245px; }
+  body[data-mobile-tool="cleanup"].mobile-editing { --mobile-sheet-height: 205px; }
+  body[data-mobile-tool="replace"].mobile-editing { --mobile-sheet-height: 315px; }
+  body[data-mobile-tool="text"].mobile-editing,
+  body[data-mobile-tool="design"].mobile-editing { --mobile-sheet-height: min(52dvh, 430px); }
+  body[data-mobile-tool="watermark"].mobile-editing { --mobile-sheet-height: min(46dvh, 390px); }
+  body[data-mobile-tool="compiler"].mobile-editing { --mobile-sheet-height: min(55dvh, 460px); }
+  body[data-mobile-tool="performance"].mobile-editing { --mobile-sheet-height: min(43dvh, 360px); }
+  body[data-mobile-tool="export"].mobile-editing { --mobile-sheet-height: min(52dvh, 430px); }
   body.mobile-editing .site-header, body.mobile-editing .studio-heading, body.mobile-editing #drop-zone, body.mobile-editing .file-panel, body.mobile-editing .preview-grid, body.mobile-editing .comparison-card, body.mobile-editing #jpeg-warning, body.mobile-editing #upscale-warning { display: none !important; }
   body.mobile-editing .studio-shell { width: 100%; height: 100dvh; padding: 0; margin: 0; }
   body.mobile-editing .workspace { display: block; height: 100dvh; margin: 0; }
   body.mobile-editing .editor-panel { height: 100dvh; min-width: 0; }
-  body.mobile-editing .mobile-editor-chrome { display: flex; position: fixed; inset: 0 0 78px 0; z-index: 15; flex-direction: column; background: #eef0f3; }
+  body.mobile-editing .mobile-editor-chrome {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--mobile-dock-height) + var(--mobile-sheet-height));
+    z-index: 15;
+    flex-direction: column;
+    background: #eef0f3;
+  }
   .mobile-editor-topbar { min-height: 62px; display: flex; align-items: center; gap: 8px; padding: max(8px, env(safe-area-inset-top)) 12px 8px; background: rgba(255,255,255,.96); border-bottom: 1px solid rgba(19,22,27,.08); }
   .mobile-history-actions { display: flex; gap: 6px; }
   .mobile-topbar-spacer { flex: 1; }
@@ -227,13 +252,44 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
   .mobile-canvas-shell > span:not(.mobile-canvas-status) { color: var(--muted); font-size: 13px; }
   .mobile-canvas-status { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 7px 10px; border-radius: 999px; background: rgba(17,24,39,.82); color: #fff; font-size: 11px; }
   .mobile-batch-chip { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 3; border: 1px solid rgba(17,24,39,.1); border-radius: 999px; background: rgba(255,255,255,.94); padding: 7px 11px; font-weight: 750; font-size: 11px; }
-  body.mobile-editing .control-card { position: fixed; left: 0; right: 0; bottom: 78px; z-index: 40; max-height: min(43dvh, 430px); margin: 0; overflow-y: auto; overscroll-behavior: contain; border: 0; border-top: 1px solid var(--border); border-radius: 22px 22px 0 0; box-shadow: 0 -12px 40px rgba(16,24,40,.12); background: #fff; }
+  body.mobile-editing .control-card {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--mobile-dock-height);
+    z-index: 40;
+    height: var(--mobile-sheet-height);
+    max-height: none;
+    margin: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -12px 40px rgba(16,24,40,.12);
+    background: #fff;
+  }
   body.mobile-editing .control-card > .control-header, body.mobile-editing .control-card > .control-section, body.mobile-editing .control-card > .advanced, body.mobile-editing .control-card > .action-row { display: none; }
   body.mobile-editing .mobile-sheet-header { position: sticky; top: 0; z-index: 3; display: grid; place-items: center; gap: 5px; min-height: 48px; padding: 7px 16px 10px; background: rgba(255,255,255,.96); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); }
   .mobile-sheet-handle { width: 38px; height: 4px; border-radius: 99px; background: #d3d6db; }
   body[data-mobile-tool="adjust"].mobile-editing .edit-section, body[data-mobile-tool="crop"].mobile-editing .crop-section, body[data-mobile-tool="cleanup"].mobile-editing .cleanup-section, body[data-mobile-tool="replace"].mobile-editing .replace-text-section, body[data-mobile-tool="text"].mobile-editing .design-section, body[data-mobile-tool="design"].mobile-editing .design-section, body[data-mobile-tool="watermark"].mobile-editing .watermark-section, body[data-mobile-tool="compiler"].mobile-editing .compiler-section, body[data-mobile-tool="performance"].mobile-editing .performance-section, body[data-mobile-tool="export"].mobile-editing .export-section { display: block; }
   body.mobile-editing .control-section { border-bottom: 0; padding: 14px 16px 18px; }
-  body.mobile-editing .mobile-tool-dock { position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; display: flex; align-items: stretch; gap: 2px; height: 78px; padding: 7px 8px max(7px, env(safe-area-inset-bottom)); background: rgba(255,255,255,.97); border-top: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+  body.mobile-editing .mobile-tool-dock {
+    position: fixed;
+    z-index: 50;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    height: var(--mobile-dock-height);
+    padding: 7px 8px max(7px, env(safe-area-inset-bottom));
+    background: rgba(255,255,255,.97);
+    border-top: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
   .mobile-tool-dock::-webkit-scrollbar { display: none; }
   .mobile-tool-button { flex: 1 0 62px; min-width: 62px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); display: grid; place-items: center; align-content: center; gap: 3px; }
   .mobile-tool-button span { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; font-size: 16px; font-weight: 800; }
@@ -275,20 +331,32 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
   .mobile-crop-chip { flex: 0 0 auto; min-width: 58px; min-height: 42px; padding: 0 12px; border: 1px solid var(--border); border-radius: 12px; background: #fff; color: var(--muted); font-size: 12px; font-weight: 720; }
   .mobile-crop-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   body.mobile-editing .crop-section > h3, body.mobile-editing .desktop-crop-select { display: none; }
-  body[data-mobile-tool="crop"].mobile-editing .control-card { max-height: 245px; }
+  
   body[data-mobile-tool="crop"].mobile-editing .crop-section > .form-grid { grid-template-columns: 1fr; }
   body[data-mobile-tool="cleanup"].mobile-editing .mobile-canvas-shell { visibility: hidden; }
-  body[data-mobile-tool="cleanup"].mobile-editing .control-card { max-height: 205px; overflow: visible; }
+  
   body[data-mobile-tool="cleanup"].mobile-editing .cleanup-section { padding: 12px 14px 14px; }
   body[data-mobile-tool="cleanup"].mobile-editing .cleanup-section > .section-inline-heading { display: none; }
   body[data-mobile-tool="cleanup"].mobile-editing .cleanup-workspace { display: block; }
-  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-canvas-shell { position: fixed; z-index: 25; top: 62px; left: 0; right: 0; bottom: 283px; min-height: 0; border: 0; border-radius: 0; background: #e8eaee; padding: 12px; }
+  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-canvas-shell {
+    position: fixed;
+    z-index: 25;
+    top: 62px;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--mobile-dock-height) + var(--mobile-sheet-height));
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    background: #e8eaee;
+    padding: 12px;
+  }
   body[data-mobile-tool="cleanup"].mobile-editing .cleanup-canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
   body[data-mobile-tool="cleanup"].mobile-editing .cleanup-controls { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 0; border: 0; background: transparent; }
   body[data-mobile-tool="cleanup"].mobile-editing .cleanup-controls > .microcopy { display: none; }
   body[data-mobile-tool="cleanup"].mobile-editing .cleanup-actions { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 6px; }
   body[data-mobile-tool="cleanup"].mobile-editing .cleanup-actions button { min-width: 0; padding: 9px 5px; font-size: 10px; }
-  body[data-mobile-tool="replace"].mobile-editing .control-card { max-height: 315px; }
+  
   body[data-mobile-tool="replace"].mobile-editing .replace-text-section { padding: 12px 14px 16px; }
   body[data-mobile-tool="replace"].mobile-editing .replace-text-section > .section-inline-heading { display: none; }
   body[data-mobile-tool="replace"].mobile-editing .replace-selector { display: none; }
@@ -328,15 +396,15 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
   body.mobile-editing.mobile-files-open .file-panel { display: block !important; position: fixed; z-index: 75; left: 0; right: 0; bottom: 0; top: auto; max-height: 62dvh; overflow: hidden; border: 0; border-radius: 22px 22px 0 0; box-shadow: 0 -16px 44px rgba(16,24,40,.2); }
   body.mobile-editing.mobile-files-open .file-panel .mobile-files-close { display: inline-grid; place-items: center; }
   body.mobile-editing.mobile-files-open .file-list { max-height: calc(62dvh - 74px); padding-bottom: max(14px, env(safe-area-inset-bottom)); }
-  body[data-mobile-tool="compiler"].mobile-editing .control-card { max-height: 55dvh; }
+  
   body[data-mobile-tool="compiler"].mobile-editing .compiler-section > .section-inline-heading { align-items: center; }
   body[data-mobile-tool="compiler"].mobile-editing .compiler-preset-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   body[data-mobile-tool="compiler"].mobile-editing .compiler-preset-card { padding: 9px; }
   body[data-mobile-tool="compiler"].mobile-editing .compiler-actions { display: grid; }
-    body[data-mobile-tool="performance"].mobile-editing .control-card { max-height: 43dvh; }
+    
   body[data-mobile-tool="performance"].mobile-editing .performance-section > .section-inline-heading { align-items: center; }
   body[data-mobile-tool="performance"].mobile-editing .performance-actions { display: grid; grid-template-columns: 1fr 1fr; }
-    body[data-mobile-tool="export"].mobile-editing .control-card { max-height: 52dvh; }
+    
   body[data-mobile-tool="export"].mobile-editing .desktop-export-action { display: none; }
   body[data-mobile-tool="export"].mobile-editing .mobile-export-actions { display: grid; width: 100%; gap: 8px; }
   body[data-mobile-tool="export"].mobile-editing .mobile-export-actions .primary-button { min-height: 48px; font-size: 14px; }
@@ -361,9 +429,9 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
   .action-row > button { flex: 1 1 45%; }
 
   /* Mobile readability pass: roughly 2× the original micro typography. */
-  body.mobile-editing .mobile-editor-chrome { bottom: 108px; }
-  body.mobile-editing .control-card { bottom: 108px; }
-  body.mobile-editing .mobile-tool-dock { height: 108px; padding-top: 8px; }
+  
+  
+  body.mobile-editing .mobile-tool-dock { padding-top: 8px; }
   body.mobile-editing .mobile-tool-button { flex-basis: 82px; min-width: 82px; gap: 5px; }
   body.mobile-editing .mobile-tool-button span { width: 42px; height: 42px; font-size: 24px; }
   body.mobile-editing .mobile-tool-button small { font-size: 20px; line-height: 1.05; }
@@ -387,4 +455,12 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
   body.mobile-editing .control-card h4 { font-size: 22px; }
   body.mobile-editing .mobile-pill-button { font-size: 18px; min-height: 46px; }
   body.mobile-editing .mobile-batch-chip { font-size: 18px; padding: 9px 14px; }
+
+  /* Keep the active adjustment name in the context header only. */
+  body.mobile-editing .edit-grid > label.mobile-active-adjust { font-size: 0; }
+  body.mobile-editing .edit-grid > label.mobile-active-adjust.check-row { font-size: 20px; }
+
+  /* Never crop the working image behind the control sheet. */
+  body.mobile-editing .mobile-canvas-shell { min-height: 120px; }
+  body.mobile-editing .mobile-canvas-shell img { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
 }
