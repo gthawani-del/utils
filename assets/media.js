@@ -52,6 +52,7 @@ const playheadInput = document.querySelector('#video-playhead');
 const playheadLabel = document.querySelector('#video-playhead-label');
 const selectionLabel = document.querySelector('#video-selection-label');
 const playbackRateSelect = document.querySelector('#video-playback-rate');
+const videoAspectSelect = document.querySelector('#video-output-aspect');
 const videoMuteInput = document.querySelector('#video-mute');
 const undoButton = document.querySelector('#video-undo');
 const redoButton = document.querySelector('#video-redo');
@@ -209,7 +210,9 @@ function syncVideoControls() {
   trimEndInput.value = edits.trimEnd.toFixed(2);
   playheadInput.max = String(duration);
   playbackRateSelect.value = String(edits.playbackRate);
+  videoAspectSelect.value = edits.outputAspect;
   videoMuteInput.checked = edits.muted;
+  sourcePlayerWrap.dataset.videoAspect = edits.outputAspect;
   selectionLabel.textContent = `Selection ${formatEditorTime(selectionDuration(edits, duration))}`;
 
   if (currentPlayer) {
@@ -241,7 +244,8 @@ function recordVideoEdit(next) {
   const changed = current.trimStart !== next.trimStart
     || current.trimEnd !== next.trimEnd
     || current.playbackRate !== next.playbackRate
-    || current.muted !== next.muted;
+    || current.muted !== next.muted
+    || current.outputAspect !== next.outputAspect;
   if (!changed) return;
 
   videoHistory.push(current);
@@ -795,6 +799,10 @@ trimEndInput.addEventListener('change', () => {
 
 playbackRateSelect.addEventListener('change', () => {
   applyVideoPatch({ playbackRate: Number(playbackRateSelect.value) });
+});
+
+videoAspectSelect.addEventListener('change', () => {
+  applyVideoPatch({ outputAspect: videoAspectSelect.value });
 });
 
 videoMuteInput.addEventListener('change', () => {

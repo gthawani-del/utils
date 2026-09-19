@@ -523,6 +523,14 @@
                   <option value="2">2×</option>
                 </select>
               </label>
+              <label class="video-rate-control">Output aspect
+                <select id="video-output-aspect">
+                  <option value="original" selected>Original</option>
+                  <option value="16:9">16:9 landscape</option>
+                  <option value="9:16">9:16 vertical</option>
+                  <option value="1:1">1:1 square</option>
+                </select>
+              </label>
               <label class="video-mute-control"><input id="video-mute" type="checkbox"> Mute output</label>
             </div>
 
@@ -549,7 +557,7 @@
               <button class="media-button empty-primary" id="video-play-selection" type="button">Play selection</button>
               <button class="media-button" id="video-reset-edits" type="button">Reset video edits</button>
             </div>
-            <p class="video-editor-note">Trim, Playback speed and Mute output remain non-destructive Preview state until Create Version. Step 6 now renders playback speed for real; resize/aspect conversion remains deferred to the next contained sub-step.</p>
+            <p class="video-editor-note">Trim, Playback speed, Mute output and Output aspect remain non-destructive Preview state until Create Version. Aspect conversion uses a safe contain-fit with black padding where needed—no automatic crop or subject reframe.</p>
           </section>
 
           <div class="timeline-shell">

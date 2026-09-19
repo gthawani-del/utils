@@ -3967,3 +3967,29 @@
 .video-mute-control input {
   margin: 0;
 }
+
+
+.source-player-wrap[data-video-aspect="16:9"] video,
+.source-player-wrap[data-video-aspect="9:16"] video,
+.source-player-wrap[data-video-aspect="1:1"] video {
+  width: 100%;
+  max-height: 440px;
+  object-fit: contain;
+  background: #000;
+}
+
+.source-player-wrap[data-video-aspect="16:9"] video {
+  aspect-ratio: 16 / 9;
+}
+
+.source-player-wrap[data-video-aspect="9:16"] video {
+  aspect-ratio: 9 / 16;
+  max-width: min(100%, 330px);
+  margin-inline: auto;
+}
+
+.source-player-wrap[data-video-aspect="1:1"] video {
+  aspect-ratio: 1 / 1;
+  max-width: min(100%, 440px);
+  margin-inline: auto;
+}
