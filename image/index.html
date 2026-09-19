@@ -106,6 +106,15 @@
               <button type="button" class="mobile-crop-chip" data-crop-choice="free">Free</button>
               <button type="button" class="mobile-crop-chip" data-crop-choice="custom">Custom</button>
             </div>
+            <div class="smart-crop-bar">
+              <label class="check-row"><input id="smart-crop-enabled" type="checkbox"> Protect important content</label>
+              <button class="secondary-button" id="smart-crop-analyze" type="button">Analyze</button>
+              <span id="smart-crop-status" class="microcopy">Center crop</span>
+            </div>
+            <details class="smart-crop-manual"><summary>Manual focus</summary><div class="form-grid">
+              <label>Horizontal <output id="smart-crop-x-value">50</output>%<input id="smart-crop-x" type="range" min="0" max="100" value="50"></label>
+              <label>Vertical <output id="smart-crop-y-value">50</output>%<input id="smart-crop-y" type="range" min="0" max="100" value="50"></label>
+            </div></details>
             <div class="form-grid">
             <label class="desktop-crop-select">Crop<select id="crop-mode"><option value="none">None</option><option value="free">Free</option><option value="ratio">1:1</option><option value="ratio-4-5">4:5</option><option value="ratio-16-9">16:9</option><option value="ratio-9-16">9:16</option><option value="custom">Custom ratio</option></select></label>
             <label id="custom-ratio-wrap" class="hidden">Custom ratio<input id="custom-ratio" type="number" min="0.05" max="20" step="0.01" value="1"></label>
@@ -286,8 +295,8 @@
             <div class="section-inline-heading"><div><h3>Image Compiler</h3><p class="microcopy">One master image → multiple finished assets. Every output is rendered independently from the source using the current edits, design layers and watermark.</p></div><span id="compiler-count" class="microcopy">0 selected</span></div>
             <div id="compiler-preset-grid" class="compiler-preset-grid" aria-label="Compiler output sizes"></div>
             <div class="compiler-options">
-              <label>Fit behavior<select id="compiler-fit"><option value="fill">Fill frame (center crop)</option><option value="contain">Contain whole image</option></select></label>
-              <p class="microcopy">Smart crop protection comes later; this compiler currently uses deterministic centered fill or contain.</p>
+              <label>Fit behavior<select id="compiler-fit"><option value="smart" selected>Smart fill (protect content)</option><option value="fill">Center fill</option><option value="contain">Contain whole image</option></select></label>
+              <p class="microcopy">Smart fill analyzes the source locally once, then chooses a protected focus independently for each output ratio. Manual crop remains available in Crop.</p>
             </div>
             <details class="compiler-custom">
               <summary>Add custom output</summary>

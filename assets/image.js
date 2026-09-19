@@ -11,6 +11,7 @@ import { normalizeTextSelection, selectionFromPoints, replacementLayerFromSelect
 import { COMPILER_PRESETS, MAX_COMPILER_OUTPUTS, MAX_COMPILER_PACK_BYTES, normalizeCompilerOutput, normalizeCompilerOutputs, compilerSettings } from '/lib/image/compiler.js';
 import { normalizePerformanceBudget } from '/lib/image/performance.js';
 import { buildAssetDoctorReport } from '/lib/image/asset-doctor.js';
+import { detectInformationRegions, chooseSmartFocus, smartCropSummary } from '/lib/image/smart-crop.js';
 import { shouldUseBrowserProcessor, processBrowserImage, optimizeBrowserImage } from '/lib/image/browser-processor.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
@@ -24,7 +25,7 @@ const els = {
   originalPreview: $('#original-preview'), outputPreview: $('#output-preview'), originalStats: $('#original-stats'), outputStats: $('#output-stats'), metadata: $('#metadata-box'),
   compatibility: $('#compatibility'), preset: $('#preset'), resizeMode: $('#resize-mode'), width: $('#width'), height: $('#height'), percentage: $('#percentage'), longest: $('#longest-edge'), shortest: $('#shortest-edge'),
   percentageWrap: $('#percentage-wrap'), longestWrap: $('#longest-wrap'), shortestWrap: $('#shortest-wrap'), preserveAspect: $('#preserve-aspect'), cropMode: $('#crop-mode'), customRatio: $('#custom-ratio'), customRatioWrap: $('#custom-ratio-wrap'), freeCrop: $('#free-crop'),
-  cropX: $('#crop-x'), cropY: $('#crop-y'), cropWidth: $('#crop-width'), cropHeight: $('#crop-height'), format: $('#format'), quality: $('#quality'), qualityValue: $('#quality-value'), targetSize: $('#target-size'), background: $('#background'), rotate: $('#rotate'), flipX: $('#flip-x'), flipY: $('#flip-y'),
+  cropX: $('#crop-x'), cropY: $('#crop-y'), cropWidth: $('#crop-width'), cropHeight: $('#crop-height'), smartCropEnabled: $('#smart-crop-enabled'), smartCropAnalyze: $('#smart-crop-analyze'), smartCropStatus: $('#smart-crop-status'), smartCropX: $('#smart-crop-x'), smartCropY: $('#smart-crop-y'), smartCropXValue: $('#smart-crop-x-value'), smartCropYValue: $('#smart-crop-y-value'), format: $('#format'), quality: $('#quality'), qualityValue: $('#quality-value'), targetSize: $('#target-size'), background: $('#background'), rotate: $('#rotate'), flipX: $('#flip-x'), flipY: $('#flip-y'),
   prefix: $('#prefix'), suffix: $('#suffix'), preserveName: $('#preserve-name'), reset: $('#reset-settings'), processSelected: $('#process-selected'), processAll: $('#process-all'), downloadSelected: $('#download-selected'), downloadAll: $('#download-all'), clear: $('#clear-workspace'), jpegWarning: $('#jpeg-warning'), upscaleWarning: $('#upscale-warning'),
   editComparison: $('#edit-comparison'), comparisonOriginal: $('#comparison-original'), comparisonEdited: $('#comparison-edited'), comparisonOverlay: $('#comparison-overlay'), comparisonDivider: $('#comparison-divider'), comparisonRange: $('#comparison-range'), comparisonValue: $('#comparison-value'), previewStatus: $('#preview-status'),
   undoEdit: $('#undo-edit'), resetEdits: $('#reset-edits'), brightness: $('#brightness'), exposure: $('#exposure'), contrast: $('#contrast'), saturation: $('#saturation'), vibrance: $('#vibrance'), highlights: $('#highlights'), shadows: $('#shadows'), temperature: $('#temperature'), tint: $('#tint'), gamma: $('#gamma'), sharpen: $('#sharpen'), blur: $('#blur'), grayscale: $('#grayscale'), sepia: $('#sepia'), straighten: $('#straighten'),
@@ -69,7 +70,10 @@ function wireEvents() {
   els.drop.addEventListener('drop', (event) => addFiles([...event.dataTransfer.files]));
   els.preset.addEventListener('change', applyPreset);
   els.resizeMode.addEventListener('change', () => { updateConditionalControls(); updateWarnings(); });
-  els.cropMode.addEventListener('change', () => { updateConditionalControls(); syncMobileCropButtons(); scheduleEditPreview(80); });
+  els.cropMode.addEventListener('change', () => { updateConditionalControls(); syncMobileCropButtons(); syncSmartCropFocus(); scheduleEditPreview(80); });
+  els.smartCropEnabled.addEventListener('change', async () => { if (els.smartCropEnabled.checked && !selectedItem()?.smartCrop?.analyzed) await runSmartCropAnalysis(); else { syncSmartCropFocus(); scheduleEditPreview(40); } });
+  els.smartCropAnalyze.addEventListener('click', () => runSmartCropAnalysis());
+  for (const control of [els.smartCropX, els.smartCropY]) control.addEventListener('input', () => { const item=selectedItem(); if(!item)return; item.smartCrop.manual=true; item.smartCrop.focusX=Number(els.smartCropX.value)/100; item.smartCrop.focusY=Number(els.smartCropY.value)/100; updateSmartCropUi(item); scheduleEditPreview(40); });
   els.format.addEventListener('change', () => { updateWarnings(); els.targetSize.disabled = els.format.value === 'png'; });
   els.quality.addEventListener('input', () => { els.qualityValue.textContent = els.quality.value; });
   for (const el of [els.width, els.height, els.percentage, els.longest, els.shortest]) el.addEventListener('input', () => { updateWarnings(); invalidatePerformanceResult(); });
@@ -168,7 +172,7 @@ async function addFiles(files) {
       state.items.push(makeRejectedItem(file, budget.reason));
       continue;
     }
-    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], performanceResult: null, performanceResultUrl: '', transparencyDetected: null, assetDoctorReport: null };
+    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], performanceResult: null, performanceResultUrl: '', transparencyDetected: null, assetDoctorReport: null, smartCrop: { analyzed:false, regions:[], manual:false, focusX:.5, focusY:.5, summary:null } };
     state.items.push(item);
     renderList();
     try {
@@ -212,7 +216,7 @@ async function addFiles(files) {
 }
 
 function makeRejectedItem(file, reason) {
-  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], performanceResult: null, performanceResultUrl: '', transparencyDetected: null, assetDoctorReport: null };
+  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], performanceResult: null, performanceResultUrl: '', transparencyDetected: null, assetDoctorReport: null, smartCrop: { analyzed:false, regions:[], manual:false, focusX:.5, focusY:.5, summary:null } };
 }
 
 function selectItem(id, reset = false) {
@@ -271,6 +275,7 @@ function renderSelected() {
   safeUiCall(() => renderReplaceSelector(item));
   safeUiCall(() => renderPerformanceResult(item));
   safeUiCall(() => renderAssetDoctor(item));
+  safeUiCall(() => updateSmartCropUi(item));
   safeUiCall(updateWarnings); safeUiCall(updateButtons);
 }
 
@@ -298,7 +303,7 @@ function resetToOriginal() {
   els.format.value = item.inspect.kind === 'svg' ? 'png' : item.inspect.kind; els.quality.value = 82; els.qualityValue.textContent = '82'; els.targetSize.value = ''; els.rotate.value = 0; els.flipX.checked = false; els.flipY.checked = false;
   applyEditsToControls(DEFAULT_EDITS); state.editHistory = []; state.redoHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.lastCommittedGeometry = { rotate: 0, flipX: false, flipY: false }; updateUndoButton();
   state.layers = []; state.selectedLayerId = null; renderLayerList(); renderLayerProperties(); resetWatermarkControls();
-  item.cleanupStrokes = []; item.cleanupApplied = false; item.replaceSelection = null; item.textReplacements = []; item.replaceHistory = []; item.assetDoctorReport = null; invalidatePerformanceResult(item); renderCleanupEditor(item); renderReplaceSelector(item);
+  item.cleanupStrokes = []; item.cleanupApplied = false; item.replaceSelection = null; item.textReplacements = []; item.replaceHistory = []; item.assetDoctorReport = null; item.smartCrop={analyzed:false,regions:[],manual:false,focusX:.5,focusY:.5,summary:null}; els.smartCropEnabled.checked=false; invalidatePerformanceResult(item); renderCleanupEditor(item); renderReplaceSelector(item);
   if (item.editPreviewUrl) { revokeObjectUrl(item.editPreviewUrl); item.editPreviewUrl = ''; item.editPreviewBlob = null; }
   els.editComparison.classList.add('hidden');
   updateConditionalControls(); syncMobileCropButtons(); updateWarnings();
@@ -343,9 +348,12 @@ function collectSettings() {
   if (cm === 'ratio-16-9') crop = { mode: 'ratio', ratio: 16 / 9 };
   if (cm === 'ratio-9-16') crop = { mode: 'ratio', ratio: 9 / 16 };
   if (cm === 'custom') crop = { mode: 'ratio', ratio: Number(els.customRatio.value) };
+  const item=selectedItem();
+  const smartFocus = els.smartCropEnabled.checked ? smartFocusForCurrentSettings(item, crop) : { focusX:.5, focusY:.5 };
+  if (crop.mode === 'ratio' && els.smartCropEnabled.checked) crop = { ...crop, focusX:smartFocus.focusX, focusY:smartFocus.focusY };
   return {
     resizeMode: els.resizeMode.value, width: Number(els.width.value), height: Number(els.height.value), percentage: Number(els.percentage.value), longestEdge: Number(els.longest.value), shortestEdge: Number(els.shortest.value), preserveAspect: els.preserveAspect.checked,
-    crop, format: els.format.value, quality: Number(els.quality.value) / 100, targetBytes: els.targetSize.value ? Number(els.targetSize.value) * 1024 : 0, background: els.background.value, rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked, edits: collectEdits(), layers: state.layers.map((layer) => ({ ...layer })), watermark: collectWatermark()
+    crop, smartCrop: { enabled:els.smartCropEnabled.checked, focusX:smartFocus.focusX, focusY:smartFocus.focusY }, format: els.format.value, quality: Number(els.quality.value) / 100, targetBytes: els.targetSize.value ? Number(els.targetSize.value) * 1024 : 0, background: els.background.value, rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked, edits: collectEdits(), layers: state.layers.map((layer) => ({ ...layer })), watermark: collectWatermark()
   };
 }
 
@@ -710,10 +718,84 @@ function updateComparisonPosition() {
   els.comparisonDivider.style.left = value + '%';
 }
 
+async function runSmartCropAnalysis(item = selectedItem(), { quiet = false } = {}) {
+  if (!item?.inspect || !item.originalUrl || item.inspect.kind === 'svg') return null;
+  if (!quiet) { els.smartCropStatus.textContent='Analyzing locally…'; els.smartCropAnalyze.disabled=true; }
+  try {
+    const img=new Image(); img.decoding='async';
+    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=item.originalUrl;});
+    const sourceW=img.naturalWidth||img.width,sourceH=img.naturalHeight||img.height,edge=480,scale=Math.min(1,edge/Math.max(sourceW,sourceH));
+    const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(sourceW*scale));canvas.height=Math.max(1,Math.round(sourceH*scale));
+    const ctx=canvas.getContext('2d',{alpha:false,willReadFrequently:true});ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    const image=ctx.getImageData(0,0,canvas.width,canvas.height);
+    const regions=detectInformationRegions(image.data,canvas.width,canvas.height);
+    let faceDetectorAvailable=false;
+    if ('FaceDetector' in window) {
+      try {
+        faceDetectorAvailable=true;
+        const detector=new FaceDetector({fastMode:true,maxDetectedFaces:10});
+        const faces=await detector.detect(img);
+        for(const face of faces||[]){
+          const b=face.boundingBox;
+          if(b?.width>0&&b?.height>0) regions.push({type:'face',x:b.x/sourceW,y:b.y/sourceH,width:b.width/sourceW,height:b.height/sourceH,weight:6});
+        }
+      } catch { faceDetectorAvailable=false; }
+    }
+    item.smartCrop={...item.smartCrop,analyzed:true,regions,manual:false,summary:smartCropSummary(regions,{faceDetectorAvailable})};
+    els.smartCropEnabled.checked=true;
+    syncSmartCropFocus();
+    updateSmartCropUi(item);
+    scheduleEditPreview(20);
+    return item.smartCrop;
+  } catch {
+    if (!quiet) els.smartCropStatus.textContent='Local analysis unavailable for this image.';
+    return null;
+  } finally { if (!quiet) els.smartCropAnalyze.disabled=false; }
+}
+
+function ratioForCurrentCrop(crop) {
+  if (crop?.mode === 'ratio') return Number(crop.ratio)||1;
+  if (els.resizeMode.value === 'fill') return Math.max(1,Number(els.width.value))/Math.max(1,Number(els.height.value));
+  return null;
+}
+
+function smartFocusForCurrentSettings(item, crop) {
+  if (!item?.smartCrop || !els.smartCropEnabled.checked) return {focusX:.5,focusY:.5};
+  if (item.smartCrop.manual) return {focusX:item.smartCrop.focusX,focusY:item.smartCrop.focusY};
+  const ratio=ratioForCurrentCrop(crop);
+  if (!ratio || !item.smartCrop.analyzed) return {focusX:.5,focusY:.5};
+  return chooseSmartFocus(item.inspect.dimensions.width,item.inspect.dimensions.height,ratio,item.smartCrop.regions);
+}
+
+function syncSmartCropFocus() {
+  const item=selectedItem(); if(!item?.smartCrop)return;
+  let crop={mode:'none'};
+  const cm=els.cropMode.value;
+  if(cm==='ratio')crop={mode:'ratio',ratio:1}; else if(cm==='ratio-4-5')crop={mode:'ratio',ratio:4/5}; else if(cm==='ratio-16-9')crop={mode:'ratio',ratio:16/9}; else if(cm==='ratio-9-16')crop={mode:'ratio',ratio:9/16}; else if(cm==='custom')crop={mode:'ratio',ratio:Number(els.customRatio.value)};
+  const focus=smartFocusForCurrentSettings(item,crop);
+  if(!item.smartCrop.manual){item.smartCrop.focusX=focus.focusX;item.smartCrop.focusY=focus.focusY;}
+  updateSmartCropUi(item);
+}
+
+function updateSmartCropUi(item) {
+  if(!els.smartCropStatus)return;
+  const smart=item?.smartCrop;
+  const enabled=els.smartCropEnabled.checked;
+  els.smartCropX.disabled=!enabled;els.smartCropY.disabled=!enabled;
+  const fx=Math.round((smart?.focusX??.5)*100),fy=Math.round((smart?.focusY??.5)*100);
+  els.smartCropX.value=String(fx);els.smartCropY.value=String(fy);els.smartCropXValue.textContent=String(fx);els.smartCropYValue.textContent=String(fy);
+  if(!enabled){els.smartCropStatus.textContent='Center crop';return;}
+  if(!smart?.analyzed){els.smartCropStatus.textContent='Analyze to protect content';return;}
+  if(smart.manual){els.smartCropStatus.textContent='Manual focus';return;}
+  const s=smart.summary||{};
+  const parts=[];if(s.faces)parts.push(`${s.faces} face${s.faces===1?'':'s'}`);if(s.textLike)parts.push(`${s.textLike} text-like`);if(s.detail)parts.push(`${s.detail} detail`);
+  els.smartCropStatus.textContent=parts.length?`Protected: ${parts.join(' · ')}`:(s.faceDetectorAvailable?'No strong regions found':'Local detail focus');
+}
+
 function setMobileCrop(mode) {
   const allowed = ['none','free','ratio','ratio-4-5','ratio-16-9','ratio-9-16','custom'];
   els.cropMode.value = allowed.includes(mode) ? mode : 'none';
-  updateConditionalControls(); syncMobileCropButtons(); scheduleEditPreview(40);
+  updateConditionalControls(); syncMobileCropButtons(); syncSmartCropFocus(); scheduleEditPreview(40);
 }
 
 function syncMobileCropButtons() {
@@ -897,12 +979,17 @@ function removeCompilerCustomOutput(id) { state.compilerCustomOutputs=state.comp
 
 async function generateCompilerPack() {
   const item=selectedItem(), outputs=selectedCompilerOutputs(); if(!item?.inspect||!outputs.length||state.busy)return;
+  if(els.compilerFit.value==='smart'&&!item.smartCrop?.analyzed) await runSmartCropAnalysis(item,{quiet:true});
   setBusy(true); updateCompilerState(); let totalBytes=0;
   const files=[]; const failures=[]; const base=collectSettings(); base.layers=layersForItem(item); base.cleanup=cleanupForItem(item); base.textReplacements=item.textReplacements||[];
   try {
     for(let index=0;index<outputs.length;index++){
       const spec=outputs[index]; els.compilerStatus.textContent=`Rendering ${index+1}/${outputs.length}: ${spec.label}…`;
       const settings=compilerSettings(base,spec,els.compilerFit.value);
+      if(els.compilerFit.value==='smart'&&item.smartCrop?.analyzed){
+        const focus=item.smartCrop.manual?{focusX:item.smartCrop.focusX,focusY:item.smartCrop.focusY}:chooseSmartFocus(item.inspect.dimensions.width,item.inspect.dimensions.height,spec.width/spec.height,item.smartCrop.regions);
+        settings.smartCrop={enabled:true,focusX:focus.focusX,focusY:focus.focusY};
+      } else settings.smartCrop={enabled:false,focusX:.5,focusY:.5};
       const result=await runImageOperation('process',item,settings);
       if(result.state!=='completed'){failures.push(`${spec.label}: ${result.error?.message||result.state}`);continue;}
       totalBytes+=result.value.buffer.byteLength;

@@ -217,7 +217,7 @@ function render(source, crop, target, settings) {
     ctx.fillRect(0, 0, target.width, target.height);
   }
   if (mode === 'fill') {
-    const cover = coverRect(crop.width, crop.height, target.width, target.height);
+    const cover = coverRect(crop.width, crop.height, target.width, target.height, settings.smartCrop?.focusX, settings.smartCrop?.focusY);
     ctx.drawImage(source, crop.x + cover.x, crop.y + cover.y, cover.width, cover.height, 0, 0, target.width, target.height);
   } else if (mode === 'contain') {
     const scale = Math.min(target.width / crop.width, target.height / crop.height);

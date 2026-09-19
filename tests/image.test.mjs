@@ -12,6 +12,7 @@ import { PERFORMANCE_FORMATS, normalizePerformanceBudget, performanceCandidateWi
 import { shouldUseBrowserProcessor } from '../lib/image/browser-processor.js';
 import { buildAssetDoctorReport, plannedOutputDimensions } from '../lib/image/asset-doctor.js';
 import { parseColorProfileSummary } from '../lib/image/preflight.js';
+import { normalizeSmartRegions, chooseSmartFocus, detectInformationRegions } from '../lib/image/smart-crop.js';
 
 test('fit resize preserves aspect ratio', () => {
   assert.deepEqual(calculateResize(4000, 2000, { resizeMode: 'fit', width: 1000, height: 1000, preserveAspect: true }), { width: 1000, height: 500 });
@@ -233,4 +234,35 @@ test('color-profile parser identifies PNG sRGB metadata conservatively', () => {
   assert.equal(color.hasProfile,true);
   assert.equal(color.profileName,'sRGB');
   assert.equal(color.wideGamut,false);
+});
+
+
+test('smart crop focus protects weighted regions instead of always centering', () => {
+  const focus=chooseSmartFocus(1600,900,1,[{type:'face',x:.78,y:.25,width:.15,height:.3,weight:6}]);
+  assert.ok(focus.focusX>.7);
+});
+
+test('smart crop normalization bounds hostile region values', () => {
+  const [r]=normalizeSmartRegions([{type:'face',x:-4,y:3,width:9,height:9,weight:99}]);
+  assert.equal(r.x,0); assert.equal(r.y,1); assert.equal(r.weight,10);
+  assert.ok(r.width<=1&&r.height<=1);
+});
+
+test('local information detector finds detail in a synthetic contrast block', () => {
+  const w=96,h=64,data=new Uint8ClampedArray(w*h*4);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;const v=(x>48&&y>16&&y<48)?((x+y)%2?255:0):120;data[i]=data[i+1]=data[i+2]=v;data[i+3]=255;}
+  const regions=detectInformationRegions(data,w,h);
+  assert.ok(regions.length>0);
+  assert.ok(regions.some((r)=>r.x>.3));
+});
+
+test('focus-aware ratio crop remains inside source bounds', () => {
+  const crop=calculateCrop(1600,900,{mode:'ratio',ratio:1,focusX:.9,focusY:.5});
+  assert.deepEqual(crop,{x:700,y:0,width:900,height:900});
+});
+
+test('focus-aware fill cover shifts crop toward protected content', () => {
+  const r=coverRect(1600,900,1080,1080,.9,.5);
+  assert.equal(Math.round(r.x),700);
+  assert.equal(Math.round(r.width),900);
 });
