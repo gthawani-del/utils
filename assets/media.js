@@ -536,6 +536,7 @@ async function handleFile(file) {
       return;
     }
 
+    if (!preserveEdits) audioVideoWorkspace?.resetForNewSource();
     if (project.source?.kind === 'local-file') releaseMediaSource(project.source);
     if (!preserveEdits) {
       project.videoEdits = null;
@@ -552,7 +553,6 @@ async function handleFile(file) {
       resetAudioHistory();
       transcriptWorkspace?.resetForNewSource();
       lyricsWorkspace?.resetForNewSource();
-      audioVideoWorkspace?.resetForNewSource();
     }
     setProjectSource(project, result.source);
     renderSource(result.source);
@@ -583,6 +583,7 @@ linkForm.addEventListener('submit', (event) => {
     return;
   }
 
+  audioVideoWorkspace?.resetForNewSource();
   if (project.source?.kind === 'local-file') releaseMediaSource(project.source);
   project.transcript = null;
   project.lyrics = null;
@@ -592,7 +593,6 @@ linkForm.addEventListener('submit', (event) => {
   setProjectAudioVideo(project, null);
   transcriptWorkspace?.resetForNewSource();
   lyricsWorkspace?.resetForNewSource();
-  audioVideoWorkspace?.resetForNewSource();
   const source = {
     kind: 'provider-link',
     provider: checked.provider,
