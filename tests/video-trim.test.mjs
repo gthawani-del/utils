@@ -5,6 +5,7 @@ import {
   normalizeVideoTrimRange,
   selectVideoOutputTracks,
   selectVideoRecorderMime,
+  videoOutputDuration,
   videoTrimTimeoutMs
 } from '../lib/media/render/native-trim.js';
 
@@ -32,7 +33,7 @@ test('video recorder MIME selection prefers supported WebM codecs and falls back
 test('video render settings carry mute independently from trim', () => {
   assert.deepEqual(
     normalizeVideoRenderSettings({ start: 0, end: 10, muted: true }, 10),
-    { start: 0, end: 10, duration: 10, muted: true }
+    { start: 0, end: 10, duration: 10, muted: true, playbackRate: 1, outputDuration: 10 }
   );
   assert.equal(normalizeVideoRenderSettings({ start: 2, end: 8, muted: false }, 10).muted, false);
 });
@@ -46,4 +47,20 @@ test('mute render removes audio tracks from the recorder stream plan', () => {
   };
   assert.deepEqual(selectVideoOutputTracks(stream, true), [videoTrack]);
   assert.deepEqual(selectVideoOutputTracks(stream, false), [videoTrack, audioTrack]);
+});
+
+
+test('video playback-speed render settings change real output duration deterministically', () => {
+  assert.equal(videoOutputDuration(20, 2), 10);
+  assert.equal(videoOutputDuration(20, 0.5), 40);
+  assert.deepEqual(
+    normalizeVideoRenderSettings({ start: 2, end: 12, playbackRate: 2, muted: false }, 20),
+    { start: 2, end: 12, duration: 10, muted: false, playbackRate: 2, outputDuration: 5 }
+  );
+});
+
+test('unsupported render playback rate falls back safely to 1x', () => {
+  const settings = normalizeVideoRenderSettings({ start: 0, end: 10, playbackRate: 7 }, 10);
+  assert.equal(settings.playbackRate, 1);
+  assert.equal(settings.outputDuration, 10);
 });

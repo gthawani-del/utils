@@ -513,7 +513,7 @@
             <div class="video-editor-toolbar">
               <button class="video-tool-button" id="video-undo" type="button" disabled>↶ Undo</button>
               <button class="video-tool-button" id="video-redo" type="button" disabled>↷ Redo</button>
-              <label class="video-rate-control">Preview speed
+              <label class="video-rate-control">Playback speed
                 <select id="video-playback-rate">
                   <option value="0.5">0.5×</option>
                   <option value="0.75">0.75×</option>
@@ -547,9 +547,9 @@
 
             <div class="video-editor-actions">
               <button class="media-button empty-primary" id="video-play-selection" type="button">Play selection</button>
-              <button class="media-button" id="video-reset-edits" type="button">Reset trim</button>
+              <button class="media-button" id="video-reset-edits" type="button">Reset video edits</button>
             </div>
-            <p class="video-editor-note">Trim and Mute output remain non-destructive Preview state until Create Version. This Step 6 sub-step renders mute for real; playback-speed export and resize/aspect conversion are not rendered yet.</p>
+            <p class="video-editor-note">Trim, Playback speed and Mute output remain non-destructive Preview state until Create Version. Step 6 now renders playback speed for real; resize/aspect conversion remains deferred to the next contained sub-step.</p>
           </section>
 
           <div class="timeline-shell">
