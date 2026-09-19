@@ -5,6 +5,7 @@ import { ok, fail, unsupported } from '../lib/security/result.js';
 import { preflightDimensions, parseExifSummary } from '../lib/image/preflight.js';
 import { calculateResize, calculateCrop, coverRect } from '../lib/image/math.js';
 import { normalizeEdits, hasPixelEdits } from '../lib/image/edits.js';
+import { normalizeLayers } from '../lib/image/layers.js';
 
 try { Object.defineProperty(self, 'fetch', { value: () => Promise.reject(new Error('Network disabled in Utility OS workers.')), writable: false }); } catch {}
 
@@ -105,6 +106,7 @@ async function processImage({ buffer, settings = {}, preview = false }) {
   if ('close' in source) source.close(); else { source.width = 1; source.height = 1; }
   if (hasPixelEdits(edits)) canvas = applyAdjustments(canvas, edits);
   canvas = transformCanvas(canvas, (Number(settings.rotate) || 0) + edits.straighten, Boolean(settings.flipX), Boolean(settings.flipY));
+  canvas = renderDesignLayers(canvas, settings.layers);
   const finalCheck = validateDimensions(canvas.width, canvas.height);
   if (!finalCheck.ok) return unsupported(finalCheck.reason, 'RESOURCE_LIMIT');
 
@@ -282,6 +284,56 @@ function sharpenPixels(data, width, height, strength) {
 function clamp255(value) { return Math.max(0, Math.min(255, Math.round(value))); }
 function clamp01(value) { return Math.max(0, Math.min(1, value)); }
 function mix(a, b, t) { return a + (b - a) * t; }
+
+function renderDesignLayers(source, inputLayers) {
+  const layers = normalizeLayers(inputLayers);
+  if (!layers.length) return source;
+  const canvas = new OffscreenCanvas(source.width, source.height);
+  const ctx = canvas.getContext('2d', { alpha: true });
+  ctx.drawImage(source, 0, 0);
+  for (const layer of layers) drawLayer(ctx, canvas, layer);
+  return canvas;
+}
+
+function drawLayer(ctx, canvas, layer) {
+  const x = canvas.width * layer.x / 100; const y = canvas.height * layer.y / 100;
+  const width = canvas.width * layer.width / 100; const height = canvas.height * layer.height / 100;
+  ctx.save(); ctx.globalAlpha = layer.opacity; ctx.translate(x, y); ctx.rotate(layer.rotation * Math.PI / 180);
+  if (layer.type === 'text') drawTextLayer(ctx, layer, width, height);
+  else if (layer.type === 'rectangle' || layer.type === 'background') drawRectLayer(ctx, layer, width, height);
+  else if (layer.type === 'circle') drawCircleLayer(ctx, layer, width, height);
+  else if (layer.type === 'line' || layer.type === 'arrow') drawLineLayer(ctx, layer, width, height, layer.type === 'arrow');
+  ctx.restore();
+}
+
+function layerFill(ctx, layer, width, height) {
+  if (!layer.gradient) return layer.fill;
+  const radians = layer.gradientAngle * Math.PI / 180; const dx = Math.cos(radians) * width / 2; const dy = Math.sin(radians) * height / 2;
+  const gradient = ctx.createLinearGradient(-dx, -dy, dx, dy); gradient.addColorStop(0, layer.fill); gradient.addColorStop(1, layer.fill2); return gradient;
+}
+
+function drawRectLayer(ctx, layer, width, height) {
+  ctx.fillStyle = layerFill(ctx, layer, width, height); ctx.fillRect(-width/2, -height/2, width, height);
+  if (layer.strokeWidth > 0) { ctx.strokeStyle = layer.strokeColor; ctx.lineWidth = layer.strokeWidth; ctx.strokeRect(-width/2, -height/2, width, height); }
+}
+function drawCircleLayer(ctx, layer, width, height) {
+  ctx.beginPath(); ctx.ellipse(0, 0, width/2, height/2, 0, 0, Math.PI*2); ctx.fillStyle = layerFill(ctx, layer, width, height); ctx.fill();
+  if (layer.strokeWidth > 0) { ctx.strokeStyle = layer.strokeColor; ctx.lineWidth = layer.strokeWidth; ctx.stroke(); }
+}
+function drawLineLayer(ctx, layer, width, height, arrow) {
+  const x1=-width/2, y1=-height/2, x2=width/2, y2=height/2; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.strokeStyle=layer.strokeColor; ctx.lineWidth=Math.max(1,layer.strokeWidth); ctx.lineCap='round'; ctx.stroke();
+  if (arrow) { const angle=Math.atan2(y2-y1,x2-x1); const size=Math.max(8,layer.strokeWidth*3); ctx.beginPath(); ctx.moveTo(x2,y2); ctx.lineTo(x2-size*Math.cos(angle-Math.PI/6),y2-size*Math.sin(angle-Math.PI/6)); ctx.lineTo(x2-size*Math.cos(angle+Math.PI/6),y2-size*Math.sin(angle+Math.PI/6)); ctx.closePath(); ctx.fillStyle=layer.strokeColor; ctx.fill(); }
+}
+function drawTextLayer(ctx, layer, width, height) {
+  ctx.font = `${layer.fontWeight} ${layer.fontSize}px ${layer.fontFamily}`; ctx.textBaseline='top'; ctx.textAlign='left';
+  ctx.shadowColor = layer.shadowEnabled ? layer.shadowColor : 'rgba(0,0,0,0)'; ctx.shadowBlur = layer.shadowEnabled ? layer.shadowBlur : 0; ctx.shadowOffsetX = layer.shadowEnabled ? layer.shadowX : 0; ctx.shadowOffsetY = layer.shadowEnabled ? layer.shadowY : 0;
+  const lines=String(layer.text).split(/\r?\n/); const lineHeight=layer.fontSize*layer.lineSpacing; const totalHeight=Math.max(lineHeight,lines.length*lineHeight); const top=-totalHeight/2;
+  if (layer.backgroundEnabled) { ctx.save(); ctx.shadowColor='rgba(0,0,0,0)'; ctx.fillStyle=layer.backgroundColor; ctx.fillRect(-width/2-12,top-10,width+24,totalHeight+20); ctx.restore(); }
+  ctx.fillStyle=layer.color; ctx.strokeStyle=layer.strokeColor; ctx.lineWidth=layer.strokeWidth*2; ctx.lineJoin='round';
+  lines.forEach((line,index)=>{ const lineWidth=measureSpacedText(ctx,line,layer.letterSpacing); let start=-width/2; if(layer.align==='center') start=-lineWidth/2; if(layer.align==='right') start=width/2-lineWidth; const yy=top+index*lineHeight; if(layer.strokeWidth>0) drawSpacedText(ctx,line,start,yy,layer.letterSpacing,true); drawSpacedText(ctx,line,start,yy,layer.letterSpacing,false); });
+}
+function measureSpacedText(ctx,text,spacing) { if(!text) return 0; let width=0; for(let i=0;i<text.length;i++) width+=ctx.measureText(text[i]).width+(i<text.length-1?spacing:0); return width; }
+function drawSpacedText(ctx,text,x,y,spacing,stroke) { let cursor=x; for(let i=0;i<text.length;i++){ const char=text[i]; if(stroke) ctx.strokeText(char,cursor,y); else ctx.fillText(char,cursor,y); cursor+=ctx.measureText(char).width+(i<text.length-1?spacing:0); } }
 
 async function encode(canvas, mime, quality) {
   try {

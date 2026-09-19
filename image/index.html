@@ -102,6 +102,65 @@
             </div>
           </div>
 
+          <div class="control-section design-section">
+            <div class="section-inline-heading"><div><h3>Text & design layers</h3><p class="microcopy">Layers remain editable until preview/export. Positions use percentages so a recipe can be reused across similarly composed assets.</p></div></div>
+            <div class="layer-toolbar" role="group" aria-label="Add design layer">
+              <button class="secondary-button" id="add-text-layer" type="button">+ Text</button>
+              <button class="secondary-button" id="add-rect-layer" type="button">+ Rectangle</button>
+              <button class="secondary-button" id="add-circle-layer" type="button">+ Circle</button>
+              <button class="secondary-button" id="add-line-layer" type="button">+ Line</button>
+              <button class="secondary-button" id="add-arrow-layer" type="button">+ Arrow</button>
+              <button class="secondary-button" id="add-background-layer" type="button">+ Background</button>
+            </div>
+            <div class="layer-workspace">
+              <div><p class="eyebrow">Layers</p><div id="layer-list" class="layer-list"><p class="microcopy">No design layers yet.</p></div></div>
+              <div id="layer-properties" class="layer-properties hidden">
+                <div class="layer-properties-header"><strong id="layer-title">Layer</strong><div class="mini-actions"><button class="text-button" id="layer-up" type="button">Up</button><button class="text-button" id="layer-down" type="button">Down</button><button class="text-button" id="duplicate-layer" type="button">Duplicate</button><button class="text-button danger-text" id="delete-layer" type="button">Delete</button></div></div>
+                <div id="text-layer-fields" class="layer-field-group hidden">
+                  <label>Text<textarea id="layer-text" rows="3" maxlength="500"></textarea></label>
+                  <div class="form-grid">
+                    <label>Font<select id="layer-font"><option value="system-ui">System</option><option value="sans-serif">Sans serif</option><option value="serif">Serif</option><option value="monospace">Monospace</option></select></label>
+                    <label>Size (px)<input id="layer-font-size" type="number" min="6" max="600" value="64"></label>
+                    <label>Weight<select id="layer-font-weight"><option value="400">Regular</option><option value="600">Semibold</option><option value="700">Bold</option><option value="800">Extra bold</option></select></label>
+                    <label>Align<select id="layer-align"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
+                    <label>Color<input id="layer-color" type="color" value="#ffffff"></label>
+                    <label>Letter spacing<input id="layer-letter-spacing" type="number" min="-10" max="50" step="0.5" value="0"></label>
+                    <label>Line spacing<input id="layer-line-spacing" type="number" min="0.7" max="3" step="0.05" value="1.2"></label>
+                    <label>Outline<input id="layer-stroke-width" type="number" min="0" max="30" step="0.5" value="0"></label>
+                    <label>Outline color<input id="layer-stroke-color" type="color" value="#000000"></label>
+                  </div>
+                  <div class="form-grid">
+                    <label class="check-row"><input id="layer-shadow-enabled" type="checkbox"> Shadow</label>
+                    <label>Shadow color<input id="layer-shadow-color" type="color" value="#000000"></label>
+                    <label>Shadow blur<input id="layer-shadow-blur" type="number" min="0" max="100" value="12"></label>
+                    <label>Shadow X<input id="layer-shadow-x" type="number" min="-100" max="100" value="4"></label>
+                    <label>Shadow Y<input id="layer-shadow-y" type="number" min="-100" max="100" value="4"></label>
+                    <label class="check-row"><input id="layer-bg-enabled" type="checkbox"> Text background</label>
+                    <label>Background color<input id="layer-bg-color" type="color" value="#000000"></label>
+                  </div>
+                </div>
+                <div id="shape-layer-fields" class="layer-field-group hidden">
+                  <div class="form-grid">
+                    <label>Fill<input id="layer-fill" type="color" value="#111827"></label>
+                    <label>Second color<input id="layer-fill-2" type="color" value="#7c3aed"></label>
+                    <label class="check-row"><input id="layer-gradient" type="checkbox"> Gradient</label>
+                    <label>Gradient angle<input id="layer-gradient-angle" type="number" min="-180" max="180" value="0"></label>
+                    <label>Stroke<input id="shape-stroke-color" type="color" value="#ffffff"></label>
+                    <label>Stroke width<input id="shape-stroke-width" type="number" min="0" max="40" value="0"></label>
+                  </div>
+                </div>
+                <div class="layer-field-group"><h4>Position & transform</h4><div class="form-grid">
+                  <label>X (%)<input id="layer-x" type="number" min="-50" max="150" step="0.5" value="50"></label>
+                  <label>Y (%)<input id="layer-y" type="number" min="-50" max="150" step="0.5" value="50"></label>
+                  <label>Width (%)<input id="layer-width" type="number" min="1" max="200" step="0.5" value="50"></label>
+                  <label>Height (%)<input id="layer-height" type="number" min="1" max="200" step="0.5" value="20"></label>
+                  <label>Rotation<input id="layer-rotation" type="number" min="-180" max="180" step="1" value="0"></label>
+                  <label>Opacity (%)<input id="layer-opacity" type="number" min="0" max="100" step="1" value="100"></label>
+                </div></div>
+              </div>
+            </div>
+          </div>
+
           <div class="control-section"><h3>Format & compression</h3><div class="form-grid">
             <label>Format<select id="format"><option value="jpeg">JPEG</option><option value="png">PNG</option><option value="webp">WebP</option><option value="avif">AVIF (if supported)</option></select></label>
             <label>Quality <output id="quality-value">82</output>%<input id="quality" type="range" min="5" max="98" value="82"></label>

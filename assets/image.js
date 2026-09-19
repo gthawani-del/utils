@@ -4,10 +4,11 @@ import { WorkerRunner } from '/lib/security/worker-runner.js';
 import { trackObjectUrl, revokeObjectUrl, clearWorkspace } from '/lib/security/workspace.js';
 import { IMAGE_PRESETS } from '/lib/image/presets.js';
 import { DEFAULT_EDITS, normalizeEdits, editsEqual } from '/lib/image/edits.js';
+import { createLayer, normalizeLayer } from '/lib/image/layers.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
-const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, previewTimer: 0, previewAbort: null };
+const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, previewTimer: 0, previewAbort: null };
 const $ = (selector) => document.querySelector(selector);
 const els = {
   input: $('#file-input'), choose: $('#choose-files'), add: $('#add-more'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'),
@@ -17,7 +18,10 @@ const els = {
   cropX: $('#crop-x'), cropY: $('#crop-y'), cropWidth: $('#crop-width'), cropHeight: $('#crop-height'), format: $('#format'), quality: $('#quality'), qualityValue: $('#quality-value'), targetSize: $('#target-size'), background: $('#background'), rotate: $('#rotate'), flipX: $('#flip-x'), flipY: $('#flip-y'),
   prefix: $('#prefix'), suffix: $('#suffix'), preserveName: $('#preserve-name'), reset: $('#reset-settings'), processSelected: $('#process-selected'), processAll: $('#process-all'), downloadSelected: $('#download-selected'), downloadAll: $('#download-all'), clear: $('#clear-workspace'), jpegWarning: $('#jpeg-warning'), upscaleWarning: $('#upscale-warning'),
   editComparison: $('#edit-comparison'), comparisonOriginal: $('#comparison-original'), comparisonEdited: $('#comparison-edited'), comparisonOverlay: $('#comparison-overlay'), comparisonDivider: $('#comparison-divider'), comparisonRange: $('#comparison-range'), comparisonValue: $('#comparison-value'), previewStatus: $('#preview-status'),
-  undoEdit: $('#undo-edit'), resetEdits: $('#reset-edits'), brightness: $('#brightness'), exposure: $('#exposure'), contrast: $('#contrast'), saturation: $('#saturation'), vibrance: $('#vibrance'), highlights: $('#highlights'), shadows: $('#shadows'), temperature: $('#temperature'), tint: $('#tint'), gamma: $('#gamma'), sharpen: $('#sharpen'), blur: $('#blur'), grayscale: $('#grayscale'), sepia: $('#sepia'), straighten: $('#straighten')
+  undoEdit: $('#undo-edit'), resetEdits: $('#reset-edits'), brightness: $('#brightness'), exposure: $('#exposure'), contrast: $('#contrast'), saturation: $('#saturation'), vibrance: $('#vibrance'), highlights: $('#highlights'), shadows: $('#shadows'), temperature: $('#temperature'), tint: $('#tint'), gamma: $('#gamma'), sharpen: $('#sharpen'), blur: $('#blur'), grayscale: $('#grayscale'), sepia: $('#sepia'), straighten: $('#straighten'),
+  layerList: $('#layer-list'), layerProperties: $('#layer-properties'), layerTitle: $('#layer-title'), textLayerFields: $('#text-layer-fields'), shapeLayerFields: $('#shape-layer-fields'), addTextLayer: $('#add-text-layer'), addRectLayer: $('#add-rect-layer'), addCircleLayer: $('#add-circle-layer'), addLineLayer: $('#add-line-layer'), addArrowLayer: $('#add-arrow-layer'), addBackgroundLayer: $('#add-background-layer'), duplicateLayer: $('#duplicate-layer'), deleteLayer: $('#delete-layer'), layerUp: $('#layer-up'), layerDown: $('#layer-down'),
+  layerText: $('#layer-text'), layerFont: $('#layer-font'), layerFontSize: $('#layer-font-size'), layerFontWeight: $('#layer-font-weight'), layerAlign: $('#layer-align'), layerColor: $('#layer-color'), layerLetterSpacing: $('#layer-letter-spacing'), layerLineSpacing: $('#layer-line-spacing'), layerStrokeWidth: $('#layer-stroke-width'), layerStrokeColor: $('#layer-stroke-color'), layerShadowEnabled: $('#layer-shadow-enabled'), layerShadowColor: $('#layer-shadow-color'), layerShadowBlur: $('#layer-shadow-blur'), layerShadowX: $('#layer-shadow-x'), layerShadowY: $('#layer-shadow-y'), layerBgEnabled: $('#layer-bg-enabled'), layerBgColor: $('#layer-bg-color'),
+  layerFill: $('#layer-fill'), layerFill2: $('#layer-fill-2'), layerGradient: $('#layer-gradient'), layerGradientAngle: $('#layer-gradient-angle'), shapeStrokeColor: $('#shape-stroke-color'), shapeStrokeWidth: $('#shape-stroke-width'), layerX: $('#layer-x'), layerY: $('#layer-y'), layerWidth: $('#layer-width'), layerHeight: $('#layer-height'), layerRotation: $('#layer-rotation'), layerOpacity: $('#layer-opacity')
 };
 
 initialize();
@@ -35,6 +39,7 @@ function initialize() {
   }
   wireEvents();
   updateConditionalControls();
+  renderLayerList(); renderLayerProperties();
 }
 
 function wireEvents() {
@@ -64,6 +69,10 @@ function wireEvents() {
   els.undoEdit.addEventListener('click', undoEdit);
   els.resetEdits.addEventListener('click', resetEdits);
   els.comparisonRange.addEventListener('input', updateComparisonPosition);
+  const addLayerButtons = [[els.addTextLayer,'text'],[els.addRectLayer,'rectangle'],[els.addCircleLayer,'circle'],[els.addLineLayer,'line'],[els.addArrowLayer,'arrow'],[els.addBackgroundLayer,'background']];
+  for (const [button,type] of addLayerButtons) button.addEventListener('click', () => addDesignLayer(type));
+  els.duplicateLayer.addEventListener('click', duplicateSelectedLayer); els.deleteLayer.addEventListener('click', deleteSelectedLayer); els.layerUp.addEventListener('click', () => moveSelectedLayer(1)); els.layerDown.addEventListener('click', () => moveSelectedLayer(-1));
+  for (const control of layerControls()) { control.addEventListener('input', updateSelectedLayerFromControls); control.addEventListener('change', updateSelectedLayerFromControls); }
   window.addEventListener('pagehide', () => { state.previewAbort?.abort(); cleanupUrls(); });
 }
 
@@ -179,6 +188,7 @@ function resetToOriginal() {
   els.preserveAspect.checked = true; els.cropMode.value = 'none'; els.cropX.value = 0; els.cropY.value = 0; els.cropWidth.value = item.inspect.dimensions.width; els.cropHeight.value = item.inspect.dimensions.height;
   els.format.value = item.inspect.kind === 'svg' ? 'png' : item.inspect.kind; els.quality.value = 82; els.qualityValue.textContent = '82'; els.targetSize.value = ''; els.rotate.value = 0; els.flipX.checked = false; els.flipY.checked = false;
   applyEditsToControls(DEFAULT_EDITS); state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.lastCommittedGeometry = { rotate: 0, flipX: false, flipY: false }; updateUndoButton();
+  state.layers = []; state.selectedLayerId = null; renderLayerList(); renderLayerProperties();
   if (item.editPreviewUrl) { revokeObjectUrl(item.editPreviewUrl); item.editPreviewUrl = ''; item.editPreviewBlob = null; }
   els.editComparison.classList.add('hidden');
   updateConditionalControls(); updateWarnings();
@@ -225,7 +235,7 @@ function collectSettings() {
   if (cm === 'custom') crop = { mode: 'ratio', ratio: Number(els.customRatio.value) };
   return {
     resizeMode: els.resizeMode.value, width: Number(els.width.value), height: Number(els.height.value), percentage: Number(els.percentage.value), longestEdge: Number(els.longest.value), shortestEdge: Number(els.shortest.value), preserveAspect: els.preserveAspect.checked,
-    crop, format: els.format.value, quality: Number(els.quality.value) / 100, targetBytes: els.targetSize.value ? Number(els.targetSize.value) * 1024 : 0, background: els.background.value, rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked, edits: collectEdits()
+    crop, format: els.format.value, quality: Number(els.quality.value) / 100, targetBytes: els.targetSize.value ? Number(els.targetSize.value) * 1024 : 0, background: els.background.value, rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked, edits: collectEdits(), layers: state.layers.map((layer) => ({ ...layer }))
   };
 }
 
@@ -290,10 +300,59 @@ async function downloadAll() {
 function triggerDownload(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.rel = 'noopener'; document.body.append(a); a.click(); a.remove(); }
 
 async function clearAll() {
-  state.previewAbort?.abort(); clearTimeout(state.previewTimer); runner.terminateAll(); cleanupUrls(); state.items = []; state.selectedId = null; state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); await clearWorkspace(); els.workspace.classList.add('hidden'); els.list.replaceChildren(); els.input.value = ''; els.clear.textContent = 'Workspace cleared'; setTimeout(() => { els.clear.textContent = 'Clear workspace'; }, 1600);
+  state.previewAbort?.abort(); clearTimeout(state.previewTimer); runner.terminateAll(); cleanupUrls(); state.items = []; state.selectedId = null; state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.layers = []; state.selectedLayerId = null; renderLayerList(); renderLayerProperties(); await clearWorkspace(); els.workspace.classList.add('hidden'); els.list.replaceChildren(); els.input.value = ''; els.clear.textContent = 'Workspace cleared'; setTimeout(() => { els.clear.textContent = 'Clear workspace'; }, 1600);
 }
 
 function cleanupUrls() { for (const item of state.items) { revokeObjectUrl(item.originalUrl); revokeObjectUrl(item.outputUrl); revokeObjectUrl(item.editPreviewUrl); item.originalUrl = ''; item.outputUrl = ''; item.editPreviewUrl = ''; } }
+function layerControls() {
+  return [els.layerText,els.layerFont,els.layerFontSize,els.layerFontWeight,els.layerAlign,els.layerColor,els.layerLetterSpacing,els.layerLineSpacing,els.layerStrokeWidth,els.layerStrokeColor,els.layerShadowEnabled,els.layerShadowColor,els.layerShadowBlur,els.layerShadowX,els.layerShadowY,els.layerBgEnabled,els.layerBgColor,els.layerFill,els.layerFill2,els.layerGradient,els.layerGradientAngle,els.shapeStrokeColor,els.shapeStrokeWidth,els.layerX,els.layerY,els.layerWidth,els.layerHeight,els.layerRotation,els.layerOpacity];
+}
+
+function addDesignLayer(type) {
+  const layer = createLayer(type, crypto.randomUUID());
+  state.layers.push(layer); state.selectedLayerId = layer.id; renderLayerList(); renderLayerProperties(); scheduleEditPreview(40);
+}
+
+function selectedDesignLayer() { return state.layers.find((layer) => layer.id === state.selectedLayerId) || null; }
+
+function renderLayerList() {
+  els.layerList.replaceChildren();
+  if (!state.layers.length) { const empty = document.createElement('p'); empty.className = 'microcopy'; empty.textContent = 'No design layers yet.'; els.layerList.append(empty); return; }
+  [...state.layers].reverse().forEach((layer) => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'layer-item' + (layer.id === state.selectedLayerId ? ' selected' : '');
+    const name = document.createElement('span'); name.textContent = layer.type === 'text' ? (layer.text.trim().slice(0,28) || 'Text') : layer.name;
+    const type = document.createElement('small'); type.textContent = layer.type; button.append(name,type); button.addEventListener('click', () => { state.selectedLayerId = layer.id; renderLayerList(); renderLayerProperties(); }); els.layerList.append(button);
+  });
+}
+
+function renderLayerProperties() {
+  const layer = selectedDesignLayer();
+  els.layerProperties.classList.toggle('hidden', !layer); if (!layer) return;
+  els.layerTitle.textContent = layer.name || layer.type; const isText = layer.type === 'text';
+  els.textLayerFields.classList.toggle('hidden', !isText); els.shapeLayerFields.classList.toggle('hidden', isText);
+  els.layerX.value = layer.x; els.layerY.value = layer.y; els.layerWidth.value = layer.width; els.layerHeight.value = layer.height; els.layerRotation.value = layer.rotation; els.layerOpacity.value = Math.round(layer.opacity * 100);
+  if (isText) {
+    els.layerText.value = layer.text; els.layerFont.value = layer.fontFamily; els.layerFontSize.value = layer.fontSize; els.layerFontWeight.value = layer.fontWeight; els.layerAlign.value = layer.align; els.layerColor.value = layer.color; els.layerLetterSpacing.value = layer.letterSpacing; els.layerLineSpacing.value = layer.lineSpacing; els.layerStrokeWidth.value = layer.strokeWidth; els.layerStrokeColor.value = layer.strokeColor; els.layerShadowEnabled.checked = layer.shadowEnabled; els.layerShadowColor.value = layer.shadowColor; els.layerShadowBlur.value = layer.shadowBlur; els.layerShadowX.value = layer.shadowX; els.layerShadowY.value = layer.shadowY; els.layerBgEnabled.checked = layer.backgroundEnabled; els.layerBgColor.value = layer.backgroundColor;
+  } else {
+    els.layerFill.value = layer.fill; els.layerFill2.value = layer.fill2; els.layerGradient.checked = layer.gradient; els.layerGradientAngle.value = layer.gradientAngle; els.shapeStrokeColor.value = layer.strokeColor; els.shapeStrokeWidth.value = layer.strokeWidth;
+  }
+  const index = state.layers.findIndex((entry) => entry.id === layer.id); els.layerDown.disabled = index <= 0; els.layerUp.disabled = index >= state.layers.length - 1;
+}
+
+function updateSelectedLayerFromControls() {
+  const layer = selectedDesignLayer(); if (!layer) return;
+  const next = { ...layer, x:Number(els.layerX.value), y:Number(els.layerY.value), width:Number(els.layerWidth.value), height:Number(els.layerHeight.value), rotation:Number(els.layerRotation.value), opacity:Number(els.layerOpacity.value)/100 };
+  if (layer.type === 'text') Object.assign(next,{ text:els.layerText.value,fontFamily:els.layerFont.value,fontSize:Number(els.layerFontSize.value),fontWeight:Number(els.layerFontWeight.value),align:els.layerAlign.value,color:els.layerColor.value,letterSpacing:Number(els.layerLetterSpacing.value),lineSpacing:Number(els.layerLineSpacing.value),strokeWidth:Number(els.layerStrokeWidth.value),strokeColor:els.layerStrokeColor.value,shadowEnabled:els.layerShadowEnabled.checked,shadowColor:els.layerShadowColor.value,shadowBlur:Number(els.layerShadowBlur.value),shadowX:Number(els.layerShadowX.value),shadowY:Number(els.layerShadowY.value),backgroundEnabled:els.layerBgEnabled.checked,backgroundColor:els.layerBgColor.value });
+  else Object.assign(next,{ fill:els.layerFill.value,fill2:els.layerFill2.value,gradient:els.layerGradient.checked,gradientAngle:Number(els.layerGradientAngle.value),strokeColor:els.shapeStrokeColor.value,strokeWidth:Number(els.shapeStrokeWidth.value) });
+  const normalized = normalizeLayer(next); const index = state.layers.findIndex((entry) => entry.id === layer.id); state.layers[index] = normalized; renderLayerList(); scheduleEditPreview();
+}
+
+function duplicateSelectedLayer() {
+  const layer = selectedDesignLayer(); if (!layer) return; const copy = normalizeLayer({ ...layer, id: crypto.randomUUID(), name: layer.name + ' copy', x: layer.x + 2, y: layer.y + 2 }); state.layers.push(copy); state.selectedLayerId = copy.id; renderLayerList(); renderLayerProperties(); scheduleEditPreview(40);
+}
+function deleteSelectedLayer() { const index = state.layers.findIndex((layer) => layer.id === state.selectedLayerId); if (index < 0) return; state.layers.splice(index,1); state.selectedLayerId = state.layers[Math.min(index,state.layers.length-1)]?.id || null; renderLayerList(); renderLayerProperties(); scheduleEditPreview(40); }
+function moveSelectedLayer(direction) { const index = state.layers.findIndex((layer) => layer.id === state.selectedLayerId); const next = index + direction; if (index < 0 || next < 0 || next >= state.layers.length) return; [state.layers[index],state.layers[next]]=[state.layers[next],state.layers[index]]; renderLayerList(); renderLayerProperties(); scheduleEditPreview(40); }
+
 const EDIT_KEYS = ['brightness','exposure','contrast','saturation','vibrance','highlights','shadows','temperature','tint','gamma','sharpen','blur','grayscale','sepia','straighten'];
 
 function editControls() { return EDIT_KEYS.map((key) => els[key]); }

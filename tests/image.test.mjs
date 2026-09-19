@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { calculateResize, calculateCrop, coverRect } from '../lib/image/math.js';
 import { parsePngDimensions, parseWebpDimensions, parseSvgDimensions } from '../lib/image/preflight.js';
 import { DEFAULT_EDITS, normalizeEdits, hasPixelEdits } from '../lib/image/edits.js';
+import { createLayer, normalizeLayer, normalizeLayers } from '../lib/image/layers.js';
 
 test('fit resize preserves aspect ratio', () => {
   assert.deepEqual(calculateResize(4000, 2000, { resizeMode: 'fit', width: 1000, height: 1000, preserveAspect: true }), { width: 1000, height: 500 });
@@ -49,4 +50,22 @@ test('default edits remain non-destructive and pixel-edit detection is precise',
   assert.equal(hasPixelEdits(DEFAULT_EDITS), false);
   assert.equal(hasPixelEdits({ ...DEFAULT_EDITS, saturation: 1 }), true);
   assert.equal(hasPixelEdits({ ...DEFAULT_EDITS, straighten: 2 }), false);
+});
+
+
+test('design layers normalize untrusted values and restrict fonts', () => {
+  const layer = normalizeLayer({ type: 'text', text: '<b>plain text</b>', fontFamily: 'url(evil)', x: 999, opacity: 4 });
+  assert.equal(layer.type, 'text');
+  assert.equal(layer.fontFamily, 'system-ui');
+  assert.equal(layer.x, 150);
+  assert.equal(layer.opacity, 1);
+  assert.equal(layer.text, '<b>plain text</b>');
+});
+
+test('layer creation is deterministic in shape and normalization caps layer count', () => {
+  const text = createLayer('text', 'layer-1');
+  assert.equal(text.type, 'text');
+  assert.equal(text.id, 'layer-1');
+  const many = Array.from({ length: 80 }, (_, i) => ({ type: 'rectangle', id: String(i) }));
+  assert.equal(normalizeLayers(many).length, 50);
 });
