@@ -276,6 +276,29 @@
             </div>
           </div>
 
+          <div class="control-section compiler-section">
+            <div class="section-inline-heading"><div><h3>Image Compiler</h3><p class="microcopy">One master image → multiple finished assets. Every output is rendered independently from the source using the current edits, design layers and watermark.</p></div><span id="compiler-count" class="microcopy">0 selected</span></div>
+            <div id="compiler-preset-grid" class="compiler-preset-grid" aria-label="Compiler output sizes"></div>
+            <div class="compiler-options">
+              <label>Fit behavior<select id="compiler-fit"><option value="fill">Fill frame (center crop)</option><option value="contain">Contain whole image</option></select></label>
+              <p class="microcopy">Smart crop protection comes later; this compiler currently uses deterministic centered fill or contain.</p>
+            </div>
+            <details class="compiler-custom">
+              <summary>Add custom output</summary>
+              <div class="form-grid">
+                <label>Name<input id="compiler-custom-name" type="text" maxlength="60" placeholder="e.g. Email banner"></label>
+                <label>Width<input id="compiler-custom-width" type="number" min="1" max="12000" value="1200"></label>
+                <label>Height<input id="compiler-custom-height" type="number" min="1" max="12000" value="630"></label>
+              </div>
+              <button class="secondary-button" id="compiler-add-custom" type="button">Add custom size</button>
+              <div id="compiler-custom-list" class="compiler-custom-list"></div>
+            </details>
+            <div class="compiler-actions">
+              <button class="primary-button" id="compiler-generate" type="button" disabled>Generate asset pack</button>
+              <span id="compiler-status" class="microcopy">Choose at least one output.</span>
+            </div>
+          </div>
+
           <div class="control-section format-section export-section"><h3>Format & compression</h3><div class="form-grid">
             <label>Format<select id="format"><option value="jpeg">JPEG</option><option value="png">PNG</option><option value="webp">WebP</option><option value="avif">AVIF (if supported)</option></select></label>
             <label>Quality <output id="quality-value">82</output>%<input id="quality" type="range" min="5" max="98" value="82"></label>
@@ -302,6 +325,7 @@
           <button class="mobile-tool-button" type="button" data-mobile-tool="text"><span>T</span><small>Text</small></button>
           <button class="mobile-tool-button" type="button" data-mobile-tool="design"><span>□</span><small>Design</small></button>
           <button class="mobile-tool-button" type="button" data-mobile-tool="watermark"><span>W</span><small>Mark</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="compiler"><span>▦</span><small>Compile</small></button>
           <button class="mobile-tool-button" type="button" data-mobile-tool="export"><span>⇧</span><small>Export</small></button>
         </nav>
       </section>

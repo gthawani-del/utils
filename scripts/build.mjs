@@ -7,7 +7,7 @@ const dist = resolve(root, 'dist');
 const productionEntries = ['index.html', 'image', 'assets', 'lib', 'workers'];
 const required = [
   'index.html', 'image/index.html', 'assets/app.css', 'assets/home.js', 'assets/image.js',
-  'workers/image.worker.js', 'lib/security/index.js', 'lib/image/edits.js', 'lib/image/layers.js', 'lib/image/watermark.js', 'lib/image/cleanup.js', 'lib/image/text-replace.js', 'vercel.json'
+  'workers/image.worker.js', 'lib/security/index.js', 'lib/image/edits.js', 'lib/image/layers.js', 'lib/image/watermark.js', 'lib/image/cleanup.js', 'lib/image/text-replace.js', 'lib/image/compiler.js', 'vercel.json'
 ];
 
 for (const file of required) await access(resolve(root, file));

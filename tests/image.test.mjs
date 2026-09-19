@@ -7,6 +7,7 @@ import { createLayer, normalizeLayer, normalizeLayers } from '../lib/image/layer
 import { DEFAULT_WATERMARK, normalizeWatermark, resolveWatermarkPosition } from '../lib/image/watermark.js';
 import { normalizeCleanup, cleanupHasMask } from '../lib/image/cleanup.js';
 import { normalizeTextSelection, selectionFromPoints, replacementsToCleanup, replacementLayerFromSelection } from '../lib/image/text-replace.js';
+import { COMPILER_PRESETS, MAX_COMPILER_OUTPUTS, normalizeCompilerOutput, normalizeCompilerOutputs, compilerSettings } from '../lib/image/compiler.js';
 
 test('fit resize preserves aspect ratio', () => {
   assert.deepEqual(calculateResize(4000, 2000, { resizeMode: 'fit', width: 1000, height: 1000, preserveAspect: true }), { width: 1000, height: 500 });
@@ -121,4 +122,29 @@ test('text replacement builds a bounded cleanup mask and editable layer', () => 
   assert.equal(layer.y, 35);
   assert.equal(layer.width, 40);
   assert.equal(layer.height, 10);
+});
+
+
+test('compiler includes the required finished-asset presets', () => {
+  const ids = new Set(COMPILER_PRESETS.map((item) => item.id));
+  for (const id of ['instagram-square','instagram-portrait','story-reel','youtube-thumbnail','linkedin','x','website-hero','website-thumbnail','whatsapp','og-image']) assert.equal(ids.has(id), true);
+});
+
+test('compiler normalizes custom outputs, deduplicates and caps the pack', () => {
+  const custom = normalizeCompilerOutput({ label: ' Email Banner! ', width: 99999, height: 0 });
+  assert.equal(custom.id, 'email-banner');
+  assert.equal(custom.width, 12000);
+  assert.equal(custom.height, 1);
+  const many = Array.from({ length: 40 }, (_, i) => ({ id: 'out-'+i, label: 'Out '+i, width: 100+i, height: 200+i }));
+  assert.equal(normalizeCompilerOutputs(many).length, MAX_COMPILER_OUTPUTS);
+});
+
+test('compiler derives each output independently from base settings', () => {
+  const base = { resizeMode: 'percentage', width: 4000, height: 3000, crop: { mode: 'ratio', ratio: 1 }, quality: .82 };
+  const result = compilerSettings(base, { id: 'hero', label: 'Hero', width: 1920, height: 1080 }, 'fill');
+  assert.equal(result.resizeMode, 'fill');
+  assert.equal(result.width, 1920);
+  assert.equal(result.height, 1080);
+  assert.deepEqual(result.crop, { mode: 'none' });
+  assert.equal(result.quality, .82);
 });
