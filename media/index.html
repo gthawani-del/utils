@@ -124,21 +124,31 @@
                   <button class="active" type="button" data-compare-mode="side-by-side">Side-by-side</button>
                   <button type="button" data-compare-mode="ab" disabled>A/B</button>
                 </div>
+                <label class="version-compare-reference">Compare A
+                  <select id="compare-reference-select">
+                    <option value="original">Original</option>
+                    <option value="parent" disabled>Parent Version</option>
+                  </select>
+                </label>
+                <div class="version-ab-switch" aria-label="A/B source">
+                  <button class="active" type="button" data-ab-side="a">A</button>
+                  <button type="button" data-ab-side="b">B</button>
+                </div>
                 <div class="version-mobile-toggle" aria-label="Mobile comparison">
                   <button class="active" type="button" data-mobile-compare="original">Original</button>
                   <button type="button" data-mobile-compare="result" disabled>Result</button>
                 </div>
-                <span>Preview state is not a rendered file.</span>
+                <span id="compare-sync-note">Create or select a Ready Version to enable synchronized comparison.</span>
               </div>
 
               <div class="version-compare-grid">
                 <article class="version-compare-pane original-pane">
-                  <div class="version-pane-heading"><div><span>A · ORIGINAL</span><strong id="compare-original-name">Original source</strong></div><span class="version-source-lock">Immutable</span></div>
+                  <div class="version-pane-heading"><div><span id="compare-left-role">A · ORIGINAL</span><strong id="compare-original-name">Original source</strong></div><span class="version-source-lock" id="compare-left-state" data-reference="original">Immutable</span></div>
                   <div class="version-compare-media" id="compare-original-player"></div>
-                  <div class="version-pane-placeholder">
+                  <div class="version-pane-placeholder" id="compare-reference-placeholder">
                     <span class="version-pane-icon" aria-hidden="true">▶</span>
-                    <strong>Original source</strong>
-                    <small>The source is immutable. Audio and video sources can be played here for comparison when locally linked.</small>
+                    <strong id="compare-reference-placeholder-title">Original source</strong>
+                    <small id="compare-reference-placeholder-copy">The immutable source can be played here when locally linked.</small>
                   </div>
                   <div class="version-metrics" id="compare-original-metrics"></div>
                 </article>
@@ -149,12 +159,20 @@
                   <div class="version-result-empty" id="compare-result-empty">
                     <span class="version-pane-icon" aria-hidden="true">◇</span>
                     <strong>No Rendered Version yet</strong>
-                    <small>Current trim, volume, fade and other edit controls remain Preview state. Create Version does not generate media until the real render pipeline is introduced.</small>
+                    <small>Create Version to generate a real processed result, or select a Ready Version from Version History.</small>
                   </div>
                   <div class="version-metrics hidden" id="compare-result-metrics"></div>
                   <button class="media-button version-export" id="version-export" type="button" disabled>Export this Version</button>
                 </article>
               </div>
+
+              <section class="compare-measured-panel hidden" id="compare-measured-panel">
+                <div class="compare-measured-heading">
+                  <div><strong>Measured Original → Result</strong><span>Only validated source/result metadata and recorded operations are shown.</span></div>
+                </div>
+                <div class="compare-measured-grid" id="compare-measured-grid"></div>
+                <div class="compare-change-row"><strong>Recorded changes</strong><div id="compare-change-list"></div></div>
+              </section>
             </div>
           </section>
 
