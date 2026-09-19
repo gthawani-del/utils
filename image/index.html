@@ -161,6 +161,30 @@
             </div>
           </div>
 
+          <div class="control-section watermark-section">
+            <div class="section-inline-heading"><div><h3>Watermark</h3><p class="microcopy">One local recipe can be applied to the selected image or the full batch.</p></div><label class="check-row compact-check"><input id="watermark-enabled" type="checkbox"> Enable watermark</label></div>
+            <div id="watermark-controls" class="watermark-controls hidden">
+              <div class="form-grid">
+                <label>Type<select id="watermark-type"><option value="text">Text</option><option value="image">Logo / image</option></select></label>
+                <label>Position<select id="watermark-position"><option value="top-left">Top left</option><option value="top-center">Top center</option><option value="top-right">Top right</option><option value="center">Center</option><option value="bottom-left">Bottom left</option><option value="bottom-center">Bottom center</option><option value="bottom-right" selected>Bottom right</option><option value="custom">Custom</option></select></label>
+                <label>Opacity (%)<input id="watermark-opacity" type="number" min="1" max="100" value="35"></label>
+                <label>Rotation<input id="watermark-rotation" type="number" min="-180" max="180" value="0"></label>
+                <label>Margin (px)<input id="watermark-margin" type="number" min="0" max="500" value="32"></label>
+                <label class="check-row"><input id="watermark-tiled" type="checkbox"> Repeat / tile</label>
+                <label>Tile gap (px)<input id="watermark-tile-gap" type="number" min="10" max="1000" value="140"></label>
+              </div>
+              <div id="watermark-custom-position" class="form-grid hidden"><label>X (%)<input id="watermark-x" type="number" min="0" max="100" value="50"></label><label>Y (%)<input id="watermark-y" type="number" min="0" max="100" value="50"></label></div>
+              <div id="watermark-text-fields" class="watermark-subsection">
+                <div class="form-grid"><label>Text<input id="watermark-text" type="text" maxlength="160" value="© Utility OS"></label><label>Font<select id="watermark-font"><option value="system-ui">System</option><option value="sans-serif">Sans serif</option><option value="serif">Serif</option><option value="monospace">Monospace</option></select></label><label>Size (px)<input id="watermark-font-size" type="number" min="8" max="400" value="48"></label><label>Color<input id="watermark-color" type="color" value="#ffffff"></label></div>
+              </div>
+              <div id="watermark-image-fields" class="watermark-subsection hidden">
+                <input id="watermark-logo-input" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp,image/avif">
+                <div class="logo-picker"><button class="secondary-button" id="choose-watermark-logo" type="button">Choose logo/image</button><span id="watermark-logo-name" class="microcopy">No logo selected</span></div>
+                <div class="form-row"><label>Logo width (% of output)<input id="watermark-logo-width" type="number" min="1" max="90" step="1" value="18"></label></div>
+              </div>
+            </div>
+          </div>
+
           <div class="control-section"><h3>Format & compression</h3><div class="form-grid">
             <label>Format<select id="format"><option value="jpeg">JPEG</option><option value="png">PNG</option><option value="webp">WebP</option><option value="avif">AVIF (if supported)</option></select></label>
             <label>Quality <output id="quality-value">82</output>%<input id="quality" type="range" min="5" max="98" value="82"></label>

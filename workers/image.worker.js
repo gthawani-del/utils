@@ -6,6 +6,7 @@ import { preflightDimensions, parseExifSummary } from '../lib/image/preflight.js
 import { calculateResize, calculateCrop, coverRect } from '../lib/image/math.js';
 import { normalizeEdits, hasPixelEdits } from '../lib/image/edits.js';
 import { normalizeLayers } from '../lib/image/layers.js';
+import { normalizeWatermark, resolveWatermarkPosition } from '../lib/image/watermark.js';
 
 try { Object.defineProperty(self, 'fetch', { value: () => Promise.reject(new Error('Network disabled in Utility OS workers.')), writable: false }); } catch {}
 
@@ -48,7 +49,7 @@ async function inspect({ buffer }) {
   return ok({ kind, mime: mimeFor(kind), dimensions, exif });
 }
 
-async function processImage({ buffer, settings = {}, preview = false }) {
+async function processImage({ buffer, settings = {}, preview = false, watermarkLogoBuffer = null }) {
   const bytes = new Uint8Array(buffer);
   const inspected = await inspect({ buffer: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) });
   if (inspected.state !== 'completed') return inspected;
@@ -107,6 +108,9 @@ async function processImage({ buffer, settings = {}, preview = false }) {
   if (hasPixelEdits(edits)) canvas = applyAdjustments(canvas, edits);
   canvas = transformCanvas(canvas, (Number(settings.rotate) || 0) + edits.straighten, Boolean(settings.flipX), Boolean(settings.flipY));
   canvas = renderDesignLayers(canvas, settings.layers);
+  const watermarkRecipe = normalizeWatermark(settings.watermark);
+  if (watermarkRecipe.enabled && watermarkRecipe.type === 'image' && !watermarkLogoBuffer) return unsupported('Select a watermark logo/image before processing.', 'WATERMARK_IMAGE_REQUIRED');
+  canvas = await renderWatermark(canvas, watermarkRecipe, watermarkLogoBuffer);
   const finalCheck = validateDimensions(canvas.width, canvas.height);
   if (!finalCheck.ok) return unsupported(finalCheck.reason, 'RESOURCE_LIMIT');
 
@@ -334,6 +338,26 @@ function drawTextLayer(ctx, layer, width, height) {
 }
 function measureSpacedText(ctx,text,spacing) { if(!text) return 0; let width=0; for(let i=0;i<text.length;i++) width+=ctx.measureText(text[i]).width+(i<text.length-1?spacing:0); return width; }
 function drawSpacedText(ctx,text,x,y,spacing,stroke) { let cursor=x; for(let i=0;i<text.length;i++){ const char=text[i]; if(stroke) ctx.strokeText(char,cursor,y); else ctx.fillText(char,cursor,y); cursor+=ctx.measureText(char).width+(i<text.length-1?spacing:0); } }
+
+async function renderWatermark(source, recipe, logoBuffer) {
+  if (!recipe.enabled) return source;
+  const canvas = new OffscreenCanvas(source.width, source.height);
+  const ctx = canvas.getContext('2d', { alpha: true }); ctx.drawImage(source,0,0);
+  if (recipe.type === 'text') {
+    ctx.font = `700 ${recipe.fontSize}px ${recipe.fontFamily}`; const metrics=ctx.measureText(recipe.text||''); const width=Math.max(1,metrics.width); const height=Math.max(1,recipe.fontSize*1.25);
+    if(recipe.tiled) drawTiledWatermark(ctx,canvas,recipe,width,height,(x,y)=>drawTextWatermark(ctx,recipe,x,y));
+    else { const p=resolveWatermarkPosition(canvas.width,canvas.height,width,height,recipe); drawTextWatermark(ctx,recipe,p.x,p.y); }
+    return canvas;
+  }
+  const info=await inspect({buffer:logoBuffer.slice(0)}); if(info.state!=='completed'||!['jpeg','png','webp','avif'].includes(info.value.kind)) throw new Error('Invalid watermark image');
+  const blob=new Blob([logoBuffer],{type:mimeFor(info.value.kind)}); const bitmap=await createImageBitmap(blob); const width=Math.max(1,canvas.width*recipe.logoWidth/100); const height=Math.max(1,width*bitmap.height/bitmap.width);
+  if(recipe.tiled) drawTiledWatermark(ctx,canvas,recipe,width,height,(x,y)=>drawImageWatermark(ctx,recipe,bitmap,x,y,width,height));
+  else { const p=resolveWatermarkPosition(canvas.width,canvas.height,width,height,recipe); drawImageWatermark(ctx,recipe,bitmap,p.x,p.y,width,height); }
+  bitmap.close(); return canvas;
+}
+function drawTextWatermark(ctx,recipe,x,y){ ctx.save(); ctx.globalAlpha=recipe.opacity; ctx.translate(x,y); ctx.rotate(recipe.rotation*Math.PI/180); ctx.font=`700 ${recipe.fontSize}px ${recipe.fontFamily}`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle=recipe.color; ctx.fillText(recipe.text,0,0); ctx.restore(); }
+function drawImageWatermark(ctx,recipe,bitmap,x,y,width,height){ ctx.save(); ctx.globalAlpha=recipe.opacity; ctx.translate(x,y); ctx.rotate(recipe.rotation*Math.PI/180); ctx.drawImage(bitmap,-width/2,-height/2,width,height); ctx.restore(); }
+function drawTiledWatermark(ctx,canvas,recipe,markWidth,markHeight,draw){ const stepX=Math.max(1,markWidth+recipe.tileGap); const stepY=Math.max(1,markHeight+recipe.tileGap); let count=0; for(let y=recipe.margin+markHeight/2;y<canvas.height-recipe.margin+markHeight/2;y+=stepY){ for(let x=recipe.margin+markWidth/2;x<canvas.width-recipe.margin+markWidth/2;x+=stepX){ draw(x,y); if(++count>=500)return; } } }
 
 async function encode(canvas, mime, quality) {
   try {

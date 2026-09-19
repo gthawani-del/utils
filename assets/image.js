@@ -5,10 +5,11 @@ import { trackObjectUrl, revokeObjectUrl, clearWorkspace } from '/lib/security/w
 import { IMAGE_PRESETS } from '/lib/image/presets.js';
 import { DEFAULT_EDITS, normalizeEdits, editsEqual } from '/lib/image/edits.js';
 import { createLayer, normalizeLayer } from '/lib/image/layers.js';
+import { DEFAULT_WATERMARK, normalizeWatermark } from '/lib/image/watermark.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
-const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, previewTimer: 0, previewAbort: null };
+const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, previewTimer: 0, previewAbort: null };
 const $ = (selector) => document.querySelector(selector);
 const els = {
   input: $('#file-input'), choose: $('#choose-files'), add: $('#add-more'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'),
@@ -21,7 +22,8 @@ const els = {
   undoEdit: $('#undo-edit'), resetEdits: $('#reset-edits'), brightness: $('#brightness'), exposure: $('#exposure'), contrast: $('#contrast'), saturation: $('#saturation'), vibrance: $('#vibrance'), highlights: $('#highlights'), shadows: $('#shadows'), temperature: $('#temperature'), tint: $('#tint'), gamma: $('#gamma'), sharpen: $('#sharpen'), blur: $('#blur'), grayscale: $('#grayscale'), sepia: $('#sepia'), straighten: $('#straighten'),
   layerList: $('#layer-list'), layerProperties: $('#layer-properties'), layerTitle: $('#layer-title'), textLayerFields: $('#text-layer-fields'), shapeLayerFields: $('#shape-layer-fields'), addTextLayer: $('#add-text-layer'), addRectLayer: $('#add-rect-layer'), addCircleLayer: $('#add-circle-layer'), addLineLayer: $('#add-line-layer'), addArrowLayer: $('#add-arrow-layer'), addBackgroundLayer: $('#add-background-layer'), duplicateLayer: $('#duplicate-layer'), deleteLayer: $('#delete-layer'), layerUp: $('#layer-up'), layerDown: $('#layer-down'),
   layerText: $('#layer-text'), layerFont: $('#layer-font'), layerFontSize: $('#layer-font-size'), layerFontWeight: $('#layer-font-weight'), layerAlign: $('#layer-align'), layerColor: $('#layer-color'), layerLetterSpacing: $('#layer-letter-spacing'), layerLineSpacing: $('#layer-line-spacing'), layerStrokeWidth: $('#layer-stroke-width'), layerStrokeColor: $('#layer-stroke-color'), layerShadowEnabled: $('#layer-shadow-enabled'), layerShadowColor: $('#layer-shadow-color'), layerShadowBlur: $('#layer-shadow-blur'), layerShadowX: $('#layer-shadow-x'), layerShadowY: $('#layer-shadow-y'), layerBgEnabled: $('#layer-bg-enabled'), layerBgColor: $('#layer-bg-color'),
-  layerFill: $('#layer-fill'), layerFill2: $('#layer-fill-2'), layerGradient: $('#layer-gradient'), layerGradientAngle: $('#layer-gradient-angle'), shapeStrokeColor: $('#shape-stroke-color'), shapeStrokeWidth: $('#shape-stroke-width'), layerX: $('#layer-x'), layerY: $('#layer-y'), layerWidth: $('#layer-width'), layerHeight: $('#layer-height'), layerRotation: $('#layer-rotation'), layerOpacity: $('#layer-opacity')
+  layerFill: $('#layer-fill'), layerFill2: $('#layer-fill-2'), layerGradient: $('#layer-gradient'), layerGradientAngle: $('#layer-gradient-angle'), shapeStrokeColor: $('#shape-stroke-color'), shapeStrokeWidth: $('#shape-stroke-width'), layerX: $('#layer-x'), layerY: $('#layer-y'), layerWidth: $('#layer-width'), layerHeight: $('#layer-height'), layerRotation: $('#layer-rotation'), layerOpacity: $('#layer-opacity'),
+  watermarkEnabled: $('#watermark-enabled'), watermarkControls: $('#watermark-controls'), watermarkType: $('#watermark-type'), watermarkPosition: $('#watermark-position'), watermarkOpacity: $('#watermark-opacity'), watermarkRotation: $('#watermark-rotation'), watermarkMargin: $('#watermark-margin'), watermarkTiled: $('#watermark-tiled'), watermarkTileGap: $('#watermark-tile-gap'), watermarkCustomPosition: $('#watermark-custom-position'), watermarkX: $('#watermark-x'), watermarkY: $('#watermark-y'), watermarkTextFields: $('#watermark-text-fields'), watermarkImageFields: $('#watermark-image-fields'), watermarkText: $('#watermark-text'), watermarkFont: $('#watermark-font'), watermarkFontSize: $('#watermark-font-size'), watermarkColor: $('#watermark-color'), watermarkLogoInput: $('#watermark-logo-input'), chooseWatermarkLogo: $('#choose-watermark-logo'), watermarkLogoName: $('#watermark-logo-name'), watermarkLogoWidth: $('#watermark-logo-width')
 };
 
 initialize();
@@ -39,7 +41,7 @@ function initialize() {
   }
   wireEvents();
   updateConditionalControls();
-  renderLayerList(); renderLayerProperties();
+  renderLayerList(); renderLayerProperties(); updateWatermarkConditional();
 }
 
 function wireEvents() {
@@ -73,6 +75,9 @@ function wireEvents() {
   for (const [button,type] of addLayerButtons) button.addEventListener('click', () => addDesignLayer(type));
   els.duplicateLayer.addEventListener('click', duplicateSelectedLayer); els.deleteLayer.addEventListener('click', deleteSelectedLayer); els.layerUp.addEventListener('click', () => moveSelectedLayer(1)); els.layerDown.addEventListener('click', () => moveSelectedLayer(-1));
   for (const control of layerControls()) { control.addEventListener('input', updateSelectedLayerFromControls); control.addEventListener('change', updateSelectedLayerFromControls); }
+  for (const control of watermarkControls()) { control.addEventListener('input', () => { updateWatermarkConditional(); scheduleEditPreview(); }); control.addEventListener('change', () => { updateWatermarkConditional(); scheduleEditPreview(40); }); }
+  els.chooseWatermarkLogo.addEventListener('click', () => els.watermarkLogoInput.click());
+  els.watermarkLogoInput.addEventListener('change', () => setWatermarkLogo(els.watermarkLogoInput.files?.[0]));
   window.addEventListener('pagehide', () => { state.previewAbort?.abort(); cleanupUrls(); });
 }
 
@@ -188,7 +193,7 @@ function resetToOriginal() {
   els.preserveAspect.checked = true; els.cropMode.value = 'none'; els.cropX.value = 0; els.cropY.value = 0; els.cropWidth.value = item.inspect.dimensions.width; els.cropHeight.value = item.inspect.dimensions.height;
   els.format.value = item.inspect.kind === 'svg' ? 'png' : item.inspect.kind; els.quality.value = 82; els.qualityValue.textContent = '82'; els.targetSize.value = ''; els.rotate.value = 0; els.flipX.checked = false; els.flipY.checked = false;
   applyEditsToControls(DEFAULT_EDITS); state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.lastCommittedGeometry = { rotate: 0, flipX: false, flipY: false }; updateUndoButton();
-  state.layers = []; state.selectedLayerId = null; renderLayerList(); renderLayerProperties();
+  state.layers = []; state.selectedLayerId = null; renderLayerList(); renderLayerProperties(); resetWatermarkControls();
   if (item.editPreviewUrl) { revokeObjectUrl(item.editPreviewUrl); item.editPreviewUrl = ''; item.editPreviewBlob = null; }
   els.editComparison.classList.add('hidden');
   updateConditionalControls(); updateWarnings();
@@ -235,7 +240,7 @@ function collectSettings() {
   if (cm === 'custom') crop = { mode: 'ratio', ratio: Number(els.customRatio.value) };
   return {
     resizeMode: els.resizeMode.value, width: Number(els.width.value), height: Number(els.height.value), percentage: Number(els.percentage.value), longestEdge: Number(els.longest.value), shortestEdge: Number(els.shortest.value), preserveAspect: els.preserveAspect.checked,
-    crop, format: els.format.value, quality: Number(els.quality.value) / 100, targetBytes: els.targetSize.value ? Number(els.targetSize.value) * 1024 : 0, background: els.background.value, rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked, edits: collectEdits(), layers: state.layers.map((layer) => ({ ...layer }))
+    crop, format: els.format.value, quality: Number(els.quality.value) / 100, targetBytes: els.targetSize.value ? Number(els.targetSize.value) * 1024 : 0, background: els.background.value, rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked, edits: collectEdits(), layers: state.layers.map((layer) => ({ ...layer })), watermark: collectWatermark()
   };
 }
 
@@ -259,8 +264,8 @@ async function processItem(item, settings) {
   item.status = 'processing'; item.error = ''; renderList();
   if (item.outputUrl) { revokeObjectUrl(item.outputUrl); item.outputUrl = ''; item.outputBlob = null; }
   try {
-    const buffer = await item.file.arrayBuffer();
-    const result = await runner.run({ op: 'process', buffer, settings }, [buffer]);
+    const payload = await createProcessingPayload('process', item, settings);
+    const result = await runner.run(payload.message, payload.transfers);
     if (result.state !== 'completed') { item.status = result.state; item.error = result.error?.message || 'Processing failed.'; return; }
     const value = result.value; const blob = new Blob([value.buffer], { type: value.mime });
     item.outputBlob = blob; item.outputUrl = trackObjectUrl(blob); item.outputWidth = value.width; item.outputHeight = value.height; item.status = 'completed';
@@ -300,10 +305,17 @@ async function downloadAll() {
 function triggerDownload(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.rel = 'noopener'; document.body.append(a); a.click(); a.remove(); }
 
 async function clearAll() {
-  state.previewAbort?.abort(); clearTimeout(state.previewTimer); runner.terminateAll(); cleanupUrls(); state.items = []; state.selectedId = null; state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.layers = []; state.selectedLayerId = null; renderLayerList(); renderLayerProperties(); await clearWorkspace(); els.workspace.classList.add('hidden'); els.list.replaceChildren(); els.input.value = ''; els.clear.textContent = 'Workspace cleared'; setTimeout(() => { els.clear.textContent = 'Clear workspace'; }, 1600);
+  state.previewAbort?.abort(); clearTimeout(state.previewTimer); runner.terminateAll(); cleanupUrls(); state.items = []; state.selectedId = null; state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.layers = []; state.selectedLayerId = null; state.watermarkLogoFile = null; renderLayerList(); renderLayerProperties(); resetWatermarkControls(); await clearWorkspace(); els.workspace.classList.add('hidden'); els.list.replaceChildren(); els.input.value = ''; els.clear.textContent = 'Workspace cleared'; setTimeout(() => { els.clear.textContent = 'Clear workspace'; }, 1600);
 }
 
 function cleanupUrls() { for (const item of state.items) { revokeObjectUrl(item.originalUrl); revokeObjectUrl(item.outputUrl); revokeObjectUrl(item.editPreviewUrl); item.originalUrl = ''; item.outputUrl = ''; item.editPreviewUrl = ''; } }
+function watermarkControls() { return [els.watermarkEnabled,els.watermarkType,els.watermarkPosition,els.watermarkOpacity,els.watermarkRotation,els.watermarkMargin,els.watermarkTiled,els.watermarkTileGap,els.watermarkX,els.watermarkY,els.watermarkText,els.watermarkFont,els.watermarkFontSize,els.watermarkColor,els.watermarkLogoWidth]; }
+function collectWatermark() { return normalizeWatermark({ enabled:els.watermarkEnabled.checked,type:els.watermarkType.value,position:els.watermarkPosition.value,opacity:Number(els.watermarkOpacity.value)/100,rotation:Number(els.watermarkRotation.value),margin:Number(els.watermarkMargin.value),tiled:els.watermarkTiled.checked,tileGap:Number(els.watermarkTileGap.value),x:Number(els.watermarkX.value),y:Number(els.watermarkY.value),text:els.watermarkText.value,fontFamily:els.watermarkFont.value,fontSize:Number(els.watermarkFontSize.value),color:els.watermarkColor.value,logoWidth:Number(els.watermarkLogoWidth.value) }); }
+function updateWatermarkConditional() { const enabled=els.watermarkEnabled.checked; els.watermarkControls.classList.toggle('hidden',!enabled); const image=els.watermarkType.value==='image'; els.watermarkTextFields.classList.toggle('hidden',image); els.watermarkImageFields.classList.toggle('hidden',!image); els.watermarkCustomPosition.classList.toggle('hidden',els.watermarkPosition.value!=='custom'||!enabled); }
+function resetWatermarkControls() { const r=DEFAULT_WATERMARK; els.watermarkEnabled.checked=false; els.watermarkType.value=r.type; els.watermarkPosition.value=r.position; els.watermarkOpacity.value=Math.round(r.opacity*100); els.watermarkRotation.value=r.rotation; els.watermarkMargin.value=r.margin; els.watermarkTiled.checked=r.tiled; els.watermarkTileGap.value=r.tileGap; els.watermarkX.value=r.x; els.watermarkY.value=r.y; els.watermarkText.value=r.text; els.watermarkFont.value=r.fontFamily; els.watermarkFontSize.value=r.fontSize; els.watermarkColor.value=r.color; els.watermarkLogoWidth.value=r.logoWidth; els.watermarkLogoInput.value=''; els.watermarkLogoName.textContent='No logo selected'; state.watermarkLogoFile=null; updateWatermarkConditional(); }
+async function setWatermarkLogo(file) { if(!file) return; const budget=validateFileBudget(file); if(!budget.ok){ showCompatibility(budget.reason); return; } try { const buffer=await file.arrayBuffer(); const result=await runner.run({op:'inspect',buffer},[buffer],15_000); if(result.state!=='completed'||!['jpeg','png','webp','avif'].includes(result.value.kind)){ showCompatibility('Watermark logos must be a valid JPEG, PNG, WebP, or AVIF image.'); els.watermarkLogoInput.value=''; return; } state.watermarkLogoFile=file; els.watermarkLogoName.textContent=file.name; els.watermarkEnabled.checked=true; els.watermarkType.value='image'; updateWatermarkConditional(); scheduleEditPreview(40); } catch { showCompatibility('The watermark image could not be inspected safely.'); } }
+async function createProcessingPayload(op,item,settings) { const buffer=await item.file.arrayBuffer(); const message={op,buffer,settings}; const transfers=[buffer]; if(settings.watermark?.enabled&&settings.watermark.type==='image'&&state.watermarkLogoFile){ const watermarkLogoBuffer=await state.watermarkLogoFile.arrayBuffer(); message.watermarkLogoBuffer=watermarkLogoBuffer; transfers.push(watermarkLogoBuffer); } return {message,transfers}; }
+
 function layerControls() {
   return [els.layerText,els.layerFont,els.layerFontSize,els.layerFontWeight,els.layerAlign,els.layerColor,els.layerLetterSpacing,els.layerLineSpacing,els.layerStrokeWidth,els.layerStrokeColor,els.layerShadowEnabled,els.layerShadowColor,els.layerShadowBlur,els.layerShadowX,els.layerShadowY,els.layerBgEnabled,els.layerBgColor,els.layerFill,els.layerFill2,els.layerGradient,els.layerGradientAngle,els.shapeStrokeColor,els.shapeStrokeWidth,els.layerX,els.layerY,els.layerWidth,els.layerHeight,els.layerRotation,els.layerOpacity];
 }
@@ -423,9 +435,9 @@ async function previewSelectedEdits() {
   const controller = new AbortController(); state.previewAbort = controller;
   els.previewStatus.textContent = 'Rendering preview…';
   try {
-    const buffer = await item.file.arrayBuffer();
     const settings = collectSettings(); settings.targetBytes = 0; settings.format = 'png'; settings.previewMaxEdge = 1400;
-    const result = await runner.run({ op: 'preview', buffer, settings }, [buffer], 20_000, controller.signal);
+    const payload = await createProcessingPayload('preview', item, settings);
+    const result = await runner.run(payload.message, payload.transfers, 20_000, controller.signal);
     if (controller.signal.aborted || result.state === 'cancelled') return;
     if (result.state !== 'completed') { els.previewStatus.textContent = result.error?.message || 'Preview unavailable'; return; }
     if (item.editPreviewUrl) revokeObjectUrl(item.editPreviewUrl);

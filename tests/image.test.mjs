@@ -4,6 +4,7 @@ import { calculateResize, calculateCrop, coverRect } from '../lib/image/math.js'
 import { parsePngDimensions, parseWebpDimensions, parseSvgDimensions } from '../lib/image/preflight.js';
 import { DEFAULT_EDITS, normalizeEdits, hasPixelEdits } from '../lib/image/edits.js';
 import { createLayer, normalizeLayer, normalizeLayers } from '../lib/image/layers.js';
+import { DEFAULT_WATERMARK, normalizeWatermark, resolveWatermarkPosition } from '../lib/image/watermark.js';
 
 test('fit resize preserves aspect ratio', () => {
   assert.deepEqual(calculateResize(4000, 2000, { resizeMode: 'fit', width: 1000, height: 1000, preserveAspect: true }), { width: 1000, height: 500 });
@@ -68,4 +69,19 @@ test('layer creation is deterministic in shape and normalization caps layer coun
   assert.equal(text.id, 'layer-1');
   const many = Array.from({ length: 80 }, (_, i) => ({ type: 'rectangle', id: String(i) }));
   assert.equal(normalizeLayers(many).length, 50);
+});
+
+
+test('watermark recipes clamp values and restrict types/fonts', () => {
+  const recipe = normalizeWatermark({ enabled: true, type: 'script', fontFamily: 'evil()', opacity: 9, position: 'nowhere', x: 500 });
+  assert.equal(recipe.type, 'text');
+  assert.equal(recipe.fontFamily, 'system-ui');
+  assert.equal(recipe.opacity, 1);
+  assert.equal(recipe.position, 'bottom-right');
+  assert.equal(recipe.x, 100);
+});
+
+test('watermark preset positioning respects margins', () => {
+  const recipe = normalizeWatermark({ ...DEFAULT_WATERMARK, position: 'bottom-right', margin: 20 });
+  assert.deepEqual(resolveWatermarkPosition(1000, 500, 200, 50, recipe), { x: 880, y: 455 });
 });
