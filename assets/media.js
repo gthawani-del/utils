@@ -193,15 +193,25 @@ function updateVideoEditorVisibility() {
   timelineStatus.textContent = visible ? 'Trim preview active' : 'Source preview';
 }
 
+function editingBaseDuration() {
+  const baseId = project.baseVersionId || 'original';
+  if (baseId !== 'original') {
+    const base = project.versions?.find((version) => version.id === baseId);
+    const duration = Number(base?.outputDuration);
+    if (Number.isFinite(duration) && duration >= 0) return duration;
+  }
+  return Number(project.source?.duration || 0);
+}
+
 function currentVideoEdits() {
   if (!project.source || project.source.mediaType !== 'video') return null;
-  const duration = Number(project.source.duration || 0);
+  const duration = editingBaseDuration();
   return normalizeVideoEdits(project.videoEdits || createVideoEdits(duration), duration);
 }
 
 function syncVideoControls() {
   const edits = currentVideoEdits();
-  const duration = Number(project.source?.duration || 0);
+  const duration = editingBaseDuration();
   if (!edits || !Number.isFinite(duration)) return;
 
   trimStartInput.max = String(duration);
@@ -232,7 +242,7 @@ function updateTimelineSelection(edits, duration) {
 }
 
 function updatePlayhead(time) {
-  const duration = Number(project.source?.duration || 0);
+  const duration = editingBaseDuration();
   const value = Math.min(duration, Math.max(0, Number(time) || 0));
   playheadInput.value = String(value);
   playheadLabel.textContent = formatEditorTime(value);
@@ -258,7 +268,7 @@ function recordVideoEdit(next) {
 function applyVideoPatch(patch) {
   const current = currentVideoEdits();
   if (!current) return;
-  const duration = Number(project.source?.duration || 0);
+  const duration = editingBaseDuration();
   recordVideoEdit(updateVideoEdits(current, patch, duration));
 }
 
@@ -298,7 +308,7 @@ function updateAudioEditorVisibility() {
 
 function currentAudioEdits() {
   if (!project.source || project.source.mediaType !== 'audio') return null;
-  const duration = Number(project.source.duration || 0);
+  const duration = editingBaseDuration();
   return normalizeAudioEdits(project.audioEdits || createAudioEdits(duration), duration);
 }
 
@@ -317,7 +327,7 @@ function updateAudioTimelineSelection(edits, duration) {
 }
 
 function updateAudioPlayhead(time) {
-  const duration = Number(project.source?.duration || 0);
+  const duration = editingBaseDuration();
   const value = Math.min(duration, Math.max(0, Number(time) || 0));
   audioPlayheadInput.value = String(value);
   audioPlayheadLabel.textContent = formatEditorTime(value);
@@ -326,12 +336,12 @@ function updateAudioPlayhead(time) {
 function syncAudioPreviewVolume(time = currentPlayer?.currentTime || 0) {
   const edits = currentAudioEdits();
   if (!edits || !currentPlayer || currentPlayer.tagName !== 'AUDIO') return;
-  currentPlayer.volume = previewVolumeAt(time, edits, Number(project.source?.duration || 0));
+  currentPlayer.volume = previewVolumeAt(time, edits, editingBaseDuration());
 }
 
 function syncAudioControls() {
   const edits = currentAudioEdits();
-  const duration = Number(project.source?.duration || 0);
+  const duration = editingBaseDuration();
   if (!edits || !Number.isFinite(duration)) return;
 
   audioTrimStartInput.max = String(duration);
@@ -372,7 +382,7 @@ function recordAudioEdit(next) {
 function applyAudioPatch(patch) {
   const current = currentAudioEdits();
   if (!current) return;
-  const duration = Number(project.source?.duration || 0);
+  const duration = editingBaseDuration();
   recordAudioEdit(updateAudioEdits(current, patch, duration));
 }
 
@@ -898,6 +908,20 @@ versionWorkspace = initVersionWorkspace({
   getPlayer: () => currentPlayer,
   getVideoEdits: () => currentVideoEdits(),
   getAudioEdits: () => currentAudioEdits(),
+  resetEditsForBase: (duration) => {
+    const safeDuration = Math.max(0, Number(duration) || 0);
+    if (project.source?.mediaType === 'video') {
+      resetVideoHistory();
+      setProjectVideoEdits(project, createVideoEdits(safeDuration));
+      syncVideoControls();
+      updatePlayhead(0);
+    } else if (project.source?.mediaType === 'audio') {
+      resetAudioHistory();
+      setProjectAudioEdits(project, createAudioEdits(safeDuration));
+      syncAudioControls();
+      updateAudioPlayhead(0);
+    }
+  },
   saveVersioning: (versioning) => {
     project.versions = versioning.versions;
     project.activeVersionId = versioning.activeVersionId;
