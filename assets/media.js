@@ -928,6 +928,7 @@ versionWorkspace = initVersionWorkspace({
     project.baseVersionId = versioning.baseVersionId;
     setProjectVersioning(project, versioning);
   },
+  createVersion: async () => versionWorkspace?.createVersion?.() || { ok: false, reason: 'Version workspace is unavailable.' },
   setStatus: (message) => {
     commandMessage.textContent = message;
     if (sourceNote && !sourceStage.classList.contains('hidden')) sourceNote.textContent = message;
@@ -1034,7 +1035,7 @@ commandAssistant = initCommandAssistant({
   getProject: () => project,
   onSaveRecipe: (actions, context) => recipeWorkspace?.openSave(actions, context),
   executeAction: async (item) => {
-    const duration = Number(project.source?.duration || 0);
+    const duration = editingBaseDuration();
 
     if (item.type === 'open-category') {
       selectCategory(item.params.category);
@@ -1079,10 +1080,21 @@ commandAssistant = initCommandAssistant({
     }
 
     if (item.type === 'set-aspect') {
-      if (!audioVideoWorkspace) return { ok: false, reason: 'Audio → Video workspace is unavailable.' };
-      audioVideoWorkspace.setAspect(item.params.aspect);
-      selectCategory('audio-video');
-      return { ok: true };
+      if (project.source?.mediaType === 'video') {
+        const current = currentVideoEdits();
+        if (!current) return { ok: false, reason: 'Video aspect state is unavailable.' };
+        recordVideoEdit(updateVideoEdits(current, { outputAspect: item.params.aspect }, duration));
+        return { ok: true };
+      }
+
+      if (project.source?.mediaType === 'audio') {
+        if (!audioVideoWorkspace) return { ok: false, reason: 'Audio → Video workspace is unavailable.' };
+        audioVideoWorkspace.setAspect(item.params.aspect);
+        selectCategory('audio-video');
+        return { ok: true };
+      }
+
+      return { ok: false, reason: 'Output aspect requires a compatible local audio or video source.' };
     }
 
     if (item.type === 'run-qc') {
