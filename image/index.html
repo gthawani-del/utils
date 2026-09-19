@@ -50,6 +50,7 @@
             <img id="mobile-canvas-image" alt="Selected image editing canvas">
             <span id="mobile-canvas-empty">Select an image</span>
             <span id="mobile-canvas-status" class="mobile-canvas-status hidden">Rendering…</span>
+            <span id="mobile-layer-hint" class="mobile-layer-hint hidden">Drag selected layer to position</span>
           </div>
           <button class="mobile-batch-chip hidden" id="mobile-batch-chip" type="button">1 image</button>
         </section>
@@ -167,6 +168,7 @@
 
           <div class="control-section design-section">
             <div class="section-inline-heading"><div><h3>Text & design layers</h3><p class="microcopy">Layers remain editable until preview/export. Positions use percentages so a recipe can be reused across similarly composed assets.</p></div></div>
+            <p class="mobile-design-hint">Select a layer, then drag it directly on the image. Use Precision only when exact values matter.</p>
             <div class="layer-toolbar" role="group" aria-label="Add design layer">
               <button class="secondary-button" id="add-text-layer" type="button">+ Text</button>
               <button class="secondary-button" id="add-rect-layer" type="button">+ Rectangle</button>
@@ -178,7 +180,7 @@
             <div class="layer-workspace">
               <div><p class="eyebrow">Layers</p><div id="layer-list" class="layer-list"><p class="microcopy">No design layers yet.</p></div></div>
               <div id="layer-properties" class="layer-properties hidden">
-                <div class="layer-properties-header"><strong id="layer-title">Layer</strong><div class="mini-actions"><button class="text-button" id="layer-up" type="button">Up</button><button class="text-button" id="layer-down" type="button">Down</button><button class="text-button" id="duplicate-layer" type="button">Duplicate</button><button class="text-button danger-text" id="delete-layer" type="button">Delete</button></div></div>
+                <div class="layer-properties-header"><strong id="layer-title">Layer</strong><div class="mini-actions"><button class="text-button mobile-precision-toggle" id="mobile-precision-toggle" type="button">Precision</button><button class="text-button" id="layer-up" type="button">Up</button><button class="text-button" id="layer-down" type="button">Down</button><button class="text-button" id="duplicate-layer" type="button">Duplicate</button><button class="text-button danger-text" id="delete-layer" type="button">Delete</button></div></div>
                 <div id="text-layer-fields" class="layer-field-group hidden">
                   <label>Text<textarea id="layer-text" rows="3" maxlength="500"></textarea></label>
                   <div class="form-grid">
@@ -263,7 +265,8 @@
           <button class="mobile-tool-button active" type="button" data-mobile-tool="adjust"><span>☼</span><small>Adjust</small></button>
           <button class="mobile-tool-button" type="button" data-mobile-tool="crop"><span>⌗</span><small>Crop</small></button>
           <button class="mobile-tool-button" type="button" data-mobile-tool="cleanup"><span>◇</span><small>Clean</small></button>
-          <button class="mobile-tool-button" type="button" data-mobile-tool="design"><span>T</span><small>Design</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="text"><span>T</span><small>Text</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="design"><span>□</span><small>Design</small></button>
           <button class="mobile-tool-button" type="button" data-mobile-tool="watermark"><span>W</span><small>Mark</small></button>
           <button class="mobile-tool-button" type="button" data-mobile-tool="export"><span>⇧</span><small>Export</small></button>
         </nav>

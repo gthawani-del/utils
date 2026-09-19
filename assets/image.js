@@ -10,7 +10,7 @@ import { normalizeCleanup } from '/lib/image/cleanup.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
-const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, redoHistory: [], previewTimer: 0, previewAbort: null };
+const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, layerDrag: null, mobilePrecision: false, redoHistory: [], previewTimer: 0, previewAbort: null };
 const $ = (selector) => document.querySelector(selector);
 const els = {
   input: $('#file-input'), choose: $('#choose-files'), add: $('#add-more'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'),
@@ -26,7 +26,7 @@ const els = {
   layerFill: $('#layer-fill'), layerFill2: $('#layer-fill-2'), layerGradient: $('#layer-gradient'), layerGradientAngle: $('#layer-gradient-angle'), shapeStrokeColor: $('#shape-stroke-color'), shapeStrokeWidth: $('#shape-stroke-width'), layerX: $('#layer-x'), layerY: $('#layer-y'), layerWidth: $('#layer-width'), layerHeight: $('#layer-height'), layerRotation: $('#layer-rotation'), layerOpacity: $('#layer-opacity'),
   watermarkEnabled: $('#watermark-enabled'), watermarkControls: $('#watermark-controls'), watermarkType: $('#watermark-type'), watermarkPosition: $('#watermark-position'), watermarkOpacity: $('#watermark-opacity'), watermarkRotation: $('#watermark-rotation'), watermarkMargin: $('#watermark-margin'), watermarkTiled: $('#watermark-tiled'), watermarkTileGap: $('#watermark-tile-gap'), watermarkCustomPosition: $('#watermark-custom-position'), watermarkX: $('#watermark-x'), watermarkY: $('#watermark-y'), watermarkTextFields: $('#watermark-text-fields'), watermarkImageFields: $('#watermark-image-fields'), watermarkText: $('#watermark-text'), watermarkFont: $('#watermark-font'), watermarkFontSize: $('#watermark-font-size'), watermarkColor: $('#watermark-color'), watermarkLogoInput: $('#watermark-logo-input'), chooseWatermarkLogo: $('#choose-watermark-logo'), watermarkLogoName: $('#watermark-logo-name'), watermarkLogoWidth: $('#watermark-logo-width'),
   cleanupCanvas: $('#cleanup-canvas'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo'),
-  mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileRevert: $('#mobile-revert'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value'), mobileCropButtons: [...document.querySelectorAll('[data-crop-choice]')]
+  mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileRevert: $('#mobile-revert'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileLayerHint: $('#mobile-layer-hint'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value'), mobileCropButtons: [...document.querySelectorAll('[data-crop-choice]')], mobilePrecisionToggle: $('#mobile-precision-toggle')
 };
 
 initialize();
@@ -95,6 +95,8 @@ function wireEvents() {
   for (const type of ['pointerdown','keydown']) els.mobileCompare.addEventListener(type, (event) => { if (type === 'keydown' && ![' ','Enter'].includes(event.key)) return; state.mobileShowOriginal = true; renderMobileCanvas(selectedItem()); });
   for (const type of ['pointerup','pointercancel','pointerleave','keyup']) els.mobileCompare.addEventListener(type, () => { state.mobileShowOriginal = false; renderMobileCanvas(selectedItem()); });
   els.mobileBatchChip.addEventListener('click', () => document.querySelector('.file-panel')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+  els.mobilePrecisionToggle.addEventListener('click', toggleMobilePrecision);
+  els.mobileCanvasImage.addEventListener('pointerdown', beginLayerDrag); els.mobileCanvasImage.addEventListener('pointermove', continueLayerDrag); els.mobileCanvasImage.addEventListener('pointerup', endLayerDrag); els.mobileCanvasImage.addEventListener('pointercancel', endLayerDrag);
   window.addEventListener('resize', syncMobileEditingState);
   window.addEventListener('pagehide', () => { state.previewAbort?.abort(); cleanupUrls(); });
 }
@@ -351,13 +353,45 @@ function resetWatermarkControls() { const r=DEFAULT_WATERMARK; els.watermarkEnab
 async function setWatermarkLogo(file) { if(!file) return; const budget=validateFileBudget(file); if(!budget.ok){ showCompatibility(budget.reason); return; } try { const buffer=await file.arrayBuffer(); const result=await runner.run({op:'inspect',buffer},[buffer],15_000); if(result.state!=='completed'||!['jpeg','png','webp','avif'].includes(result.value.kind)){ showCompatibility('Watermark logos must be a valid JPEG, PNG, WebP, or AVIF image.'); els.watermarkLogoInput.value=''; return; } state.watermarkLogoFile=file; els.watermarkLogoName.textContent=file.name; els.watermarkEnabled.checked=true; els.watermarkType.value='image'; updateWatermarkConditional(); scheduleEditPreview(40); } catch { showCompatibility('The watermark image could not be inspected safely.'); } }
 async function createProcessingPayload(op,item,settings) { const buffer=await item.file.arrayBuffer(); const message={op,buffer,settings}; const transfers=[buffer]; if(settings.watermark?.enabled&&settings.watermark.type==='image'&&state.watermarkLogoFile){ const watermarkLogoBuffer=await state.watermarkLogoFile.arrayBuffer(); message.watermarkLogoBuffer=watermarkLogoBuffer; transfers.push(watermarkLogoBuffer); } return {message,transfers}; }
 
+function toggleMobilePrecision() {
+  state.mobilePrecision = !state.mobilePrecision;
+  document.body.classList.toggle('mobile-show-precision', state.mobilePrecision);
+  els.mobilePrecisionToggle.textContent = state.mobilePrecision ? 'Hide precision' : 'Precision';
+}
+
+function updateMobileLayerHint() {
+  if (!els.mobileLayerHint) return;
+  const visible = ['text','design'].includes(state.mobileMode) && Boolean(selectedDesignLayer());
+  els.mobileLayerHint.classList.toggle('hidden', !visible);
+}
+
+function beginLayerDrag(event) {
+  if (!['text','design'].includes(state.mobileMode)) return;
+  const layer = selectedDesignLayer(); if (!layer) return;
+  const rect = els.mobileCanvasImage.getBoundingClientRect(); if (!rect.width || !rect.height) return;
+  const currentX = rect.left + rect.width * layer.x / 100; const currentY = rect.top + rect.height * layer.y / 100;
+  state.layerDrag = { pointerId:event.pointerId, offsetX:event.clientX-currentX, offsetY:event.clientY-currentY };
+  els.mobileCanvasImage.setPointerCapture?.(event.pointerId); event.preventDefault();
+}
+
+function continueLayerDrag(event) {
+  const drag = state.layerDrag; if (!drag || drag.pointerId !== event.pointerId) return;
+  const layer = selectedDesignLayer(); if (!layer) return;
+  const rect = els.mobileCanvasImage.getBoundingClientRect();
+  const x = ((event.clientX-drag.offsetX-rect.left)/Math.max(1,rect.width))*100; const y = ((event.clientY-drag.offsetY-rect.top)/Math.max(1,rect.height))*100;
+  const next = normalizeLayer({ ...layer, x, y }); const index = state.layers.findIndex((entry)=>entry.id===layer.id); state.layers[index]=next;
+  els.layerX.value = next.x; els.layerY.value = next.y; renderLayerList(); scheduleEditPreview(70); event.preventDefault();
+}
+
+function endLayerDrag(event) { if (!state.layerDrag || state.layerDrag.pointerId !== event.pointerId) return; state.layerDrag = null; scheduleEditPreview(20); }
+
 function layerControls() {
   return [els.layerText,els.layerFont,els.layerFontSize,els.layerFontWeight,els.layerAlign,els.layerColor,els.layerLetterSpacing,els.layerLineSpacing,els.layerStrokeWidth,els.layerStrokeColor,els.layerShadowEnabled,els.layerShadowColor,els.layerShadowBlur,els.layerShadowX,els.layerShadowY,els.layerBgEnabled,els.layerBgColor,els.layerFill,els.layerFill2,els.layerGradient,els.layerGradientAngle,els.shapeStrokeColor,els.shapeStrokeWidth,els.layerX,els.layerY,els.layerWidth,els.layerHeight,els.layerRotation,els.layerOpacity];
 }
 
 function addDesignLayer(type) {
   const layer = createLayer(type, crypto.randomUUID());
-  state.layers.push(layer); state.selectedLayerId = layer.id; renderLayerList(); renderLayerProperties(); scheduleEditPreview(40);
+  state.layers.push(layer); state.selectedLayerId = layer.id; renderLayerList(); renderLayerProperties(); updateMobileLayerHint(); scheduleEditPreview(40);
 }
 
 function selectedDesignLayer() { return state.layers.find((layer) => layer.id === state.selectedLayerId) || null; }
@@ -368,7 +402,7 @@ function renderLayerList() {
   [...state.layers].reverse().forEach((layer) => {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'layer-item' + (layer.id === state.selectedLayerId ? ' selected' : '');
     const name = document.createElement('span'); name.textContent = layer.type === 'text' ? (layer.text.trim().slice(0,28) || 'Text') : layer.name;
-    const type = document.createElement('small'); type.textContent = layer.type; button.append(name,type); button.addEventListener('click', () => { state.selectedLayerId = layer.id; renderLayerList(); renderLayerProperties(); }); els.layerList.append(button);
+    const type = document.createElement('small'); type.textContent = layer.type; button.append(name,type); button.addEventListener('click', () => { state.selectedLayerId = layer.id; renderLayerList(); renderLayerProperties(); updateMobileLayerHint(); }); els.layerList.append(button);
   });
 }
 
@@ -395,9 +429,9 @@ function updateSelectedLayerFromControls() {
 }
 
 function duplicateSelectedLayer() {
-  const layer = selectedDesignLayer(); if (!layer) return; const copy = normalizeLayer({ ...layer, id: crypto.randomUUID(), name: layer.name + ' copy', x: layer.x + 2, y: layer.y + 2 }); state.layers.push(copy); state.selectedLayerId = copy.id; renderLayerList(); renderLayerProperties(); scheduleEditPreview(40);
+  const layer = selectedDesignLayer(); if (!layer) return; const copy = normalizeLayer({ ...layer, id: crypto.randomUUID(), name: layer.name + ' copy', x: layer.x + 2, y: layer.y + 2 }); state.layers.push(copy); state.selectedLayerId = copy.id; renderLayerList(); renderLayerProperties(); updateMobileLayerHint(); scheduleEditPreview(40);
 }
-function deleteSelectedLayer() { const index = state.layers.findIndex((layer) => layer.id === state.selectedLayerId); if (index < 0) return; state.layers.splice(index,1); state.selectedLayerId = state.layers[Math.min(index,state.layers.length-1)]?.id || null; renderLayerList(); renderLayerProperties(); scheduleEditPreview(40); }
+function deleteSelectedLayer() { const index = state.layers.findIndex((layer) => layer.id === state.selectedLayerId); if (index < 0) return; state.layers.splice(index,1); state.selectedLayerId = state.layers[Math.min(index,state.layers.length-1)]?.id || null; renderLayerList(); renderLayerProperties(); updateMobileLayerHint(); scheduleEditPreview(40); }
 function moveSelectedLayer(direction) { const index = state.layers.findIndex((layer) => layer.id === state.selectedLayerId); const next = index + direction; if (index < 0 || next < 0 || next >= state.layers.length) return; [state.layers[index],state.layers[next]]=[state.layers[next],state.layers[index]]; renderLayerList(); renderLayerProperties(); scheduleEditPreview(40); }
 
 const EDIT_KEYS = ['brightness','exposure','contrast','saturation','vibrance','highlights','shadows','temperature','tint','gamma','sharpen','blur','grayscale','sepia','straighten'];
@@ -541,13 +575,14 @@ function updateMobileAdjustValue() {
 }
 
 function setMobileMode(mode) {
-  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean Up', design:'Text & Design', watermark:'Watermark', export:'Export' };
+  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean Up', text:'Text', design:'Design', watermark:'Watermark', export:'Export' };
   state.mobileMode = labels[mode] ? mode : 'adjust';
   document.body.dataset.mobileTool = state.mobileMode;
   if (els.mobileSheetTitle) els.mobileSheetTitle.textContent = labels[state.mobileMode];
   for (const button of els.mobileToolButtons || []) button.classList.toggle('active', button.dataset.mobileTool === state.mobileMode);
   if (state.mobileMode === 'cleanup') requestAnimationFrame(() => renderCleanupEditor(selectedItem()));
   if (state.mobileMode === 'crop') syncMobileCropButtons();
+  if (state.mobileMode === 'text' || state.mobileMode === 'design') { renderLayerList(); renderLayerProperties(); updateMobileLayerHint(); } else if (els.mobileLayerHint) els.mobileLayerHint.classList.add('hidden');
 }
 
 function syncMobileEditingState() {
@@ -566,7 +601,7 @@ function renderMobileCanvas(item) {
   if (!els.mobileCanvasImage || !els.mobileCanvasEmpty) return;
   const src = state.mobileShowOriginal ? item?.originalUrl : (item?.editPreviewUrl || item?.outputUrl || item?.originalUrl);
   if (!src) { els.mobileCanvasImage.removeAttribute('src'); els.mobileCanvasImage.classList.add('hidden'); els.mobileCanvasEmpty.classList.remove('hidden'); return; }
-  els.mobileCanvasImage.src = src; els.mobileCanvasImage.classList.remove('hidden'); els.mobileCanvasEmpty.classList.add('hidden');
+  els.mobileCanvasImage.src = src; els.mobileCanvasImage.classList.remove('hidden'); els.mobileCanvasEmpty.classList.add('hidden'); updateMobileLayerHint();
 }
 
 function showCompatibility(message) { els.compatibility.textContent = message; els.compatibility.classList.remove('hidden'); }
