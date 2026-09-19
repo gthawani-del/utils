@@ -26,7 +26,7 @@ const els = {
   layerFill: $('#layer-fill'), layerFill2: $('#layer-fill-2'), layerGradient: $('#layer-gradient'), layerGradientAngle: $('#layer-gradient-angle'), shapeStrokeColor: $('#shape-stroke-color'), shapeStrokeWidth: $('#shape-stroke-width'), layerX: $('#layer-x'), layerY: $('#layer-y'), layerWidth: $('#layer-width'), layerHeight: $('#layer-height'), layerRotation: $('#layer-rotation'), layerOpacity: $('#layer-opacity'),
   watermarkEnabled: $('#watermark-enabled'), watermarkControls: $('#watermark-controls'), watermarkType: $('#watermark-type'), watermarkPosition: $('#watermark-position'), watermarkOpacity: $('#watermark-opacity'), watermarkRotation: $('#watermark-rotation'), watermarkMargin: $('#watermark-margin'), watermarkTiled: $('#watermark-tiled'), watermarkTileGap: $('#watermark-tile-gap'), watermarkCustomPosition: $('#watermark-custom-position'), watermarkX: $('#watermark-x'), watermarkY: $('#watermark-y'), watermarkTextFields: $('#watermark-text-fields'), watermarkImageFields: $('#watermark-image-fields'), watermarkText: $('#watermark-text'), watermarkFont: $('#watermark-font'), watermarkFontSize: $('#watermark-font-size'), watermarkColor: $('#watermark-color'), watermarkLogoInput: $('#watermark-logo-input'), chooseWatermarkLogo: $('#choose-watermark-logo'), watermarkLogoName: $('#watermark-logo-name'), watermarkLogoWidth: $('#watermark-logo-width'),
   cleanupCanvas: $('#cleanup-canvas'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo'),
-  mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileRevert: $('#mobile-revert'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value')
+  mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileRevert: $('#mobile-revert'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value'), mobileCropButtons: [...document.querySelectorAll('[data-crop-choice]')]
 };
 
 initialize();
@@ -56,10 +56,11 @@ function wireEvents() {
   els.drop.addEventListener('drop', (event) => addFiles([...event.dataTransfer.files]));
   els.preset.addEventListener('change', applyPreset);
   els.resizeMode.addEventListener('change', () => { updateConditionalControls(); updateWarnings(); });
-  els.cropMode.addEventListener('change', updateConditionalControls);
+  els.cropMode.addEventListener('change', () => { updateConditionalControls(); syncMobileCropButtons(); scheduleEditPreview(80); });
   els.format.addEventListener('change', () => { updateWarnings(); els.targetSize.disabled = els.format.value === 'png'; });
   els.quality.addEventListener('input', () => { els.qualityValue.textContent = els.quality.value; });
   for (const el of [els.width, els.height, els.percentage, els.longest, els.shortest]) el.addEventListener('input', updateWarnings);
+  for (const el of [els.customRatio, els.cropX, els.cropY, els.cropWidth, els.cropHeight]) el.addEventListener('input', () => scheduleEditPreview(100));
   els.reset.addEventListener('click', resetToOriginal);
   els.processSelected.addEventListener('click', processSelected);
   els.processAll.addEventListener('click', processAll);
@@ -86,6 +87,7 @@ function wireEvents() {
   els.cleanupUndoStroke.addEventListener('click', undoCleanupStroke); els.cleanupClearMask.addEventListener('click', clearCleanupMask); els.cleanupApply.addEventListener('click', applyCleanupMask); els.cleanupUndo.addEventListener('click', undoCleanupApplication);
   for (const button of els.mobileToolButtons) button.addEventListener('click', () => setMobileMode(button.dataset.mobileTool));
   for (const button of els.mobileAdjustButtons) button.addEventListener('click', () => setMobileAdjust(button.dataset.adjustKey));
+  for (const button of els.mobileCropButtons) button.addEventListener('click', () => setMobileCrop(button.dataset.cropChoice));
   els.mobileExit.addEventListener('click', exitMobileEditor);
   els.mobileUndo.addEventListener('click', undoEdit);
   els.mobileRedo.addEventListener('click', redoEdit);
@@ -215,13 +217,13 @@ function resetToOriginal() {
   item.cleanupStrokes = []; item.cleanupApplied = false; renderCleanupEditor(item);
   if (item.editPreviewUrl) { revokeObjectUrl(item.editPreviewUrl); item.editPreviewUrl = ''; item.editPreviewBlob = null; }
   els.editComparison.classList.add('hidden');
-  updateConditionalControls(); updateWarnings();
+  updateConditionalControls(); syncMobileCropButtons(); updateWarnings();
 }
 
 function applyPreset() {
   const preset = IMAGE_PRESETS.find((item) => item.id === els.preset.value);
   if (!preset) return;
-  els.resizeMode.value = 'fill'; els.width.value = preset.width; els.height.value = preset.height; updateConditionalControls(); updateWarnings();
+  els.resizeMode.value = 'fill'; els.width.value = preset.width; els.height.value = preset.height; updateConditionalControls(); updateWarnings(); scheduleEditPreview(80);
 }
 
 function updateConditionalControls() {
@@ -505,6 +507,16 @@ function updateComparisonPosition() {
   els.comparisonDivider.style.left = value + '%';
 }
 
+function setMobileCrop(mode) {
+  const allowed = ['none','free','ratio','ratio-4-5','ratio-16-9','ratio-9-16','custom'];
+  els.cropMode.value = allowed.includes(mode) ? mode : 'none';
+  updateConditionalControls(); syncMobileCropButtons(); scheduleEditPreview(40);
+}
+
+function syncMobileCropButtons() {
+  for (const button of els.mobileCropButtons || []) button.classList.toggle('active', button.dataset.cropChoice === els.cropMode.value);
+}
+
 const MOBILE_ADJUST_LABELS = { brightness:'Brightness', exposure:'Exposure', contrast:'Contrast', saturation:'Saturation', vibrance:'Vibrance', highlights:'Highlights', shadows:'Shadows', temperature:'Warmth', tint:'Tint', gamma:'Gamma', sharpen:'Sharpen', blur:'Blur', grayscale:'Black & White', sepia:'Sepia', straighten:'Straighten', rotate:'Rotate', flipX:'Flip Horizontal', flipY:'Flip Vertical' };
 
 function setMobileAdjust(key) {
@@ -534,6 +546,8 @@ function setMobileMode(mode) {
   document.body.dataset.mobileTool = state.mobileMode;
   if (els.mobileSheetTitle) els.mobileSheetTitle.textContent = labels[state.mobileMode];
   for (const button of els.mobileToolButtons || []) button.classList.toggle('active', button.dataset.mobileTool === state.mobileMode);
+  if (state.mobileMode === 'cleanup') requestAnimationFrame(() => renderCleanupEditor(selectedItem()));
+  if (state.mobileMode === 'crop') syncMobileCropButtons();
 }
 
 function syncMobileEditingState() {

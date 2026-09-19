@@ -238,6 +238,26 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
   body.mobile-editing .edit-groups, body.mobile-editing .cleanup-workspace, body.mobile-editing .layer-workspace { grid-template-columns: 1fr; }
   body.mobile-editing .form-grid, body.mobile-editing .edit-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   body.mobile-editing .action-row { padding: 14px 16px 18px; }
+  .mobile-crop-presets { display: none; }
+  body.mobile-editing .mobile-crop-presets { display: flex; gap: 8px; margin: 0 -2px 12px; padding: 2px; overflow-x: auto; scrollbar-width: none; }
+  body.mobile-editing .mobile-crop-presets::-webkit-scrollbar { display: none; }
+  .mobile-crop-chip { flex: 0 0 auto; min-width: 58px; min-height: 42px; padding: 0 12px; border: 1px solid var(--border); border-radius: 12px; background: #fff; color: var(--muted); font-size: 12px; font-weight: 720; }
+  .mobile-crop-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  body.mobile-editing .crop-section > h3, body.mobile-editing .desktop-crop-select { display: none; }
+  body[data-mobile-tool="crop"].mobile-editing .control-card { max-height: 245px; }
+  body[data-mobile-tool="crop"].mobile-editing .crop-section > .form-grid { grid-template-columns: 1fr; }
+  body[data-mobile-tool="cleanup"].mobile-editing .mobile-canvas-shell { visibility: hidden; }
+  body[data-mobile-tool="cleanup"].mobile-editing .control-card { max-height: 205px; overflow: visible; }
+  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-section { padding: 12px 14px 14px; }
+  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-section > .section-inline-heading { display: none; }
+  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-workspace { display: block; }
+  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-canvas-shell { position: fixed; z-index: 25; top: 62px; left: 0; right: 0; bottom: 283px; min-height: 0; border: 0; border-radius: 0; background: #e8eaee; padding: 12px; }
+  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-controls { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 0; border: 0; background: transparent; }
+  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-controls > .microcopy { display: none; }
+  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-actions { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 6px; }
+  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-actions button { min-width: 0; padding: 9px 5px; font-size: 10px; }
+
 
   .local-badge { display: none; }
   .home-shell, .studio-shell { width: min(100% - 20px, 1320px); }

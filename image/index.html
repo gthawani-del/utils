@@ -87,8 +87,18 @@
             <label id="shortest-wrap" class="hidden">Shortest edge<input id="shortest-edge" type="number" min="1" max="12000" value="1080"></label>
           </div><label class="check-row"><input id="preserve-aspect" type="checkbox" checked> Preserve aspect ratio</label></div>
 
-          <div class="control-section crop-section"><h3>Crop</h3><div class="form-grid">
-            <label>Crop<select id="crop-mode"><option value="none">None</option><option value="free">Free</option><option value="ratio">1:1</option><option value="ratio-4-5">4:5</option><option value="ratio-16-9">16:9</option><option value="ratio-9-16">9:16</option><option value="custom">Custom ratio</option></select></label>
+          <div class="control-section crop-section"><h3>Crop</h3>
+            <div class="mobile-crop-presets" aria-label="Crop aspect ratio">
+              <button type="button" class="mobile-crop-chip active" data-crop-choice="none">Original</button>
+              <button type="button" class="mobile-crop-chip" data-crop-choice="ratio">1:1</button>
+              <button type="button" class="mobile-crop-chip" data-crop-choice="ratio-4-5">4:5</button>
+              <button type="button" class="mobile-crop-chip" data-crop-choice="ratio-16-9">16:9</button>
+              <button type="button" class="mobile-crop-chip" data-crop-choice="ratio-9-16">9:16</button>
+              <button type="button" class="mobile-crop-chip" data-crop-choice="free">Free</button>
+              <button type="button" class="mobile-crop-chip" data-crop-choice="custom">Custom</button>
+            </div>
+            <div class="form-grid">
+            <label class="desktop-crop-select">Crop<select id="crop-mode"><option value="none">None</option><option value="free">Free</option><option value="ratio">1:1</option><option value="ratio-4-5">4:5</option><option value="ratio-16-9">16:9</option><option value="ratio-9-16">9:16</option><option value="custom">Custom ratio</option></select></label>
             <label id="custom-ratio-wrap" class="hidden">Custom ratio<input id="custom-ratio" type="number" min="0.05" max="20" step="0.01" value="1"></label>
           </div><div id="free-crop" class="form-grid hidden"><label>X<input id="crop-x" type="number" min="0" value="0"></label><label>Y<input id="crop-y" type="number" min="0" value="0"></label><label>Width<input id="crop-width" type="number" min="1"></label><label>Height<input id="crop-height" type="number" min="1"></label></div></div>
 
