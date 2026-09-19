@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="Utility OS Media Studio — local-first media workflows for video, audio, transcription, delivery and more.">
+  <title>Media Studio · Utility OS</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="/assets/media.css">
+</head>
+<body class="media-body">
+  <input id="media-file-input" class="visually-hidden" type="file" accept="video/*,audio/*,.mp4,.mov,.m4a,.webm,.ogg,.wav,.mp3,.flac,.aac,.avi">
+  <input id="transcript-file-input" class="visually-hidden" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip">
+  <input id="lyrics-file-input" class="visually-hidden" type="file" accept=".lrc,.txt,text/plain">
+  <div class="media-app">
+    <aside class="media-sidebar" aria-label="Media Studio sections">
+      <a class="media-brand" href="/" aria-label="Utility OS home"><span class="media-brand-mark">U</span><span>Utility OS</span></a>
+      <div class="sidebar-product"><span class="sidebar-product-icon">▣</span><div><strong>Media Studio</strong><small>All your media tools in one place</small></div></div>
+      <nav class="desktop-category-nav" id="desktop-category-nav"></nav>
+      <div class="sidebar-links">
+        <button type="button" data-media-action="open-project"><span>□</span>Projects</button>
+        <button type="button" data-placeholder-action="Recipes"><span>▤</span>Recipes</button>
+        <button type="button" data-placeholder-action="Media Library"><span>▱</span>Media Library</button>
+        <button type="button" data-placeholder-action="Settings"><span>⚙</span>Settings</button>
+      </div>
+      <div class="sidebar-note"><strong>Local-first by design.</strong><span>Files are signature-checked and previewed from local Blob URLs. Provider links are validated but not fetched.</span></div>
+    </aside>
+
+    <main class="media-main">
+      <header class="media-header">
+        <div class="media-heading">
+          <a class="mobile-brand" href="/" aria-label="Utility OS home"><span class="media-brand-mark">U</span><span>Utility OS</span></a>
+          <div><h1>Media Studio</h1><p>Create <span>·</span> Edit <span>·</span> Enhance <span>·</span> Deliver</p></div>
+        </div>
+        <div class="header-tools">
+          <button class="media-button recipe-button" type="button" data-placeholder-action="Recipes"><span aria-hidden="true">▤</span> Recipes</button>
+          <button class="media-button export-button desktop-only" type="button" disabled title="Export becomes available after editing is implemented"><span aria-hidden="true">⇧</span> Export</button>
+        </div>
+      </header>
+
+      <section class="command-section" aria-labelledby="command-title">
+        <h2 id="command-title" class="visually-hidden">Command Assistant</h2>
+        <form class="command-bar" id="command-form"><span class="command-spark" aria-hidden="true">✦</span><input id="command-input" type="text" autocomplete="off" maxlength="220" placeholder="Tell Utility OS what to do…"><button type="submit" aria-label="Plan command">Plan</button></form>
+        <p class="command-example">e.g. “Remove silence, add captions and make a 9:16 reel under 25 MB”</p>
+        <div class="command-message" id="command-message" role="status" aria-live="polite"></div>
+        <section class="command-plan hidden" id="command-plan" aria-labelledby="command-plan-title">
+          <div class="command-plan-top">
+            <div><p class="workspace-eyebrow">Command Assistant</p><h3 id="command-plan-title">Planned Actions</h3></div>
+            <span id="command-plan-summary">0 planned</span>
+          </div>
+          <div class="command-plan-list" id="command-plan-list"></div>
+          <div class="command-plan-footer">
+            <p>Nothing executes until you press Run plan. Blocked actions must be removed or resolved first.</p>
+            <div><button class="media-button" id="command-clear-plan" type="button">Clear</button><button class="media-button" id="command-save-recipe" type="button" disabled>Save as recipe</button><button class="media-button empty-primary" id="command-run-plan" type="button" disabled>Run plan</button></div>
+          </div>
+        </section>
+      </section>
+
+      <nav class="mobile-category-rail" id="mobile-category-rail" aria-label="Media Studio categories"></nav>
+
+      <section class="start-actions" aria-label="Start a media project">
+        <button class="start-card primary-start" type="button" data-media-action="upload"><span class="start-icon">⇧</span><span><strong>Upload Media</strong><small>Video or audio · stays local</small></span></button>
+        <button class="start-card" type="button" data-media-action="paste-link"><span class="start-icon">⌁</span><span><strong>Paste Link</strong><small>YouTube or Vimeo · validate only</small></span></button>
+        <button class="start-card" type="button" data-media-action="open-project"><span class="start-icon">□</span><span><strong>Open Project</strong><small>Restore session metadata</small></span></button>
+        <button class="start-card recipe-start" type="button" data-placeholder-action="Use a Recipe"><span class="start-icon">▤</span><span><strong>Use a Recipe</strong><small>Repeatable workflows later</small></span></button>
+      </section>
+
+      <section class="media-workspace" aria-labelledby="workspace-title">
+        <div class="workspace-main">
+          <div class="workspace-topline">
+            <div><p class="workspace-eyebrow">Current workspace</p><h2 id="workspace-title">Video Editor</h2></div>
+            <span class="shell-badge" id="project-badge">No project</span>
+          </div>
+
+          <div class="empty-stage" id="empty-stage">
+            <div class="empty-visual" aria-hidden="true"><span class="empty-frame"></span><span class="empty-play">▶</span></div>
+            <h3 id="empty-title">Start with your media</h3>
+            <p id="empty-copy">Upload a local video or audio file. The same source stays available as you move between Media Studio sections.</p>
+            <div class="empty-actions"><button class="media-button empty-primary" type="button" data-media-action="upload">Upload Media</button><button class="media-button" type="button" data-media-action="paste-link">Paste Link</button></div>
+            <p class="phase-note" id="phase-note">Step 2 adds secure source ingestion only. No editing or transcription is enabled yet.</p>
+          </div>
+
+          <div class="source-stage hidden" id="source-stage">
+            <div class="source-player-wrap" id="source-player-wrap"></div>
+            <div class="source-caption"><div><strong id="source-name"></strong><span id="source-summary"></span></div><button class="media-button" type="button" data-media-action="upload">Replace source</button></div>
+            <p class="phase-note source-note" id="source-note">Source ready.</p>
+          </div>
+
+          <section class="delivery-panel hidden" id="delivery-panel" aria-labelledby="delivery-title">
+            <div class="delivery-heading">
+              <div>
+                <p class="workspace-eyebrow">Pro Workflow & Delivery</p>
+                <h3 id="delivery-title">Recover, mark, rebuild & hand off</h3>
+              </div>
+              <span>Professional workflow</span>
+            </div>
+
+            <div class="delivery-recovery" id="delivery-recovery" role="status">Checking session autosave…</div>
+
+            <div class="delivery-preset-row">
+              <label>Professional preset
+                <select id="delivery-preset">
+                  <option value="youtube-master">YouTube Master</option>
+                  <option value="vertical-social">Vertical Social</option>
+                  <option value="square-social">Square Social</option>
+                  <option value="podcast-audio">Podcast Audio</option>
+                  <option value="archive-handoff">Archive / Handoff</option>
+                </select>
+              </label>
+              <button class="media-button" id="delivery-prepare-preset" type="button">Prepare in renderer</button>
+              <p id="delivery-preset-note"></p>
+            </div>
+
+            <div class="delivery-markers">
+              <div class="delivery-subheading"><strong>Markers & chapters</strong><span>Click a marker time to seek the current local player.</span></div>
+              <div class="delivery-marker-form">
+                <input id="delivery-marker-label" type="text" maxlength="160" placeholder="Marker / chapter name">
+                <label><input id="delivery-marker-chapter" type="checkbox"> Chapter</label>
+                <button class="media-button empty-primary" id="delivery-add-marker" type="button">Add at playhead</button>
+              </div>
+              <div class="delivery-marker-empty" id="delivery-marker-empty">No markers yet.</div>
+              <div class="delivery-marker-list" id="delivery-marker-list"></div>
+            </div>
+
+            <div class="delivery-actions">
+              <button class="media-button" id="delivery-export-manifest" type="button" disabled>Export rebuild manifest</button>
+              <button class="media-button" id="delivery-export-project" type="button" disabled>Export project JSON</button>
+              <button class="media-button empty-primary" id="delivery-build-pack" type="button" disabled>Build delivery pack</button>
+            </div>
+
+            <div class="delivery-boundary">
+              <strong>Deterministic handoff</strong>
+              <p>The rebuild manifest fingerprints source metadata plus edit/transcript/lyrics/render/compiler/delivery state. Project and delivery packs exclude local source media bytes, so relink remains explicit and memory-safe.</p>
+              <p>Batch conform, proxy generation, A/B encoding, EDL/FCPXML/OTIO and codec-specific masters remain unavailable until the underlying timeline/encoder metadata is sufficient to generate them correctly.</p>
+            </div>
+            <p class="delivery-status" id="delivery-status" role="status" aria-live="polite">Session recovery, markers, manifests and metadata-only delivery packs run locally.</p>
+          </section>
+
+          <section class="qc-panel hidden" id="qc-panel" aria-labelledby="qc-title">
+            <div class="qc-heading">
+              <div>
+                <p class="workspace-eyebrow">QC & Forensics</p>
+                <h3 id="qc-title">Professional media checks</h3>
+              </div>
+              <span>Evidence-first</span>
+            </div>
+
+            <div class="qc-toolbar">
+              <button class="media-button empty-primary" id="qc-run" type="button">Run QC</button>
+              <button class="media-button" id="qc-fix" type="button" disabled>Apply safe fixes</button>
+              <button class="media-button" id="qc-export" type="button" disabled>Export report JSON</button>
+              <label class="qc-filter"><input id="qc-issues-only" type="checkbox"> Show warnings / partial only</label>
+            </div>
+
+            <div class="qc-summary" id="qc-summary">No report yet.</div>
+            <div class="qc-check-list" id="qc-check-list"></div>
+
+            <div class="qc-boundary">
+              <strong>QC coverage is explicit</strong>
+              <p>The lightweight pass reports only evidence the browser can establish safely from current project metadata. Checks that require packet parsing, full-frame analysis, decoded-audio measurement or platform-specific encoding are marked “Not inspected” instead of being guessed.</p>
+            </div>
+            <p class="qc-status" id="qc-status" role="status" aria-live="polite">QC runs locally and does not upload media.</p>
+          </section>
+
+          <section class="compiler-panel hidden" id="compiler-panel" aria-labelledby="compiler-title">
+            <div class="compiler-heading">
+              <div>
+                <p class="workspace-eyebrow">Media Compiler</p>
+                <h3 id="compiler-title">One source → many outputs</h3>
+              </div>
+              <span>Deterministic package</span>
+            </div>
+
+            <div class="compiler-toolbar">
+              <button class="media-button" id="compiler-select-ready" type="button">Select ready</button>
+              <button class="media-button" id="compiler-clear" type="button">Clear</button>
+              <button class="media-button empty-primary" id="compiler-build-package" type="button" disabled>Build compiler package</button>
+              <span id="compiler-summary">Checking available outputs…</span>
+            </div>
+
+            <div class="compiler-output-list" id="compiler-output-list"></div>
+
+            <div class="compiler-boundary">
+              <strong>What “compile” means in this phase</strong>
+              <p>Ready text/data/thumbnail outputs are generated locally into one TAR package. Video presets can be prepared in the existing Audio → Video renderer. MP3 encoding, WhatsApp compression, web transcodes and archive-master duplication stay unavailable until a deterministic local media encoder/delivery engine exists.</p>
+            </div>
+            <p class="compiler-status" id="compiler-status" role="status" aria-live="polite">No fake encodes: unsupported outputs remain visibly unavailable.</p>
+          </section>
+
+          <section class="audio-video-panel hidden" id="audio-video-panel" aria-labelledby="audio-video-title">
+            <div class="audio-video-heading">
+              <div>
+                <p class="workspace-eyebrow">Audio → Video</p>
+                <h3 id="audio-video-title">Visualizer designer</h3>
+              </div>
+              <span>Browser-native render</span>
+            </div>
+
+            <div class="audio-video-unavailable" id="audio-video-unavailable">
+              <strong>Load a local audio file to create video.</strong>
+              <span>This foundation renders directly in the browser. Provider links and video sources are not converted here.</span>
+            </div>
+
+            <div class="audio-video-designer hidden" id="audio-video-designer">
+              <div class="audio-video-controls">
+                <label>Visualizer
+                  <select id="audio-video-mode">
+                    <option value="bars">Spectrum bars</option>
+                    <option value="waveform">Waveform</option>
+                    <option value="pulse">Audio pulse</option>
+                    <option value="static">Static music video</option>
+                  </select>
+                </label>
+                <label>Aspect
+                  <select id="audio-video-aspect">
+                    <option value="16:9">16:9 YouTube</option>
+                    <option value="9:16">9:16 Reel / Short</option>
+                    <option value="1:1">1:1 Square</option>
+                  </select>
+                </label>
+                <label>Theme
+                  <select id="audio-video-theme">
+                    <option value="midnight">Midnight</option>
+                    <option value="ember">Ember</option>
+                    <option value="aurora">Aurora</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="audio-video-copy-grid">
+                <label>Title
+                  <input id="audio-video-title-input" type="text" maxlength="120" placeholder="Track or episode title">
+                </label>
+                <label>Artist / subtitle
+                  <input id="audio-video-artist" type="text" maxlength="120" placeholder="Artist, host or series">
+                </label>
+                <label class="audio-video-lyrics-toggle"><input id="audio-video-lyrics" type="checkbox"> Show synced lyrics when available</label>
+              </div>
+
+              <div class="audio-video-canvas-wrap">
+                <canvas id="audio-video-canvas" width="1280" height="720" aria-label="Audio to video visualizer preview"></canvas>
+              </div>
+
+              <div class="audio-video-actions">
+                <button class="media-button" id="audio-video-play" type="button">Play live visualizer</button>
+                <button class="media-button empty-primary" id="audio-video-render" type="button">Render video</button>
+                <button class="media-button" id="audio-video-cancel" type="button" disabled>Cancel render</button>
+                <span id="audio-video-format-label">Checking browser render support…</span>
+              </div>
+              <p class="audio-video-status" id="audio-video-status" role="status" aria-live="polite">Visualizer preview and export stay on this device. Rendering runs in real time and can be cancelled.</p>
+            </div>
+          </section>
+
+          <section class="lyrics-panel hidden" id="lyrics-panel" aria-labelledby="lyrics-title">
+            <div class="lyrics-heading">
+              <div>
+                <p class="workspace-eyebrow">Lyrics & Karaoke</p>
+                <h3 id="lyrics-title">Sync lyrics to the playhead</h3>
+              </div>
+              <span>Local preview</span>
+            </div>
+
+            <div class="lyrics-toolbar">
+              <button class="media-button empty-primary" id="lyrics-import" type="button">Import LRC / TXT</button>
+              <button class="media-button" id="lyrics-add-line" type="button">+ Add line</button>
+              <button class="media-button" id="lyrics-stamp-line" type="button">Stamp selected at playhead</button>
+            </div>
+
+            <div class="lyrics-style-grid">
+              <label>Visual style
+                <select id="lyrics-style">
+                  <option value="classic">Classic</option>
+                  <option value="bold">Bold Pop</option>
+                  <option value="minimal">Minimal</option>
+                </select>
+              </label>
+              <label>Text effect
+                <select id="lyrics-effect">
+                  <option value="fade">Fade</option>
+                  <option value="pop">Pop</option>
+                  <option value="none">None</option>
+                </select>
+              </label>
+              <label>Background
+                <select id="lyrics-background">
+                  <option value="transparent">Transparent</option>
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="lyrics-preview lyrics-style-classic lyrics-effect-fade lyrics-background-transparent" id="lyrics-preview">
+              <div class="lyrics-preview-text" id="lyrics-preview-text">Import or add lyrics to preview</div>
+              <small id="lyrics-preview-meta">No timing yet</small>
+            </div>
+
+            <div class="lyrics-layout">
+              <div class="lyrics-editor-column">
+                <div class="lyrics-empty" id="lyrics-empty">
+                  <strong>No lyrics loaded</strong>
+                  <span>Import standard/enhanced LRC or plain TXT. TXT lines can be stamped to the current media playhead one by one.</span>
+                </div>
+                <div class="lyrics-list" id="lyrics-list"></div>
+              </div>
+
+              <aside class="lyrics-guide">
+                <strong>Karaoke timing</strong>
+                <p>Standard LRC gives line-level highlighting. Enhanced LRC with explicit &lt;time&gt; word markers enables true word-level highlighting.</p>
+                <p>We do not invent word timings from plain text.</p>
+                <div class="lyrics-future">
+                  <span>Waveform / spectrum</span>
+                  <small>Reserved for the Audio → Video rendering phase.</small>
+                </div>
+              </aside>
+            </div>
+
+            <div class="lyrics-export-row">
+              <button class="media-button" id="lyrics-export-lrc" type="button" disabled>Export LRC</button>
+              <button class="media-button" id="lyrics-export-txt" type="button" disabled>Export TXT</button>
+              <span id="lyrics-status" role="status" aria-live="polite">Lyrics stay local. Visual styles are preview-only until rendering is implemented.</span>
+            </div>
+          </section>
+
+          <section class="transcript-panel hidden" id="transcript-panel" aria-labelledby="transcript-title">
+            <div class="transcript-heading">
+              <div>
+                <p class="workspace-eyebrow">Transcription & Subtitles</p>
+                <h3 id="transcript-title">Transcript workspace</h3>
+              </div>
+              <span>Local editor</span>
+            </div>
+
+            <div class="transcript-toolbar">
+              <button class="media-button empty-primary" id="transcript-import" type="button">Import SRT / VTT</button>
+              <button class="media-button" id="transcript-add-cue" type="button">+ Add cue</button>
+              <button class="media-button" type="button" disabled title="A local speech-to-text engine has not been loaded yet">Generate transcript</button>
+              <label class="transcript-safe-toggle"><input id="transcript-safe-toggle" type="checkbox"> Safe-area preview</label>
+            </div>
+
+            <div class="transcript-search-row">
+              <label>Search transcript
+                <input id="transcript-search" type="search" autocomplete="off" placeholder="Find subtitle text…">
+              </label>
+            </div>
+
+            <div class="transcript-layout">
+              <div class="transcript-editor-column">
+                <div class="transcript-empty" id="transcript-empty">
+                  <strong>No subtitle cues yet</strong>
+                  <span>Import an SRT/VTT file or add timed cues manually. Local speech-to-text is deliberately not faked.</span>
+                </div>
+                <div class="transcript-list" id="transcript-list"></div>
+              </div>
+
+              <aside class="transcript-qa">
+                <strong>Subtitle QA</strong>
+                <p id="transcript-qa-summary">No cues to check.</p>
+                <ul id="transcript-qa-list"></ul>
+                <p class="transcript-qa-note">Checks overlaps, invalid timing, media bounds, blank cues, two-line guidance and 42-character line guidance.</p>
+              </aside>
+            </div>
+
+            <div class="transcript-export-row">
+              <button class="media-button" id="transcript-export-srt" type="button" disabled>Export SRT</button>
+              <button class="media-button" id="transcript-export-vtt" type="button" disabled>Export VTT</button>
+              <button class="media-button" id="transcript-export-txt" type="button" disabled>Export TXT</button>
+              <span id="transcript-status" role="status" aria-live="polite">No transcription engine loaded. Subtitle editing/export is available locally.</span>
+            </div>
+          </section>
+
+          <section class="audio-editor-panel hidden" id="audio-editor-panel" aria-labelledby="audio-editor-title">
+            <div class="audio-editor-heading">
+              <div>
+                <p class="workspace-eyebrow">Audio foundation</p>
+                <h3 id="audio-editor-title">Trim, level & fades</h3>
+              </div>
+              <span>Preview-safe</span>
+            </div>
+
+            <div class="audio-editor-toolbar">
+              <button class="audio-tool-button" id="audio-undo" type="button" disabled>↶ Undo</button>
+              <button class="audio-tool-button" id="audio-redo" type="button" disabled>↷ Redo</button>
+              <label class="audio-volume-control">Volume
+                <input id="audio-volume" type="range" min="0" max="100" step="1" value="100">
+                <output id="audio-volume-value">100%</output>
+              </label>
+            </div>
+
+            <div class="audio-trim-grid">
+              <label>In point (seconds)
+                <input id="audio-trim-start" type="number" min="0" step="0.01" value="0">
+              </label>
+              <button class="audio-tool-button" id="audio-set-in" type="button">Set In at playhead</button>
+              <label>Out point (seconds)
+                <input id="audio-trim-end" type="number" min="0" step="0.01" value="0">
+              </label>
+              <button class="audio-tool-button" id="audio-set-out" type="button">Set Out at playhead</button>
+            </div>
+
+            <div class="audio-fade-grid">
+              <label>Fade in (seconds)
+                <input id="audio-fade-in" type="number" min="0" step="0.1" value="0">
+              </label>
+              <label>Fade out (seconds)
+                <input id="audio-fade-out" type="number" min="0" step="0.1" value="0">
+              </label>
+            </div>
+
+            <div class="audio-scrubber-wrap">
+              <div class="audio-scrubber-meta">
+                <span id="audio-playhead-label">00:00.00</span>
+                <strong id="audio-selection-label">Selection 00:00.00</strong>
+              </div>
+              <input id="audio-playhead" class="audio-playhead" type="range" min="0" max="0" step="0.01" value="0" aria-label="Audio playhead">
+            </div>
+
+            <div class="audio-editor-actions">
+              <button class="media-button empty-primary" id="audio-play-selection" type="button">Play selection</button>
+              <button class="media-button" id="audio-reset-edits" type="button">Reset audio edits</button>
+            </div>
+
+            <div class="audio-future-actions" aria-label="Planned Audio Studio actions">
+              <button type="button" disabled>Clean Voice</button>
+              <button type="button" disabled>Remove Silence</button>
+              <button type="button" disabled>Normalize</button>
+              <button type="button" disabled>Separate Stems</button>
+            </div>
+            <p class="audio-editor-note">Trim, volume and fades affect local preview/project state only. Cleanup, normalization, stems and rendered export are not enabled yet.</p>
+          </section>
+
+          <section class="video-editor-panel hidden" id="video-editor-panel" aria-labelledby="video-editor-title">
+            <div class="video-editor-heading">
+              <div>
+                <p class="workspace-eyebrow">Video foundation</p>
+                <h3 id="video-editor-title">Trim & preview</h3>
+              </div>
+              <span>Non-destructive</span>
+            </div>
+
+            <div class="video-editor-toolbar">
+              <button class="video-tool-button" id="video-undo" type="button" disabled>↶ Undo</button>
+              <button class="video-tool-button" id="video-redo" type="button" disabled>↷ Redo</button>
+              <label class="video-rate-control">Preview speed
+                <select id="video-playback-rate">
+                  <option value="0.5">0.5×</option>
+                  <option value="0.75">0.75×</option>
+                  <option value="1" selected>1×</option>
+                  <option value="1.25">1.25×</option>
+                  <option value="1.5">1.5×</option>
+                  <option value="2">2×</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="video-trim-grid">
+              <label>In point (seconds)
+                <input id="video-trim-start" type="number" min="0" step="0.01" value="0">
+              </label>
+              <button class="video-tool-button" id="video-set-in" type="button">Set In at playhead</button>
+              <label>Out point (seconds)
+                <input id="video-trim-end" type="number" min="0" step="0.01" value="0">
+              </label>
+              <button class="video-tool-button" id="video-set-out" type="button">Set Out at playhead</button>
+            </div>
+
+            <div class="video-scrubber-wrap">
+              <div class="video-scrubber-meta">
+                <span id="video-playhead-label">00:00.00</span>
+                <strong id="video-selection-label">Selection 00:00.00</strong>
+              </div>
+              <input id="video-playhead" class="video-playhead" type="range" min="0" max="0" step="0.01" value="0" aria-label="Video playhead">
+            </div>
+
+            <div class="video-editor-actions">
+              <button class="media-button empty-primary" id="video-play-selection" type="button">Play selection</button>
+              <button class="media-button" id="video-reset-edits" type="button">Reset trim</button>
+            </div>
+            <p class="video-editor-note">These controls change the browser preview and project edit state only. Export rendering is not enabled in this foundation step.</p>
+          </section>
+
+          <div class="timeline-shell">
+            <div class="timeline-toolbar"><span>Timeline</span><span id="timeline-status">Source preview</span></div>
+            <div class="timeline-track"><span class="track-label">Video</span><span class="track-placeholder" id="video-track-placeholder"></span></div>
+            <div class="timeline-track"><span class="track-label">Audio</span><span class="track-placeholder audio-placeholder"></span></div>
+            <div class="timeline-track"><span class="track-label">Captions</span><span class="track-placeholder caption-placeholder"></span></div>
+          </div>
+        </div>
+
+        <aside class="context-panel" aria-label="Contextual tools">
+          <div class="context-tabs"><button class="active" type="button">Quick Actions</button><button type="button" disabled>Media Info</button></div>
+          <div class="context-empty" id="context-empty"><span class="context-icon" aria-hidden="true">◇</span><strong>No media loaded</strong><p>Securely load a local source to inspect basic media metadata.</p></div>
+          <div class="media-info-panel hidden" id="media-info-panel"></div>
+          <div class="context-recipes">
+            <div class="context-heading"><strong>Recipes</strong><button type="button" data-placeholder-action="Recipes">View all</button></div>
+            <div class="recipe-row"><span>▶</span><div><strong>YouTube Ready</strong><small>Delivery preset</small></div></div>
+            <div class="recipe-row"><span>▯</span><div><strong>Instagram Reel</strong><small>9:16 social output</small></div></div>
+            <div class="recipe-row"><span>◉</span><div><strong>Podcast Clean</strong><small>Dialogue workflow</small></div></div>
+          </div>
+        </aside>
+      </section>
+
+      <footer class="media-statusbar"><span><i class="status-dot"></i> <span id="status-primary">Secure ingestion ready</span></span><span>No FFmpeg · No Whisper · No backend</span></footer>
+    </main>
+  </div>
+
+  <nav class="mobile-bottom-nav" aria-label="Utility OS navigation">
+    <a href="/"><span>⌂</span><small>Home</small></a>
+    <a class="active" href="/media"><span>▣</span><small>Media Studio</small></a>
+    <button type="button" data-media-action="open-project"><span>□</span><small>Projects</small></button>
+    <button type="button" data-placeholder-action="Media Library"><span>▱</span><small>Library</small></button>
+    <button type="button" data-placeholder-action="Recipes"><span>▤</span><small>Recipes</small></button>
+  </nav>
+
+  <dialog class="media-dialog recipe-dialog" id="recipe-dialog" aria-labelledby="recipe-dialog-title">
+    <div class="recipe-dialog-body">
+      <div class="dialog-heading"><div><p class="workspace-eyebrow">Reusable workflows</p><h2 id="recipe-dialog-title">Recipes</h2></div><button id="recipe-close" class="dialog-close" type="button" aria-label="Close">×</button></div>
+      <p class="recipe-intro">Recipes store deterministic instructions only—never rendered media. Applying a recipe creates Planned Actions for review before anything runs.</p>
+
+      <section class="recipe-save-box hidden" id="recipe-save-box">
+        <div><strong id="recipe-save-title">Save Planned Actions as recipe</strong><span>Stored only in this browser.</span></div>
+        <input id="recipe-save-name" type="text" maxlength="80" placeholder="Recipe name">
+        <div><button class="media-button" id="recipe-save-cancel" type="button">Cancel</button><button class="media-button empty-primary" id="recipe-save-confirm" type="button">Save recipe</button></div>
+      </section>
+
+      <section class="recipe-section">
+        <div class="recipe-section-heading"><strong>Built-in recipes</strong><span>Deterministic starting points</span></div>
+        <div class="recipe-grid" id="recipe-builtins"></div>
+      </section>
+
+      <section class="recipe-section">
+        <div class="recipe-section-heading"><strong>My Recipes</strong><span>Persistent browser-local recipes</span></div>
+        <p class="recipe-custom-empty" id="recipe-custom-empty">No custom recipes yet. Build a Command Assistant plan and choose “Save as recipe”.</p>
+        <div class="recipe-grid" id="recipe-customs"></div>
+      </section>
+
+      <div class="recipe-boundary"><strong>Batch apply</strong><span>The recipe schema is reusable, but this Media Studio currently holds one active source. Batch application remains unavailable until multi-source projects exist.</span></div>
+      <p class="recipe-status" id="recipe-status" role="status" aria-live="polite">Recipes are stored locally in browser storage.</p>
+    </div>
+  </dialog>
+
+  <dialog class="media-dialog" id="link-dialog" aria-labelledby="link-dialog-title">
+    <form id="link-form">
+      <div class="dialog-heading"><div><p class="workspace-eyebrow">Safe URL input</p><h2 id="link-dialog-title">Paste media link</h2></div><button id="link-cancel" class="dialog-close" type="button" aria-label="Close">×</button></div>
+      <p>Step 2 only validates and stores the reference locally. It does not fetch the remote media.</p>
+      <label class="dialog-field">YouTube or Vimeo URL<input id="media-link-input" type="url" inputmode="url" autocomplete="off" placeholder="https://www.youtube.com/watch?v=…" required></label>
+      <div class="link-error" id="link-error" role="alert"></div>
+      <button class="media-button empty-primary dialog-submit" type="submit">Validate link</button>
+    </form>
+  </dialog>
+
+  <script type="module" src="/assets/media.js"></script>
+</body>
+</html>

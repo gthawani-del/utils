@@ -4,10 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = resolve(root, 'dist');
-const productionEntries = ['index.html', 'image', 'assets', 'lib', 'workers'];
+const productionEntries = ['index.html', 'image', 'media', 'assets', 'lib', 'workers'];
 const required = [
-  'index.html', 'image/index.html', 'assets/app.css', 'assets/home.js', 'assets/image.js',
-  'workers/image.worker.js', 'lib/security/index.js', 'lib/image/edits.js', 'lib/image/layers.js', 'lib/image/watermark.js', 'lib/image/cleanup.js', 'lib/image/text-replace.js', 'lib/image/compiler.js', 'lib/image/performance.js', 'lib/image/asset-doctor.js', 'lib/image/smart-crop.js', 'lib/image/web-pack.js', 'lib/image/watermark-detect.js', 'lib/image/browser-processor.js', 'vercel.json'
+  'index.html', 'image/index.html', 'media/index.html',
+  'assets/app.css', 'assets/home.js', 'assets/image.js', 'assets/media.css', 'assets/media.js',
+  'workers/image.worker.js', 'lib/security/index.js', 'lib/media/ingest.js', 'lib/media/project.js', 'lib/media/audio/edits.js', 'lib/media/audio-video/visualizer.js', 'lib/media/audio-video/workspace.js', 'lib/media/command/grammar.js', 'lib/media/command/workspace.js', 'lib/media/recipes/store.js', 'lib/media/recipes/workspace.js', 'lib/media/compiler/plan.js', 'lib/media/compiler/tar.js', 'lib/media/compiler/workspace.js', 'lib/media/delivery/plan.js', 'lib/media/delivery/workspace.js', 'lib/media/qc/report.js', 'lib/media/qc/workspace.js', 'lib/media/lyrics/lyrics.js', 'lib/media/lyrics/workspace.js', 'lib/media/transcript/subtitles.js', 'lib/media/transcript/workspace.js', 'lib/media/video/edits.js', 'lib/image/edits.js', 'lib/image/layers.js', 'lib/image/watermark.js', 'lib/image/cleanup.js', 'lib/image/text-replace.js', 'lib/image/compiler.js', 'lib/image/performance.js', 'lib/image/asset-doctor.js', 'lib/image/smart-crop.js', 'lib/image/web-pack.js', 'lib/image/watermark-detect.js', 'lib/image/browser-processor.js', 'vercel.json'
 ];
 
 for (const file of required) await access(resolve(root, file));
