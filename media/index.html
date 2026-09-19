@@ -73,9 +73,59 @@
             <p class="phase-note source-note" id="source-note">Source ready.</p>
           </div>
 
-          <div class="timeline-shell" aria-hidden="true">
-            <div class="timeline-toolbar"><span>Timeline</span><span>Editing not enabled</span></div>
-            <div class="timeline-track"><span class="track-label">Video</span><span class="track-placeholder"></span></div>
+          <section class="video-editor-panel hidden" id="video-editor-panel" aria-labelledby="video-editor-title">
+            <div class="video-editor-heading">
+              <div>
+                <p class="workspace-eyebrow">Video foundation</p>
+                <h3 id="video-editor-title">Trim & preview</h3>
+              </div>
+              <span>Non-destructive</span>
+            </div>
+
+            <div class="video-editor-toolbar">
+              <button class="video-tool-button" id="video-undo" type="button" disabled>↶ Undo</button>
+              <button class="video-tool-button" id="video-redo" type="button" disabled>↷ Redo</button>
+              <label class="video-rate-control">Preview speed
+                <select id="video-playback-rate">
+                  <option value="0.5">0.5×</option>
+                  <option value="0.75">0.75×</option>
+                  <option value="1" selected>1×</option>
+                  <option value="1.25">1.25×</option>
+                  <option value="1.5">1.5×</option>
+                  <option value="2">2×</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="video-trim-grid">
+              <label>In point (seconds)
+                <input id="video-trim-start" type="number" min="0" step="0.01" value="0">
+              </label>
+              <button class="video-tool-button" id="video-set-in" type="button">Set In at playhead</button>
+              <label>Out point (seconds)
+                <input id="video-trim-end" type="number" min="0" step="0.01" value="0">
+              </label>
+              <button class="video-tool-button" id="video-set-out" type="button">Set Out at playhead</button>
+            </div>
+
+            <div class="video-scrubber-wrap">
+              <div class="video-scrubber-meta">
+                <span id="video-playhead-label">00:00.00</span>
+                <strong id="video-selection-label">Selection 00:00.00</strong>
+              </div>
+              <input id="video-playhead" class="video-playhead" type="range" min="0" max="0" step="0.01" value="0" aria-label="Video playhead">
+            </div>
+
+            <div class="video-editor-actions">
+              <button class="media-button empty-primary" id="video-play-selection" type="button">Play selection</button>
+              <button class="media-button" id="video-reset-edits" type="button">Reset trim</button>
+            </div>
+            <p class="video-editor-note">These controls change the browser preview and project edit state only. Export rendering is not enabled in this foundation step.</p>
+          </section>
+
+          <div class="timeline-shell">
+            <div class="timeline-toolbar"><span>Timeline</span><span id="timeline-status">Source preview</span></div>
+            <div class="timeline-track"><span class="track-label">Video</span><span class="track-placeholder" id="video-track-placeholder"></span></div>
             <div class="timeline-track"><span class="track-label">Audio</span><span class="track-placeholder audio-placeholder"></span></div>
             <div class="timeline-track"><span class="track-label">Captions</span><span class="track-placeholder caption-placeholder"></span></div>
           </div>

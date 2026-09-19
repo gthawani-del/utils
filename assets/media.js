@@ -1,5 +1,6 @@
 import { ingestLocalMedia, releaseMediaSource, validateMediaUrl } from '/lib/media/ingest.js';
-import { createMediaProject, loadMediaProjectSnapshot, setProjectCategory, setProjectSource } from '/lib/media/project.js';
+import { createMediaProject, loadMediaProjectSnapshot, setProjectCategory, setProjectSource, setProjectVideoEdits } from '/lib/media/project.js';
+import { createVideoEdits, normalizeVideoEdits, selectionDuration, updateVideoEdits } from '/lib/media/video/edits.js';
 
 const categories = [
   { id: 'video', name: 'Video Editor', short: 'Video Editor', icon: '▣', hint: 'Edit, trim, effects, transitions', copy: 'Upload or open a project to begin editing video in the shared Media Studio workspace.' },
@@ -36,9 +37,23 @@ const metadataPanel = document.querySelector('#media-info-panel');
 const contextEmpty = document.querySelector('#context-empty');
 const projectBadge = document.querySelector('#project-badge');
 const statusPrimary = document.querySelector('#status-primary');
+const videoEditorPanel = document.querySelector('#video-editor-panel');
+const trimStartInput = document.querySelector('#video-trim-start');
+const trimEndInput = document.querySelector('#video-trim-end');
+const playheadInput = document.querySelector('#video-playhead');
+const playheadLabel = document.querySelector('#video-playhead-label');
+const selectionLabel = document.querySelector('#video-selection-label');
+const playbackRateSelect = document.querySelector('#video-playback-rate');
+const undoButton = document.querySelector('#video-undo');
+const redoButton = document.querySelector('#video-redo');
+const timelineStatus = document.querySelector('#timeline-status');
+const videoTrackPlaceholder = document.querySelector('#video-track-placeholder');
 const restored = loadMediaProjectSnapshot();
 const project = createMediaProject();
 let currentPlayer = null;
+let videoHistory = [];
+let videoFuture = [];
+let playingSelection = false;
 
 if (restored) {
   project.id = restored.id || project.id;
@@ -46,6 +61,7 @@ if (restored) {
   project.updatedAt = restored.updatedAt || project.updatedAt;
   project.activeCategory = restored.activeCategory || project.activeCategory;
   project.source = restored.source || null;
+  project.videoEdits = restored.videoEdits || null;
 }
 
 function makeDesktopButton(category, index) {
@@ -100,6 +116,108 @@ function selectCategory(id) {
     emptyTitle.textContent = `${category.name} is ready for a project`;
     emptyCopy.textContent = category.copy;
   }
+  updateVideoEditorVisibility();
+}
+
+function formatEditorTime(seconds) {
+  const value = Number.isFinite(Number(seconds)) ? Math.max(0, Number(seconds)) : 0;
+  const minutes = Math.floor(value / 60);
+  const remainder = value - minutes * 60;
+  return `${String(minutes).padStart(2, '0')}:${remainder.toFixed(2).padStart(5, '0')}`;
+}
+
+function hasEditableVideo() {
+  return project.activeCategory === 'video'
+    && project.source?.kind === 'local-file'
+    && project.source?.mediaType === 'video'
+    && currentPlayer?.tagName === 'VIDEO';
+}
+
+function updateVideoEditorVisibility() {
+  const visible = hasEditableVideo();
+  videoEditorPanel.classList.toggle('hidden', !visible);
+  timelineStatus.textContent = visible ? 'Trim preview active' : 'Source preview';
+}
+
+function currentVideoEdits() {
+  if (!project.source || project.source.mediaType !== 'video') return null;
+  const duration = Number(project.source.duration || 0);
+  return normalizeVideoEdits(project.videoEdits || createVideoEdits(duration), duration);
+}
+
+function syncVideoControls() {
+  const edits = currentVideoEdits();
+  const duration = Number(project.source?.duration || 0);
+  if (!edits || !Number.isFinite(duration)) return;
+
+  trimStartInput.max = String(duration);
+  trimEndInput.max = String(duration);
+  trimStartInput.value = edits.trimStart.toFixed(2);
+  trimEndInput.value = edits.trimEnd.toFixed(2);
+  playheadInput.max = String(duration);
+  playbackRateSelect.value = String(edits.playbackRate);
+  selectionLabel.textContent = `Selection ${formatEditorTime(selectionDuration(edits, duration))}`;
+
+  if (currentPlayer) currentPlayer.playbackRate = edits.playbackRate;
+  updateUndoRedo();
+  updateTimelineSelection(edits, duration);
+}
+
+function updateTimelineSelection(edits, duration) {
+  const start = duration > 0 ? (edits.trimStart / duration) * 100 : 0;
+  const end = duration > 0 ? (edits.trimEnd / duration) * 100 : 100;
+  videoTrackPlaceholder.style.setProperty('--trim-start', start.toFixed(3) + '%');
+  videoTrackPlaceholder.style.setProperty('--trim-end', end.toFixed(3) + '%');
+  videoTrackPlaceholder.classList.toggle('trim-active', edits.trimStart > 0 || edits.trimEnd < duration);
+}
+
+function updatePlayhead(time) {
+  const duration = Number(project.source?.duration || 0);
+  const value = Math.min(duration, Math.max(0, Number(time) || 0));
+  playheadInput.value = String(value);
+  playheadLabel.textContent = formatEditorTime(value);
+}
+
+function recordVideoEdit(next) {
+  const current = currentVideoEdits();
+  if (!current) return;
+  const changed = current.trimStart !== next.trimStart
+    || current.trimEnd !== next.trimEnd
+    || current.playbackRate !== next.playbackRate;
+  if (!changed) return;
+
+  videoHistory.push(current);
+  if (videoHistory.length > 40) videoHistory.shift();
+  videoFuture = [];
+  setProjectVideoEdits(project, next);
+  syncVideoControls();
+}
+
+function applyVideoPatch(patch) {
+  const current = currentVideoEdits();
+  if (!current) return;
+  const duration = Number(project.source?.duration || 0);
+  recordVideoEdit(updateVideoEdits(current, patch, duration));
+}
+
+function restoreVideoEdit(next) {
+  setProjectVideoEdits(project, next);
+  syncVideoControls();
+  const edits = currentVideoEdits();
+  if (currentPlayer && edits && currentPlayer.currentTime < edits.trimStart) {
+    currentPlayer.currentTime = edits.trimStart;
+  }
+}
+
+function updateUndoRedo() {
+  undoButton.disabled = videoHistory.length === 0;
+  redoButton.disabled = videoFuture.length === 0;
+}
+
+function resetVideoHistory() {
+  videoHistory = [];
+  videoFuture = [];
+  updateUndoRedo();
 }
 
 function formatBytes(bytes) {
@@ -188,6 +306,24 @@ function renderSource(source) {
     media.setAttribute('aria-label', 'Local media preview');
     playerWrap.append(media);
     currentPlayer = media;
+    if (source.mediaType === 'video') {
+      const duration = Number(source.duration || 0);
+      project.videoEdits = normalizeVideoEdits(project.videoEdits || createVideoEdits(duration), duration);
+      setProjectVideoEdits(project, project.videoEdits);
+      media.addEventListener('timeupdate', () => {
+        updatePlayhead(media.currentTime);
+        const edits = currentVideoEdits();
+        if (playingSelection && edits && media.currentTime >= edits.trimEnd) {
+          media.pause();
+          media.currentTime = edits.trimStart;
+          playingSelection = false;
+        }
+      });
+      media.addEventListener('seeked', () => updatePlayhead(media.currentTime));
+    } else {
+      project.videoEdits = null;
+      setProjectVideoEdits(project, null);
+    }
     sourceName.textContent = source.name;
     const detail = [source.mediaType, String(source.container).toUpperCase(), formatBytes(source.bytes), formatDuration(source.duration)];
     if (source.mediaType === 'video') detail.push(`${source.width}×${source.height}`);
@@ -214,11 +350,20 @@ function renderSource(source) {
   }
 
   updateMetadataPanel(source);
+  updateVideoEditorVisibility();
+  if (source.kind === 'local-file' && source.mediaType === 'video') {
+    syncVideoControls();
+    updatePlayhead(currentPlayer?.currentTime || 0);
+  }
 }
 
 async function handleFile(file) {
   if (!file) return;
   phaseNote.textContent = 'Inspecting file signature and browser-readable metadata locally…';
+  const previous = project.source;
+  const preserveEdits = previous?.relinkRequired
+    && previous.name === file.name
+    && Number(previous.bytes) === Number(file.size);
   document.body.classList.add('media-busy');
 
   try {
@@ -229,6 +374,11 @@ async function handleFile(file) {
     }
 
     if (project.source?.kind === 'local-file') releaseMediaSource(project.source);
+    if (!preserveEdits) {
+      project.videoEdits = null;
+      setProjectVideoEdits(project, null);
+      resetVideoHistory();
+    }
     setProjectSource(project, result.source);
     renderSource(result.source);
   } finally {
@@ -302,6 +452,79 @@ document.addEventListener('click', (event) => {
     const name = placeholder.dataset.placeholderAction;
     phaseNote.textContent = `${name} is planned for a later phase; Step 2 only adds secure source ingestion and shared project state.`;
   }
+});
+
+trimStartInput.addEventListener('change', () => {
+  const current = currentVideoEdits();
+  if (!current) return;
+  const requested = Number(trimStartInput.value);
+  const safe = Math.min(requested, current.trimEnd);
+  applyVideoPatch({ trimStart: safe });
+});
+
+trimEndInput.addEventListener('change', () => {
+  const current = currentVideoEdits();
+  if (!current) return;
+  const requested = Number(trimEndInput.value);
+  const safe = Math.max(requested, current.trimStart);
+  applyVideoPatch({ trimEnd: safe });
+});
+
+playbackRateSelect.addEventListener('change', () => {
+  applyVideoPatch({ playbackRate: Number(playbackRateSelect.value) });
+});
+
+playheadInput.addEventListener('input', () => {
+  if (!currentPlayer || currentPlayer.tagName !== 'VIDEO') return;
+  playingSelection = false;
+  currentPlayer.currentTime = Number(playheadInput.value) || 0;
+  updatePlayhead(currentPlayer.currentTime);
+});
+
+document.querySelector('#video-set-in').addEventListener('click', () => {
+  const current = currentVideoEdits();
+  if (!current || !currentPlayer) return;
+  applyVideoPatch({ trimStart: Math.min(currentPlayer.currentTime, current.trimEnd) });
+});
+
+document.querySelector('#video-set-out').addEventListener('click', () => {
+  const current = currentVideoEdits();
+  if (!current || !currentPlayer) return;
+  applyVideoPatch({ trimEnd: Math.max(currentPlayer.currentTime, current.trimStart) });
+});
+
+document.querySelector('#video-play-selection').addEventListener('click', async () => {
+  const edits = currentVideoEdits();
+  if (!edits || !currentPlayer) return;
+  currentPlayer.currentTime = edits.trimStart;
+  playingSelection = true;
+  try {
+    await currentPlayer.play();
+  } catch {
+    playingSelection = false;
+    sourceNote.textContent = 'The browser blocked playback. Press the native play control once, then retry the selection.';
+  }
+});
+
+document.querySelector('#video-reset-edits').addEventListener('click', () => {
+  const duration = Number(project.source?.duration || 0);
+  recordVideoEdit(createVideoEdits(duration));
+});
+
+undoButton.addEventListener('click', () => {
+  const current = currentVideoEdits();
+  const previous = videoHistory.pop();
+  if (!current || !previous) return;
+  videoFuture.push(current);
+  restoreVideoEdit(previous);
+});
+
+redoButton.addEventListener('click', () => {
+  const current = currentVideoEdits();
+  const next = videoFuture.pop();
+  if (!current || !next) return;
+  videoHistory.push(current);
+  restoreVideoEdit(next);
 });
 
 fileInput.addEventListener('change', () => handleFile(fileInput.files?.[0]));
