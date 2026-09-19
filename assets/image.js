@@ -54,8 +54,8 @@ function initialize() {
 }
 
 function wireEvents() {
-  els.choose.addEventListener('click', () => els.input.click());
-  els.add.addEventListener('click', () => els.input.click());
+  els.choose.addEventListener('click', openImagePicker);
+  els.add.addEventListener('click', openImagePicker);
   els.input.addEventListener('change', () => addFiles([...els.input.files]));
   for (const type of ['dragenter', 'dragover']) els.drop.addEventListener(type, (event) => { event.preventDefault(); els.drop.classList.add('dragging'); });
   for (const type of ['dragleave', 'drop']) els.drop.addEventListener(type, (event) => { event.preventDefault(); els.drop.classList.remove('dragging'); });
@@ -116,11 +116,40 @@ function wireEvents() {
   window.addEventListener('pagehide', () => { state.previewAbort?.abort(); cleanupUrls(); });
 }
 
+function openImagePicker() {
+  if (state.busy) return;
+  els.input.value = '';
+  try {
+    if (typeof els.input.showPicker === 'function') els.input.showPicker();
+    else els.input.click();
+  } catch {
+    els.input.click();
+  }
+}
+
+function safeUiCall(fn) {
+  try { return fn(); } catch { return undefined; }
+}
+
+function renderSelectedSafely() {
+  try { renderSelected(); }
+  catch {
+    const item = selectedItem();
+    if (item?.originalUrl) {
+      els.originalPreview.replaceChildren();
+      addPreviewImage(els.originalPreview, item.originalUrl, `Original ${item.file.name}`);
+      renderMobileCanvas(item);
+    }
+    safeUiCall(updateButtons);
+  }
+}
+
 async function addFiles(files) {
   if (!files.length || state.busy) return;
   const combined = [...state.items.map((item) => item.file), ...files];
   const batchCheck = validateBatchBudget(combined);
-  if (!batchCheck.ok) return showCompatibility(batchCheck.reason);
+  if (!batchCheck.ok) { els.input.value = ''; return showCompatibility(batchCheck.reason); }
+  try {
   for (const file of files) {
     const budget = validateFileBudget(file);
     if (!budget.ok) {
@@ -137,6 +166,14 @@ async function addFiles(files) {
         item.inspect = result.value;
         item.status = 'ready';
         if (result.value.kind !== 'svg') item.originalUrl = trackObjectUrl(file);
+        if (!state.selectedId) {
+          state.selectedId = item.id;
+          syncMobileEditingState();
+          try { resetToOriginal(); } catch { showCompatibility('The image loaded, but some editor controls could not be initialized. The original image remains available.'); }
+        }
+        renderList();
+        renderSelectedSafely();
+        syncMobileEditingState();
       } else {
         item.status = result.state;
         item.error = result.error?.message || 'Unsupported image.';
@@ -145,13 +182,20 @@ async function addFiles(files) {
       item.status = 'failed'; item.error = 'The file could not be inspected safely.';
     }
   }
-  els.input.value = '';
-  els.workspace.classList.toggle('hidden', state.items.length === 0);
-  if (!state.selectedId) {
-    const firstReady = state.items.find((item) => item.status === 'ready');
-    if (firstReady) selectItem(firstReady.id, true);
   }
-  renderList(); renderSelected(); syncMobileEditingState();
+  } finally {
+    els.input.value = '';
+    els.workspace.classList.toggle('hidden', state.items.length === 0);
+    if (!state.selectedId) {
+      const firstReady = state.items.find((item) => item.status === 'ready');
+      if (firstReady) {
+        state.selectedId = firstReady.id;
+        syncMobileEditingState();
+        try { resetToOriginal(); } catch {}
+      }
+    }
+    renderList(); renderSelectedSafely(); syncMobileEditingState();
+  }
 }
 
 function makeRejectedItem(file, reason) {
@@ -160,9 +204,13 @@ function makeRejectedItem(file, reason) {
 
 function selectItem(id, reset = false) {
   state.selectedId = id;
+  syncMobileEditingState();
   if (state.selectedLayerId && !layersForItem().some((layer) => layer.id === state.selectedLayerId)) state.selectedLayerId = null;
-  if (reset) resetToOriginal();
-  renderList(); renderSelected();
+  if (reset) {
+    try { resetToOriginal(); }
+    catch { showCompatibility('The image is selected, but some editor controls could not be initialized.'); }
+  }
+  renderList(); renderSelectedSafely(); syncMobileEditingState();
   if (window.matchMedia('(max-width: 700px)').matches) closeMobileFiles();
 }
 
@@ -185,6 +233,7 @@ function renderList() {
 function renderSelected() {
   const item = selectedItem();
   els.originalPreview.replaceChildren(); els.outputPreview.replaceChildren(); els.originalStats.replaceChildren(); els.outputStats.replaceChildren(); els.metadata.replaceChildren();
+  renderMobileCanvas(item);
   if (!item) { els.originalPreview.textContent = 'Select an image'; els.outputPreview.textContent = 'Process to preview'; updateButtons(); return; }
   if (item.inspect) {
     if (item.originalUrl) addPreviewImage(els.originalPreview, item.originalUrl, `Original ${item.file.name}`);
@@ -203,12 +252,11 @@ function renderSelected() {
   } else {
     els.outputPreview.textContent = item.status === 'processing' ? 'Processing…' : (item.error && item.status !== 'ready' ? item.error : 'Process to preview');
   }
-  renderComparison(item);
-  renderMobileCanvas(item);
-  renderCleanupEditor(item);
-  renderReplaceSelector(item);
-  renderPerformanceResult(item);
-  updateWarnings(); updateButtons();
+  safeUiCall(() => renderComparison(item));
+  safeUiCall(() => renderCleanupEditor(item));
+  safeUiCall(() => renderReplaceSelector(item));
+  safeUiCall(() => renderPerformanceResult(item));
+  safeUiCall(updateWarnings); safeUiCall(updateButtons);
 }
 
 function renderMetadata(item) {
@@ -815,8 +863,10 @@ function setMobileMode(mode) {
 
 function syncMobileEditingState() {
   const mobile = window.matchMedia('(max-width: 700px)').matches;
-  document.body.classList.toggle('mobile-editing', mobile && state.items.some((item) => item.inspect));
-  const count = state.items.filter((item) => item.inspect).length;
+  const readyItems = state.items.filter((item) => item.inspect);
+  if (!state.selectedId && readyItems.length) state.selectedId = readyItems[0].id;
+  document.body.classList.toggle('mobile-editing', mobile && readyItems.length > 0);
+  const count = readyItems.length;
   if (els.mobileBatchChip) { els.mobileBatchChip.textContent = `${count} image${count === 1 ? '' : 's'}`; els.mobileBatchChip.classList.toggle('hidden', count < 2); }
   if (els.mobileExportAll) { els.mobileExportAll.textContent = `Export all ${count} as ZIP`; els.mobileExportAll.classList.toggle('hidden', count < 2); }
 }
