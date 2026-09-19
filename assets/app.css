@@ -958,7 +958,7 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
 @media (max-width:700px) {
   /* Keep the source image dominant while adding a watermark. Controls scroll within the compact sheet. */
   body[data-mobile-tool="watermark"].mobile-editing {
-    --mobile-sheet-height: 238px;
+    --mobile-sheet-height: 210px;
   }
   body[data-mobile-tool="watermark"].mobile-editing .watermark-section {
     padding: 6px 12px 10px;
