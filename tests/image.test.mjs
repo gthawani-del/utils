@@ -321,3 +321,20 @@ test('detected watermark boxes convert to bounded cleanup strokes', () => {
   assert.ok(strokes.length>1);
   assert.ok(strokes.every((s)=>s.radius>0&&s.radius<=.05&&s.points.every((p)=>p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1)));
 });
+
+
+test('watermark detector prefers one compact corner overlay over colorful scene detail', () => {
+  const w=280,h=220,data=new Uint8ClampedArray(w*h*4);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const i=(y*w+x)*4;
+    // colorful scene-like central texture
+    let r=60+(x*7+y*3)%150,g=40+(x*2+y*9)%170,b=50+(x*11+y*5)%160;
+    // single achromatic watermark glyph at bottom right
+    if(x>225&&x<267&&y>170&&y<207&&(((x+y)%12)<3||Math.abs((x-246)-(y-188))<3||Math.abs((x-246)+(y-188))<3)) r=g=b=235;
+    data[i]=r;data[i+1]=g;data[i+2]=b;data[i+3]=255;
+  }
+  const boxes=detectWatermarkRegions(data,w,h,{maxRegions:3});
+  assert.equal(boxes.length,1);
+  assert.ok(boxes[0].x>.65);
+  assert.ok(boxes[0].y>.60);
+});

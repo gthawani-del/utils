@@ -517,18 +517,18 @@ async function detectWatermarkMask() {
     const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.naturalWidth*scale));c.height=Math.max(1,Math.round(img.naturalHeight*scale));
     const ctx=c.getContext('2d',{alpha:false,willReadFrequently:true});ctx.drawImage(img,0,0,c.width,c.height);
     const data=ctx.getImageData(0,0,c.width,c.height);
-    let boxes=detectWatermarkRegions(data.data,c.width,c.height,{maxRegions:5});
+    let boxes=detectWatermarkRegions(data.data,c.width,c.height,{maxRegions:3});
     if('TextDetector' in window){
       try{
         const detected=await new TextDetector().detect(img);
         for(const entry of detected||[]){const b=entry.boundingBox;if(b?.width>4&&b?.height>4)boxes.push({x:b.x/img.naturalWidth,y:b.y/img.naturalHeight,width:b.width/img.naturalWidth,height:b.height/img.naturalHeight,score:2});}
       }catch{}
     }
-    boxes=boxes.sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,5);
+    boxes=boxes.sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,3);
     if(!boxes.length){els.watermarkDetectStatus.textContent='No likely watermark found · brush manually';return;}
     item.cleanupStrokes=boxesToCleanupStrokes(boxes,{maxStrokes:80});item.cleanupApplied=false;paintCleanupCanvas(item);updateCleanupButtons(item);
     els.cleanupState.textContent='Detected mask ready';
-    els.watermarkDetectStatus.textContent=`${boxes.length} likely region${boxes.length===1?'':'s'} · adjust mask if needed`;
+    els.watermarkDetectStatus.textContent=`${boxes.length} likely watermark area${boxes.length===1?'':'s'} · adjust mask if needed`;
   }catch{els.watermarkDetectStatus.textContent='Detection unavailable · brush manually';}
   finally{els.watermarkDetect.disabled=false;}
 }
@@ -1202,7 +1202,10 @@ function syncMobileEditingState() {
   document.body.classList.toggle('mobile-editing', editing);
   document.body.classList.toggle('mobile-start', mobile && !editing);
   const count = readyItems.length;
-  if (els.mobileBatchChip) { els.mobileBatchChip.textContent = `${count} image${count === 1 ? '' : 's'}`; els.mobileBatchChip.classList.toggle('hidden', count < 2); }
+  if (els.mobileBatchChip) {
+    els.mobileBatchChip.textContent = `${count} image${count === 1 ? '' : 's'}`;
+    els.mobileBatchChip.classList.toggle('hidden', count < 2 || state.mobileMode === 'watermarkremove');
+  }
   if (els.mobileExportAll) { els.mobileExportAll.textContent = `Export all ${count} as ZIP`; els.mobileExportAll.classList.toggle('hidden', count < 2); }
   if (els.mobileContinue) els.mobileContinue.classList.toggle('hidden', !hasReady);
   if (els.mobileStartCount) {
