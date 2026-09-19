@@ -361,7 +361,7 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
   .action-row > button { flex: 1 1 45%; }
 
   /* Mobile readability pass: roughly 2× the original micro typography. */
-  body.mobile-editing .mobile-editor-chrome { inset-bottom: 108px; }
+  body.mobile-editing .mobile-editor-chrome { bottom: 108px; }
   body.mobile-editing .control-card { bottom: 108px; }
   body.mobile-editing .mobile-tool-dock { height: 108px; padding-top: 8px; }
   body.mobile-editing .mobile-tool-button { flex-basis: 82px; min-width: 82px; gap: 5px; }
