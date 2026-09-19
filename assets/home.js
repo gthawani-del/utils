@@ -2,7 +2,7 @@ import { clearWorkspace } from '/lib/security/workspace.js';
 
 const tools = [
   ['Image Studio', 'Resize, crop, convert, compress, rotate, strip metadata, and batch export images.', '/image', true, 'IMG'],
-  ['Media Editor + Transcriber', 'Local media editing and transcription workflows.', '#', false, 'MED'],
+  ['Media Editor + Transcriber', 'Local media editing and transcription workflows.', '/media', true, 'MED'],
   ['Docs Reader', 'Inspect and work with documents locally.', '#', false, 'DOC'],
   ['Decision Room', 'Structured decision analysis without unnecessary services.', '#', false, 'DEC'],
   ['Data Analyst', 'Explore and transform datasets in-browser.', '#', false, 'DAT'],
