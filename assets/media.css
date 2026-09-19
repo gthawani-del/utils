@@ -2201,3 +2201,158 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+
+.audio-video-panel {
+  border-top: 1px solid #e6ebf2;
+  padding: 16px;
+  background: #fff;
+}
+
+.audio-video-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.audio-video-heading h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.audio-video-heading > span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #edf8ff;
+  color: #176a9a;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.audio-video-unavailable {
+  display: grid;
+  gap: 5px;
+  padding: 24px 18px;
+  border: 1px dashed #cfd8e7;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: var(--media-muted);
+  text-align: center;
+}
+
+.audio-video-unavailable strong {
+  color: var(--media-ink);
+  font-size: 12px;
+}
+
+.audio-video-unavailable span {
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.audio-video-controls,
+.audio-video-copy-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.audio-video-controls {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.audio-video-copy-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  align-items: end;
+  margin-top: 8px;
+}
+
+.audio-video-controls label,
+.audio-video-copy-grid label {
+  gap: 5px;
+  font-size: 10px;
+}
+
+.audio-video-controls select,
+.audio-video-copy-grid input {
+  min-height: 40px;
+  border: 1px solid var(--media-line);
+  border-radius: 10px;
+  padding: 7px 9px;
+  background: #fff;
+}
+
+.audio-video-lyrics-toggle {
+  min-height: 40px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 7px !important;
+  padding: 7px 9px;
+  border: 1px solid var(--media-line);
+  border-radius: 10px;
+  background: #f8fafc;
+  color: var(--media-muted);
+}
+
+.audio-video-canvas-wrap {
+  display: grid;
+  place-items: center;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #0c1119;
+  overflow: hidden;
+}
+
+#audio-video-canvas {
+  display: block;
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  border-radius: 9px;
+  background: #101827;
+}
+
+.audio-video-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.audio-video-actions > span {
+  margin-left: auto;
+  color: var(--media-muted);
+  font-size: 9px;
+}
+
+.audio-video-status {
+  margin: 9px 0 0;
+  color: var(--media-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+@media (max-width: 759px) {
+  .audio-video-panel {
+    padding: 14px;
+  }
+
+  .audio-video-controls,
+  .audio-video-copy-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .audio-video-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .audio-video-actions > span {
+    grid-column: 1 / -1;
+    margin-left: 0;
+  }
+}

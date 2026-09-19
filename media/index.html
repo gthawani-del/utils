@@ -75,6 +75,70 @@
             <p class="phase-note source-note" id="source-note">Source ready.</p>
           </div>
 
+          <section class="audio-video-panel hidden" id="audio-video-panel" aria-labelledby="audio-video-title">
+            <div class="audio-video-heading">
+              <div>
+                <p class="workspace-eyebrow">Audio → Video</p>
+                <h3 id="audio-video-title">Visualizer designer</h3>
+              </div>
+              <span>Browser-native render</span>
+            </div>
+
+            <div class="audio-video-unavailable" id="audio-video-unavailable">
+              <strong>Load a local audio file to create video.</strong>
+              <span>This foundation renders directly in the browser. Provider links and video sources are not converted here.</span>
+            </div>
+
+            <div class="audio-video-designer hidden" id="audio-video-designer">
+              <div class="audio-video-controls">
+                <label>Visualizer
+                  <select id="audio-video-mode">
+                    <option value="bars">Spectrum bars</option>
+                    <option value="waveform">Waveform</option>
+                    <option value="pulse">Audio pulse</option>
+                    <option value="static">Static music video</option>
+                  </select>
+                </label>
+                <label>Aspect
+                  <select id="audio-video-aspect">
+                    <option value="16:9">16:9 YouTube</option>
+                    <option value="9:16">9:16 Reel / Short</option>
+                    <option value="1:1">1:1 Square</option>
+                  </select>
+                </label>
+                <label>Theme
+                  <select id="audio-video-theme">
+                    <option value="midnight">Midnight</option>
+                    <option value="ember">Ember</option>
+                    <option value="aurora">Aurora</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="audio-video-copy-grid">
+                <label>Title
+                  <input id="audio-video-title-input" type="text" maxlength="120" placeholder="Track or episode title">
+                </label>
+                <label>Artist / subtitle
+                  <input id="audio-video-artist" type="text" maxlength="120" placeholder="Artist, host or series">
+                </label>
+                <label class="audio-video-lyrics-toggle"><input id="audio-video-lyrics" type="checkbox"> Show synced lyrics when available</label>
+              </div>
+
+              <div class="audio-video-canvas-wrap">
+                <canvas id="audio-video-canvas" width="1280" height="720" aria-label="Audio to video visualizer preview"></canvas>
+              </div>
+
+              <div class="audio-video-actions">
+                <button class="media-button" id="audio-video-play" type="button">Play live visualizer</button>
+                <button class="media-button empty-primary" id="audio-video-render" type="button">Render video</button>
+                <button class="media-button" id="audio-video-cancel" type="button" disabled>Cancel render</button>
+                <span id="audio-video-format-label">Checking browser render support…</span>
+              </div>
+              <p class="audio-video-status" id="audio-video-status" role="status" aria-live="polite">Visualizer preview and export stay on this device. Rendering runs in real time and can be cancelled.</p>
+            </div>
+          </section>
+
           <section class="lyrics-panel hidden" id="lyrics-panel" aria-labelledby="lyrics-title">
             <div class="lyrics-heading">
               <div>
