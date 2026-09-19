@@ -6,10 +6,11 @@ import { IMAGE_PRESETS } from '/lib/image/presets.js';
 import { DEFAULT_EDITS, normalizeEdits, editsEqual } from '/lib/image/edits.js';
 import { createLayer, normalizeLayer } from '/lib/image/layers.js';
 import { DEFAULT_WATERMARK, normalizeWatermark } from '/lib/image/watermark.js';
+import { normalizeCleanup } from '/lib/image/cleanup.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
-const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, previewTimer: 0, previewAbort: null };
+const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, previewTimer: 0, previewAbort: null };
 const $ = (selector) => document.querySelector(selector);
 const els = {
   input: $('#file-input'), choose: $('#choose-files'), add: $('#add-more'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'),
@@ -23,7 +24,8 @@ const els = {
   layerList: $('#layer-list'), layerProperties: $('#layer-properties'), layerTitle: $('#layer-title'), textLayerFields: $('#text-layer-fields'), shapeLayerFields: $('#shape-layer-fields'), addTextLayer: $('#add-text-layer'), addRectLayer: $('#add-rect-layer'), addCircleLayer: $('#add-circle-layer'), addLineLayer: $('#add-line-layer'), addArrowLayer: $('#add-arrow-layer'), addBackgroundLayer: $('#add-background-layer'), duplicateLayer: $('#duplicate-layer'), deleteLayer: $('#delete-layer'), layerUp: $('#layer-up'), layerDown: $('#layer-down'),
   layerText: $('#layer-text'), layerFont: $('#layer-font'), layerFontSize: $('#layer-font-size'), layerFontWeight: $('#layer-font-weight'), layerAlign: $('#layer-align'), layerColor: $('#layer-color'), layerLetterSpacing: $('#layer-letter-spacing'), layerLineSpacing: $('#layer-line-spacing'), layerStrokeWidth: $('#layer-stroke-width'), layerStrokeColor: $('#layer-stroke-color'), layerShadowEnabled: $('#layer-shadow-enabled'), layerShadowColor: $('#layer-shadow-color'), layerShadowBlur: $('#layer-shadow-blur'), layerShadowX: $('#layer-shadow-x'), layerShadowY: $('#layer-shadow-y'), layerBgEnabled: $('#layer-bg-enabled'), layerBgColor: $('#layer-bg-color'),
   layerFill: $('#layer-fill'), layerFill2: $('#layer-fill-2'), layerGradient: $('#layer-gradient'), layerGradientAngle: $('#layer-gradient-angle'), shapeStrokeColor: $('#shape-stroke-color'), shapeStrokeWidth: $('#shape-stroke-width'), layerX: $('#layer-x'), layerY: $('#layer-y'), layerWidth: $('#layer-width'), layerHeight: $('#layer-height'), layerRotation: $('#layer-rotation'), layerOpacity: $('#layer-opacity'),
-  watermarkEnabled: $('#watermark-enabled'), watermarkControls: $('#watermark-controls'), watermarkType: $('#watermark-type'), watermarkPosition: $('#watermark-position'), watermarkOpacity: $('#watermark-opacity'), watermarkRotation: $('#watermark-rotation'), watermarkMargin: $('#watermark-margin'), watermarkTiled: $('#watermark-tiled'), watermarkTileGap: $('#watermark-tile-gap'), watermarkCustomPosition: $('#watermark-custom-position'), watermarkX: $('#watermark-x'), watermarkY: $('#watermark-y'), watermarkTextFields: $('#watermark-text-fields'), watermarkImageFields: $('#watermark-image-fields'), watermarkText: $('#watermark-text'), watermarkFont: $('#watermark-font'), watermarkFontSize: $('#watermark-font-size'), watermarkColor: $('#watermark-color'), watermarkLogoInput: $('#watermark-logo-input'), chooseWatermarkLogo: $('#choose-watermark-logo'), watermarkLogoName: $('#watermark-logo-name'), watermarkLogoWidth: $('#watermark-logo-width')
+  watermarkEnabled: $('#watermark-enabled'), watermarkControls: $('#watermark-controls'), watermarkType: $('#watermark-type'), watermarkPosition: $('#watermark-position'), watermarkOpacity: $('#watermark-opacity'), watermarkRotation: $('#watermark-rotation'), watermarkMargin: $('#watermark-margin'), watermarkTiled: $('#watermark-tiled'), watermarkTileGap: $('#watermark-tile-gap'), watermarkCustomPosition: $('#watermark-custom-position'), watermarkX: $('#watermark-x'), watermarkY: $('#watermark-y'), watermarkTextFields: $('#watermark-text-fields'), watermarkImageFields: $('#watermark-image-fields'), watermarkText: $('#watermark-text'), watermarkFont: $('#watermark-font'), watermarkFontSize: $('#watermark-font-size'), watermarkColor: $('#watermark-color'), watermarkLogoInput: $('#watermark-logo-input'), chooseWatermarkLogo: $('#choose-watermark-logo'), watermarkLogoName: $('#watermark-logo-name'), watermarkLogoWidth: $('#watermark-logo-width'),
+  cleanupCanvas: $('#cleanup-canvas'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo')
 };
 
 initialize();
@@ -78,6 +80,9 @@ function wireEvents() {
   for (const control of watermarkControls()) { control.addEventListener('input', () => { updateWatermarkConditional(); scheduleEditPreview(); }); control.addEventListener('change', () => { updateWatermarkConditional(); scheduleEditPreview(40); }); }
   els.chooseWatermarkLogo.addEventListener('click', () => els.watermarkLogoInput.click());
   els.watermarkLogoInput.addEventListener('change', () => setWatermarkLogo(els.watermarkLogoInput.files?.[0]));
+  els.cleanupBrush.addEventListener('input', () => { els.cleanupBrushValue.textContent = els.cleanupBrush.value; });
+  els.cleanupCanvas.addEventListener('pointerdown', beginCleanupStroke); els.cleanupCanvas.addEventListener('pointermove', continueCleanupStroke); els.cleanupCanvas.addEventListener('pointerup', endCleanupStroke); els.cleanupCanvas.addEventListener('pointercancel', endCleanupStroke);
+  els.cleanupUndoStroke.addEventListener('click', undoCleanupStroke); els.cleanupClearMask.addEventListener('click', clearCleanupMask); els.cleanupApply.addEventListener('click', applyCleanupMask); els.cleanupUndo.addEventListener('click', undoCleanupApplication);
   window.addEventListener('pagehide', () => { state.previewAbort?.abort(); cleanupUrls(); });
 }
 
@@ -92,7 +97,7 @@ async function addFiles(files) {
       state.items.push(makeRejectedItem(file, budget.reason));
       continue;
     }
-    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null };
+    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null };
     state.items.push(item);
     renderList();
     try {
@@ -120,7 +125,7 @@ async function addFiles(files) {
 }
 
 function makeRejectedItem(file, reason) {
-  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null };
+  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null };
 }
 
 function selectItem(id, reset = false) {
@@ -167,6 +172,7 @@ function renderSelected() {
     els.outputPreview.textContent = item.status === 'processing' ? 'Processing…' : (item.error && item.status !== 'ready' ? item.error : 'Process to preview');
   }
   renderComparison(item);
+  renderCleanupEditor(item);
   updateWarnings(); updateButtons();
 }
 
@@ -194,6 +200,7 @@ function resetToOriginal() {
   els.format.value = item.inspect.kind === 'svg' ? 'png' : item.inspect.kind; els.quality.value = 82; els.qualityValue.textContent = '82'; els.targetSize.value = ''; els.rotate.value = 0; els.flipX.checked = false; els.flipY.checked = false;
   applyEditsToControls(DEFAULT_EDITS); state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.lastCommittedGeometry = { rotate: 0, flipX: false, flipY: false }; updateUndoButton();
   state.layers = []; state.selectedLayerId = null; renderLayerList(); renderLayerProperties(); resetWatermarkControls();
+  item.cleanupStrokes = []; item.cleanupApplied = false; renderCleanupEditor(item);
   if (item.editPreviewUrl) { revokeObjectUrl(item.editPreviewUrl); item.editPreviewUrl = ''; item.editPreviewBlob = null; }
   els.editComparison.classList.add('hidden');
   updateConditionalControls(); updateWarnings();
@@ -264,7 +271,8 @@ async function processItem(item, settings) {
   item.status = 'processing'; item.error = ''; renderList();
   if (item.outputUrl) { revokeObjectUrl(item.outputUrl); item.outputUrl = ''; item.outputBlob = null; }
   try {
-    const payload = await createProcessingPayload('process', item, settings);
+    const effectiveSettings = { ...settings, cleanup: cleanupForItem(item) };
+    const payload = await createProcessingPayload('process', item, effectiveSettings);
     const result = await runner.run(payload.message, payload.transfers);
     if (result.state !== 'completed') { item.status = result.state; item.error = result.error?.message || 'Processing failed.'; return; }
     const value = result.value; const blob = new Blob([value.buffer], { type: value.mime });
@@ -309,6 +317,19 @@ async function clearAll() {
 }
 
 function cleanupUrls() { for (const item of state.items) { revokeObjectUrl(item.originalUrl); revokeObjectUrl(item.outputUrl); revokeObjectUrl(item.editPreviewUrl); item.originalUrl = ''; item.outputUrl = ''; item.editPreviewUrl = ''; } }
+function cleanupForItem(item) { return normalizeCleanup({ enabled:Boolean(item?.cleanupApplied), strokes:item?.cleanupStrokes || [] }); }
+function cleanupPointFromEvent(event) { const rect=els.cleanupCanvas.getBoundingClientRect(); return { x:Math.max(0,Math.min(1,(event.clientX-rect.left)/Math.max(1,rect.width))), y:Math.max(0,Math.min(1,(event.clientY-rect.top)/Math.max(1,rect.height))) }; }
+function beginCleanupStroke(event) { const item=selectedItem(); if(!item?.originalUrl||item.inspect?.kind==='svg'||!item.cleanupImage?.complete) return; event.preventDefault(); els.cleanupCanvas.setPointerCapture?.(event.pointerId); state.cleanupPointerId=event.pointerId; const rect=els.cleanupCanvas.getBoundingClientRect(); const radius=(Number(els.cleanupBrush.value)/2)/Math.max(1,Math.min(rect.width,rect.height)); item.cleanupStrokes.push({radius,points:[cleanupPointFromEvent(event)]}); item.cleanupApplied=false; paintCleanupCanvas(item); updateCleanupButtons(item); }
+function continueCleanupStroke(event) { if(state.cleanupPointerId!==event.pointerId) return; const item=selectedItem(); const stroke=item?.cleanupStrokes?.[item.cleanupStrokes.length-1]; if(!stroke)return; const point=cleanupPointFromEvent(event); const last=stroke.points[stroke.points.length-1]; if(Math.hypot(point.x-last.x,point.y-last.y)<.002)return; stroke.points.push(point); paintCleanupCanvas(item); }
+function endCleanupStroke(event) { if(state.cleanupPointerId!==event.pointerId)return; state.cleanupPointerId=null; const item=selectedItem(); if(item){ item.cleanupApplied=false; updateCleanupButtons(item); els.cleanupState.textContent='Mask ready'; scheduleEditPreview(80); } }
+function undoCleanupStroke() { const item=selectedItem(); if(!item?.cleanupStrokes?.length)return; item.cleanupStrokes.pop(); item.cleanupApplied=false; paintCleanupCanvas(item); updateCleanupButtons(item); scheduleEditPreview(60); }
+function clearCleanupMask() { const item=selectedItem(); if(!item)return; const wasApplied=item.cleanupApplied; item.cleanupStrokes=[]; item.cleanupApplied=false; paintCleanupCanvas(item); updateCleanupButtons(item); if(wasApplied)scheduleEditPreview(40); }
+function applyCleanupMask() { const item=selectedItem(); if(!item?.cleanupStrokes?.length)return; item.cleanupApplied=true; updateCleanupButtons(item); els.cleanupState.textContent='Cleanup active'; scheduleEditPreview(20); }
+function undoCleanupApplication() { const item=selectedItem(); if(!item?.cleanupApplied)return; item.cleanupApplied=false; updateCleanupButtons(item); els.cleanupState.textContent='Mask kept · cleanup undone'; scheduleEditPreview(20); }
+function updateCleanupButtons(item) { const count=item?.cleanupStrokes?.length||0; els.cleanupUndoStroke.disabled=count===0; els.cleanupClearMask.disabled=count===0; els.cleanupApply.disabled=count===0||Boolean(item?.cleanupApplied); els.cleanupUndo.disabled=!item?.cleanupApplied; if(!count)els.cleanupState.textContent='No mask'; else if(item.cleanupApplied)els.cleanupState.textContent='Cleanup active'; else els.cleanupState.textContent=`${count} stroke${count===1?'':'s'} ready`; }
+function renderCleanupEditor(item) { const ctx=els.cleanupCanvas.getContext('2d'); if(!item?.originalUrl||item.inspect?.kind==='svg'){ ctx.clearRect(0,0,els.cleanupCanvas.width,els.cleanupCanvas.height); els.cleanupEmpty.classList.remove('hidden'); updateCleanupButtons(item); return; } els.cleanupEmpty.classList.add('hidden'); if(item.cleanupImage?.complete){ paintCleanupCanvas(item); return; } const img=new Image(); item.cleanupImage=img; img.onload=()=>{ const scale=Math.min(1,900/img.naturalWidth,520/img.naturalHeight); els.cleanupCanvas.width=Math.max(1,Math.round(img.naturalWidth*scale)); els.cleanupCanvas.height=Math.max(1,Math.round(img.naturalHeight*scale)); paintCleanupCanvas(item); }; img.src=item.originalUrl; updateCleanupButtons(item); }
+function paintCleanupCanvas(item) { const img=item?.cleanupImage; if(!img?.complete)return; const canvas=els.cleanupCanvas,ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width,canvas.height); ctx.save(); ctx.strokeStyle='rgba(220,38,38,.58)'; ctx.fillStyle='rgba(220,38,38,.58)'; ctx.lineCap='round'; ctx.lineJoin='round'; for(const stroke of item.cleanupStrokes||[]){ const radius=stroke.radius*Math.min(canvas.width,canvas.height); const pts=stroke.points||[]; if(!pts.length)continue; ctx.lineWidth=Math.max(2,radius*2); if(pts.length===1){ctx.beginPath();ctx.arc(pts[0].x*canvas.width,pts[0].y*canvas.height,radius,0,Math.PI*2);ctx.fill();continue;} ctx.beginPath();ctx.moveTo(pts[0].x*canvas.width,pts[0].y*canvas.height);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x*canvas.width,pts[i].y*canvas.height);ctx.stroke(); } ctx.restore(); }
+
 function watermarkControls() { return [els.watermarkEnabled,els.watermarkType,els.watermarkPosition,els.watermarkOpacity,els.watermarkRotation,els.watermarkMargin,els.watermarkTiled,els.watermarkTileGap,els.watermarkX,els.watermarkY,els.watermarkText,els.watermarkFont,els.watermarkFontSize,els.watermarkColor,els.watermarkLogoWidth]; }
 function collectWatermark() { return normalizeWatermark({ enabled:els.watermarkEnabled.checked,type:els.watermarkType.value,position:els.watermarkPosition.value,opacity:Number(els.watermarkOpacity.value)/100,rotation:Number(els.watermarkRotation.value),margin:Number(els.watermarkMargin.value),tiled:els.watermarkTiled.checked,tileGap:Number(els.watermarkTileGap.value),x:Number(els.watermarkX.value),y:Number(els.watermarkY.value),text:els.watermarkText.value,fontFamily:els.watermarkFont.value,fontSize:Number(els.watermarkFontSize.value),color:els.watermarkColor.value,logoWidth:Number(els.watermarkLogoWidth.value) }); }
 function updateWatermarkConditional() { const enabled=els.watermarkEnabled.checked; els.watermarkControls.classList.toggle('hidden',!enabled); const image=els.watermarkType.value==='image'; els.watermarkTextFields.classList.toggle('hidden',image); els.watermarkImageFields.classList.toggle('hidden',!image); els.watermarkCustomPosition.classList.toggle('hidden',els.watermarkPosition.value!=='custom'||!enabled); }
@@ -435,7 +456,7 @@ async function previewSelectedEdits() {
   const controller = new AbortController(); state.previewAbort = controller;
   els.previewStatus.textContent = 'Rendering preview…';
   try {
-    const settings = collectSettings(); settings.targetBytes = 0; settings.format = 'png'; settings.previewMaxEdge = 1400;
+    const settings = collectSettings(); settings.targetBytes = 0; settings.format = 'png'; settings.previewMaxEdge = 1400; settings.cleanup = cleanupForItem(item);
     const payload = await createProcessingPayload('preview', item, settings);
     const result = await runner.run(payload.message, payload.transfers, 20_000, controller.signal);
     if (controller.signal.aborted || result.state === 'cancelled') return;

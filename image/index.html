@@ -102,6 +102,18 @@
             </div>
           </div>
 
+          <div class="control-section cleanup-section">
+            <div class="section-inline-heading"><div><h3>Cleanup / Erase</h3><p class="microcopy">Brush over small unwanted text, stamps, blemishes, dust, marks or objects. Reconstruction is deterministic and local; complex or highly textured backgrounds may vary.</p></div><span id="cleanup-state" class="microcopy">No mask</span></div>
+            <div class="cleanup-workspace">
+              <div class="cleanup-canvas-shell"><canvas id="cleanup-canvas" width="900" height="520" aria-label="Cleanup mask editor"></canvas><div id="cleanup-empty" class="cleanup-empty">Select a raster image to paint a cleanup mask.</div></div>
+              <div class="cleanup-controls">
+                <label>Brush size <output id="cleanup-brush-value">36</output> px<input id="cleanup-brush" type="range" min="6" max="120" value="36"></label>
+                <div class="cleanup-actions"><button class="secondary-button" id="cleanup-undo-stroke" type="button" disabled>Undo stroke</button><button class="secondary-button" id="cleanup-clear-mask" type="button" disabled>Clear mask</button><button class="primary-button" id="cleanup-apply" type="button" disabled>Remove selected area</button><button class="secondary-button" id="cleanup-undo" type="button" disabled>Undo cleanup</button></div>
+                <p class="microcopy">Mask preview is shown in red. Cleanup is non-destructive: the original file remains untouched and the mask is applied only during preview/export.</p>
+              </div>
+            </div>
+          </div>
+
           <div class="control-section design-section">
             <div class="section-inline-heading"><div><h3>Text & design layers</h3><p class="microcopy">Layers remain editable until preview/export. Positions use percentages so a recipe can be reused across similarly composed assets.</p></div></div>
             <div class="layer-toolbar" role="group" aria-label="Add design layer">

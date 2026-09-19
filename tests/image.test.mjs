@@ -5,6 +5,7 @@ import { parsePngDimensions, parseWebpDimensions, parseSvgDimensions } from '../
 import { DEFAULT_EDITS, normalizeEdits, hasPixelEdits } from '../lib/image/edits.js';
 import { createLayer, normalizeLayer, normalizeLayers } from '../lib/image/layers.js';
 import { DEFAULT_WATERMARK, normalizeWatermark, resolveWatermarkPosition } from '../lib/image/watermark.js';
+import { normalizeCleanup, cleanupHasMask } from '../lib/image/cleanup.js';
 
 test('fit resize preserves aspect ratio', () => {
   assert.deepEqual(calculateResize(4000, 2000, { resizeMode: 'fit', width: 1000, height: 1000, preserveAspect: true }), { width: 1000, height: 500 });
@@ -84,4 +85,19 @@ test('watermark recipes clamp values and restrict types/fonts', () => {
 test('watermark preset positioning respects margins', () => {
   const recipe = normalizeWatermark({ ...DEFAULT_WATERMARK, position: 'bottom-right', margin: 20 });
   assert.deepEqual(resolveWatermarkPosition(1000, 500, 200, 50, recipe), { x: 880, y: 455 });
+});
+
+
+test('cleanup masks normalize bounded local strokes', () => {
+  const cleanup = normalizeCleanup({ enabled: true, strokes: [{ radius: 9, points: [{ x: -1, y: 2 }, { x: .4, y: .6 }] }] });
+  assert.equal(cleanup.enabled, true);
+  assert.equal(cleanup.strokes[0].radius, .12);
+  assert.deepEqual(cleanup.strokes[0].points[0], { x: 0, y: 1 });
+  assert.equal(cleanupHasMask(cleanup), true);
+});
+
+test('cleanup ignores empty masks and caps stroke count', () => {
+  assert.equal(cleanupHasMask(normalizeCleanup({ enabled: true, strokes: [] })), false);
+  const many = Array.from({ length: 140 }, () => ({ radius: .01, points: [{ x: .5, y: .5 }] }));
+  assert.equal(normalizeCleanup({ enabled: true, strokes: many }).strokes.length, 100);
 });

@@ -7,6 +7,7 @@ import { calculateResize, calculateCrop, coverRect } from '../lib/image/math.js'
 import { normalizeEdits, hasPixelEdits } from '../lib/image/edits.js';
 import { normalizeLayers } from '../lib/image/layers.js';
 import { normalizeWatermark, resolveWatermarkPosition } from '../lib/image/watermark.js';
+import { normalizeCleanup, cleanupHasMask } from '../lib/image/cleanup.js';
 
 try { Object.defineProperty(self, 'fetch', { value: () => Promise.reject(new Error('Network disabled in Utility OS workers.')), writable: false }); } catch {}
 
@@ -76,10 +77,19 @@ async function processImage({ buffer, settings = {}, preview = false, watermarkL
   if (!preDecoded.ok) { bitmap.close(); return unsupported(preDecoded.reason, 'RESOURCE_LIMIT'); }
 
   const orientation = applyExif ? exif.orientation : 1;
-  const source = orientation === 1 ? bitmap : drawOriented(bitmap, orientation);
+  let source = orientation === 1 ? bitmap : drawOriented(bitmap, orientation);
   if (orientation !== 1) bitmap.close();
   const sourceCheck = validateDimensions(source.width, source.height);
   if (!sourceCheck.ok) { if ('close' in source) source.close(); return unsupported(sourceCheck.reason, 'RESOURCE_LIMIT'); }
+
+  const cleanup = normalizeCleanup(settings.cleanup);
+  if (cleanupHasMask(cleanup)) {
+    if (source.width * source.height > 30_000_000) { if ('close' in source) source.close(); return unsupported('Cleanup is limited to 30 megapixels. Resize the image first for reliable local reconstruction.', 'CLEANUP_RESOURCE_LIMIT'); }
+    const cleaned = applyCleanup(source, cleanup);
+    if (cleaned.error) { if ('close' in source) source.close(); return unsupported(cleaned.error, 'CLEANUP_LIMIT'); }
+    if ('close' in source) source.close(); else { source.width = 1; source.height = 1; }
+    source = cleaned.canvas;
+  }
 
   const crop = calculateCrop(source.width, source.height, settings.crop);
   const mode = settings.resizeMode || 'fit';
@@ -161,6 +171,29 @@ function drawOriented(bitmap, orientation) {
   ctx.restore();
   return canvas;
 }
+
+function applyCleanup(source, cleanup) {
+  const canvas = new OffscreenCanvas(source.width, source.height); const ctx = canvas.getContext('2d', { alpha:true, willReadFrequently:true }); ctx.drawImage(source,0,0);
+  let selected=0;
+  for (const stroke of cleanup.strokes) { const result=inpaintStroke(ctx,canvas.width,canvas.height,stroke); if(result.error)return {error:result.error}; selected+=result.masked; if(selected>canvas.width*canvas.height*.2)return {error:'Cleanup mask is too large. Use Cleanup for small areas and split large removals into separate operations.'}; }
+  return {canvas};
+}
+function inpaintStroke(ctx,canvasWidth,canvasHeight,stroke) {
+  const radius=Math.max(1,stroke.radius*Math.min(canvasWidth,canvasHeight)); const points=stroke.points.map((p)=>({x:p.x*canvasWidth,y:p.y*canvasHeight})); if(!points.length)return {masked:0};
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity; for(const p of points){minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y);} const pad=radius+4;
+  const x0=Math.max(0,Math.floor(minX-pad)),y0=Math.max(0,Math.floor(minY-pad)),x1=Math.min(canvasWidth,Math.ceil(maxX+pad)),y1=Math.min(canvasHeight,Math.ceil(maxY+pad)); const width=x1-x0,height=y1-y0;
+  if(width<=0||height<=0)return {masked:0}; if(width*height>4_000_000)return {error:'One cleanup stroke covers too large an area. Use a smaller brush region.'};
+  const image=ctx.getImageData(x0,y0,width,height); const data=image.data; const maskCanvas=new OffscreenCanvas(width,height); const mctx=maskCanvas.getContext('2d',{alpha:true}); mctx.strokeStyle='#ffffff';mctx.fillStyle='#ffffff';mctx.lineCap='round';mctx.lineJoin='round';mctx.lineWidth=radius*2;
+  if(points.length===1){mctx.beginPath();mctx.arc(points[0].x-x0,points[0].y-y0,radius,0,Math.PI*2);mctx.fill();} else {mctx.beginPath();mctx.moveTo(points[0].x-x0,points[0].y-y0);for(let i=1;i<points.length;i++)mctx.lineTo(points[i].x-x0,points[i].y-y0);mctx.stroke();}
+  const mask=mctx.getImageData(0,0,width,height).data; const area=width*height; const known=new Uint8Array(area); const queued=new Uint8Array(area); const queue=new Int32Array(area); let head=0,tail=0,masked=0;
+  for(let i=0;i<area;i++){const isMasked=mask[i*4+3]>24;if(!isMasked)known[i]=1;else masked++;}
+  if(!masked)return {masked:0};
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){const idx=y*width+x;if(known[idx])continue;if(hasKnownNeighbor(known,width,height,x,y)){queued[idx]=1;queue[tail++]=idx;}}
+  while(head<tail){const idx=queue[head++],x=idx%width,y=Math.floor(idx/width);let rr=0,gg=0,bb=0,aa=0,count=0;for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){if(!ox&&!oy)continue;const nx=x+ox,ny=y+oy;if(nx<0||ny<0||nx>=width||ny>=height)continue;const ni=ny*width+nx;if(!known[ni])continue;const di=ni*4;rr+=data[di];gg+=data[di+1];bb+=data[di+2];aa+=data[di+3];count++;}if(!count)continue;const di=idx*4;data[di]=rr/count;data[di+1]=gg/count;data[di+2]=bb/count;data[di+3]=aa/count;known[idx]=1;for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){if(!ox&&!oy)continue;const nx=x+ox,ny=y+oy;if(nx<0||ny<0||nx>=width||ny>=height)continue;const ni=ny*width+nx;if(!known[ni]&&!queued[ni]){queued[ni]=1;queue[tail++]=ni;}}}
+  const filled=new Uint8ClampedArray(data); for(let y=1;y<height-1;y++)for(let x=1;x<width-1;x++){const idx=y*width+x;if(mask[idx*4+3]<=24)continue;let rr=0,gg=0,bb=0,count=0;for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){const ni=((y+oy)*width+x+ox)*4;rr+=filled[ni];gg+=filled[ni+1];bb+=filled[ni+2];count++;}const di=idx*4;data[di]=mix(filled[di],rr/count,.28);data[di+1]=mix(filled[di+1],gg/count,.28);data[di+2]=mix(filled[di+2],bb/count,.28);}
+  ctx.putImageData(image,x0,y0); return {masked};
+}
+function hasKnownNeighbor(known,width,height,x,y){for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){if(!ox&&!oy)continue;const nx=x+ox,ny=y+oy;if(nx>=0&&ny>=0&&nx<width&&ny<height&&known[ny*width+nx])return true;}return false;}
 
 function render(source, crop, target, settings) {
   const canvas = new OffscreenCanvas(target.width, target.height);

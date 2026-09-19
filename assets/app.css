@@ -155,11 +155,19 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
 .logo-picker { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .compact-check { margin: 0; white-space: nowrap; }
 
+
+.cleanup-workspace { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(220px,.5fr); gap: 14px; align-items: start; }
+.cleanup-canvas-shell { position: relative; min-height: 260px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: repeating-conic-gradient(#f1f2f4 0% 25%, #fff 0% 50%) 50% / 18px 18px; }
+.cleanup-canvas { display: block; max-width: 100%; max-height: 520px; touch-action: none; cursor: crosshair; }
+.cleanup-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); font-size: 13px; pointer-events: none; }
+.cleanup-controls { display: grid; gap: 16px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.cleanup-actions { display: grid; gap: 8px; }
+
 .hidden { display: none !important; }
 .visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 @media (max-width: 980px) {
   .workspace { grid-template-columns: 1fr; }
-  .layer-workspace { grid-template-columns: 1fr; }
+  .layer-workspace, .cleanup-workspace { grid-template-columns: 1fr; }
   .file-panel { position: static; max-height: none; }
   .file-list { max-height: 260px; }
   .form-grid, .edit-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
