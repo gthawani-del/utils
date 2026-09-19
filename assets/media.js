@@ -701,14 +701,9 @@ document.addEventListener('click', (event) => {
     return;
   }
 
-  const placeholder = event.target.closest('[data-placeholder-action]');
-  if (placeholder) {
-    const name = placeholder.dataset.placeholderAction;
-    if (name === 'Recipes' || name === 'Use a Recipe') {
-      recipeWorkspace?.open();
-      return;
-    }
-    phaseNote.textContent = `${name} is planned for a later phase; this control is not enabled yet.`;
+  const recipeAction = event.target.closest('[data-recipe-action]');
+  if (recipeAction) {
+    recipeWorkspace?.open();
   }
 });
 

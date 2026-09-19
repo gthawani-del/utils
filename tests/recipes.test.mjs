@@ -23,16 +23,16 @@ const project = { source: { kind: 'local-file', mediaType: 'audio', duration: 60
 
 test('built-in recipes contain deterministic action specs only', () => {
   const recipes = builtInRecipes();
-  assert.equal(recipes.length, 9);
+  assert.equal(recipes.length, 6);
   assert.equal(recipes.every((recipe) => recipe.actions.length > 0), true);
   assert.equal(recipes.find((recipe) => recipe.name === 'Instagram Reel').actions[0].params.aspect, '9:16');
 });
 
 test('recipe action specs hydrate through the Command Assistant readiness model', () => {
-  const recipe = builtInRecipes().find((item) => item.name === 'Podcast Clean');
+  const recipe = builtInRecipes().find((item) => item.name === 'Client Delivery');
   const plan = planFromActionSpecs(recipe.actions, project);
-  assert.equal(plan.find((item) => item.type === 'normalize-audio').status, 'blocked');
   assert.equal(plan.find((item) => item.type === 'run-qc').status, 'ready');
+  assert.equal(plan.find((item) => item.type === 'open-category').status, 'ready');
   assert.deepEqual(actionSpecsFromPlan(plan), recipe.actions);
 });
 
