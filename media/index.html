@@ -86,6 +86,61 @@
             <p class="phase-note source-note" id="source-note">Source ready.</p>
           </div>
 
+          <section class="version-shell hidden" id="version-shell" aria-labelledby="version-shell-title">
+            <div class="version-context-bar">
+              <div>
+                <p class="workspace-eyebrow">Version workspace</p>
+                <h3 id="version-shell-title">Source, Preview & Result</h3>
+              </div>
+              <div class="version-context-meta">
+                <span id="version-editing-base">Editing from: Original</span>
+                <span id="version-active-label">Active version: Original</span>
+                <span class="version-state-badge" id="version-preview-badge" data-status="preview">Preview</span>
+              </div>
+              <div class="version-context-actions">
+                <button class="media-button" id="version-history-open" type="button">Version History</button>
+                <button class="media-button empty-primary" id="version-create" type="button">Create Version</button>
+              </div>
+            </div>
+
+            <div class="version-compare-shell" id="version-compare-shell" data-mode="side-by-side" data-mobile-view="original">
+              <div class="version-compare-toolbar">
+                <div class="version-compare-modes" aria-label="Comparison mode">
+                  <button type="button" data-compare-mode="single">Single</button>
+                  <button class="active" type="button" data-compare-mode="side-by-side">Side-by-side</button>
+                  <button type="button" data-compare-mode="ab" disabled>A/B</button>
+                </div>
+                <div class="version-mobile-toggle" aria-label="Mobile comparison">
+                  <button class="active" type="button" data-mobile-compare="original">Original</button>
+                  <button type="button" data-mobile-compare="result" disabled>Result</button>
+                </div>
+                <span>Preview state is not a rendered file.</span>
+              </div>
+
+              <div class="version-compare-grid">
+                <article class="version-compare-pane original-pane">
+                  <div class="version-pane-heading"><div><span>A · ORIGINAL</span><strong id="compare-original-name">Original source</strong></div><span class="version-source-lock">Immutable</span></div>
+                  <div class="version-pane-placeholder">
+                    <span class="version-pane-icon" aria-hidden="true">▶</span>
+                    <strong>Original source</strong>
+                    <small>The playable source remains in the main preview above. It is never overwritten by edit state.</small>
+                  </div>
+                  <div class="version-metrics" id="compare-original-metrics"></div>
+                </article>
+
+                <article class="version-compare-pane result-pane">
+                  <div class="version-pane-heading"><div><span>B · PROCESSED</span><strong id="compare-result-title">No rendered result</strong></div><span class="version-result-state">Not rendered</span></div>
+                  <div class="version-result-empty" id="compare-result-empty">
+                    <span class="version-pane-icon" aria-hidden="true">◇</span>
+                    <strong>No Rendered Version yet</strong>
+                    <small>Current trim, volume, fade and other edit controls remain Preview state. Create Version does not generate media until the real render pipeline is introduced.</small>
+                  </div>
+                  <div class="version-metrics hidden" id="compare-result-metrics"></div>
+                </article>
+              </div>
+            </div>
+          </section>
+
           <section class="delivery-panel hidden" id="delivery-panel" aria-labelledby="delivery-title">
             <div class="delivery-heading">
               <div>
@@ -511,6 +566,15 @@
     <button type="button" data-placeholder-action="Media Library"><span>▱</span><small>Library</small></button>
     <button type="button" data-placeholder-action="Recipes"><span>▤</span><small>Recipes</small></button>
   </nav>
+
+  <dialog class="media-dialog version-history-dialog" id="version-history-dialog" aria-labelledby="version-history-title">
+    <div class="version-history-body">
+      <div class="dialog-heading"><div><p class="workspace-eyebrow">Project artifacts</p><h2 id="version-history-title">Version History</h2></div><button id="version-history-close" class="dialog-close" type="button" aria-label="Close">×</button></div>
+      <p class="version-history-intro">Original is immutable. Rendered Versions are explicit project artifacts and are separate from Undo/Redo edit-state history.</p>
+      <div class="version-history-list" id="version-history-list"></div>
+      <div class="version-history-empty" id="version-history-empty"><strong>No Rendered Versions yet</strong><span>Preview changes can be adjusted freely. A Version will appear here only after real media processing succeeds in a later rendering step.</span></div>
+    </div>
+  </dialog>
 
   <dialog class="media-dialog recipe-dialog" id="recipe-dialog" aria-labelledby="recipe-dialog-title">
     <div class="recipe-dialog-body">

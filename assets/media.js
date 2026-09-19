@@ -1,5 +1,5 @@
 import { ingestLocalMedia, releaseMediaSource, validateMediaUrl } from '/lib/media/ingest.js';
-import { createMediaProject, loadMediaProjectSnapshot, setProjectAudioEdits, setProjectAudioVideo, setProjectCategory, setProjectCompiler, setProjectDelivery, setProjectLyrics, setProjectSource, setProjectTranscript, setProjectVideoEdits } from '/lib/media/project.js';
+import { createMediaProject, loadMediaProjectSnapshot, setProjectAudioEdits, setProjectAudioVideo, setProjectCategory, setProjectCompiler, setProjectDelivery, setProjectLyrics, setProjectSource, setProjectTranscript, setProjectVersioning, setProjectVideoEdits } from '/lib/media/project.js';
 import { initAudioVideoWorkspace } from '/lib/media/audio-video/workspace.js';
 import { initCompilerWorkspace } from '/lib/media/compiler/workspace.js';
 import { initCommandAssistant } from '/lib/media/command/workspace.js';
@@ -8,6 +8,7 @@ import { initDeliveryWorkspace } from '/lib/media/delivery/workspace.js';
 import { initRecipeWorkspace } from '/lib/media/recipes/workspace.js';
 import { initLyricsWorkspace } from '/lib/media/lyrics/workspace.js';
 import { initTranscriptWorkspace } from '/lib/media/transcript/workspace.js';
+import { initVersionWorkspace } from '/lib/media/versions/workspace.js';
 import { createAudioEdits, audioSelectionDuration, normalizeAudioEdits, previewVolumeAt, updateAudioEdits } from '/lib/media/audio/edits.js';
 import { createVideoEdits, normalizeVideoEdits, selectionDuration, updateVideoEdits } from '/lib/media/video/edits.js';
 
@@ -84,6 +85,7 @@ let qcWorkspace = null;
 let deliveryWorkspace = null;
 let commandAssistant = null;
 let recipeWorkspace = null;
+let versionWorkspace = null;
 
 if (restored) {
   project.id = restored.id || project.id;
@@ -98,6 +100,9 @@ if (restored) {
   project.audioVideo = restored.audioVideo || null;
   project.compiler = restored.compiler || null;
   project.delivery = restored.delivery || null;
+  project.versions = Array.isArray(restored.versions) ? restored.versions : [];
+  project.activeVersionId = restored.activeVersionId || null;
+  project.baseVersionId = restored.baseVersionId || 'original';
 }
 
 function makeDesktopButton(category, index) {
@@ -160,6 +165,7 @@ function selectCategory(id) {
   compilerWorkspace?.updateVisibility();
   qcWorkspace?.updateVisibility();
   deliveryWorkspace?.updateVisibility();
+  versionWorkspace?.refresh();
   commandAssistant?.refresh();
 }
 
@@ -527,6 +533,7 @@ function renderSource(source) {
   compilerWorkspace?.onSourceChanged();
   qcWorkspace?.onSourceChanged();
   deliveryWorkspace?.onSourceChanged();
+  versionWorkspace?.onSourceChanged();
   if (source.kind === 'local-file' && source.mediaType === 'video') {
     syncVideoControls();
     updatePlayhead(currentPlayer?.currentTime || 0);
@@ -563,6 +570,9 @@ async function handleFile(file) {
       project.audioVideo = null;
       project.compiler = null;
       project.delivery = null;
+      project.versions = [];
+      project.activeVersionId = null;
+      project.baseVersionId = 'original';
       setProjectVideoEdits(project, null);
       setProjectAudioEdits(project, null);
       setProjectTranscript(project, null);
@@ -570,6 +580,7 @@ async function handleFile(file) {
       setProjectAudioVideo(project, null);
       setProjectCompiler(project, null);
       setProjectDelivery(project, null);
+      setProjectVersioning(project, { versions: [], activeVersionId: null, baseVersionId: 'original' });
       resetVideoHistory();
       resetAudioHistory();
       transcriptWorkspace?.resetForNewSource();
@@ -577,6 +588,7 @@ async function handleFile(file) {
       compilerWorkspace?.resetForNewSource();
       qcWorkspace?.resetForNewSource();
       deliveryWorkspace?.resetForNewSource();
+      versionWorkspace?.resetForNewSource();
     }
     setProjectSource(project, result.source);
     renderSource(result.source);
@@ -614,16 +626,21 @@ linkForm.addEventListener('submit', (event) => {
   project.audioVideo = null;
   project.compiler = null;
   project.delivery = null;
+  project.versions = [];
+  project.activeVersionId = null;
+  project.baseVersionId = 'original';
   setProjectTranscript(project, null);
   setProjectLyrics(project, null);
   setProjectAudioVideo(project, null);
   setProjectCompiler(project, null);
   setProjectDelivery(project, null);
+  setProjectVersioning(project, { versions: [], activeVersionId: null, baseVersionId: 'original' });
   transcriptWorkspace?.resetForNewSource();
   lyricsWorkspace?.resetForNewSource();
   compilerWorkspace?.resetForNewSource();
   qcWorkspace?.resetForNewSource();
   deliveryWorkspace?.resetForNewSource();
+  versionWorkspace?.resetForNewSource();
   const source = {
     kind: 'provider-link',
     provider: checked.provider,
@@ -854,6 +871,21 @@ window.addEventListener('pagehide', () => {
   if (project.source?.kind === 'local-file') releaseMediaSource(project.source);
 });
 
+versionWorkspace = initVersionWorkspace({
+  getProject: () => project,
+  getSource: () => project.source,
+  saveVersioning: (versioning) => {
+    project.versions = versioning.versions;
+    project.activeVersionId = versioning.activeVersionId;
+    project.baseVersionId = versioning.baseVersionId;
+    setProjectVersioning(project, versioning);
+  },
+  setStatus: (message) => {
+    commandMessage.textContent = message;
+    if (sourceNote && !sourceStage.classList.contains('hidden')) sourceNote.textContent = message;
+  }
+});
+
 deliveryWorkspace = initDeliveryWorkspace({
   getProject: () => project,
   getPlayer: () => currentPlayer,
@@ -1040,6 +1072,7 @@ audioVideoWorkspace.onSourceChanged();
 compilerWorkspace.onSourceChanged();
 qcWorkspace.onSourceChanged();
 deliveryWorkspace.onSourceChanged();
+versionWorkspace.onSourceChanged();
 
 if (restored?.source?.kind === 'provider-link') {
   renderSource(restored.source);
