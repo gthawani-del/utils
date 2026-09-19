@@ -23,6 +23,7 @@ const playerWrap = document.querySelector('#source-player-wrap');
 const sourceName = document.querySelector('#source-name');
 const sourceSummary = document.querySelector('#source-summary');
 const phaseNote = document.querySelector('#phase-note');
+const sourceNote = document.querySelector('#source-note');
 const commandForm = document.querySelector('#command-form');
 const commandInput = document.querySelector('#command-input');
 const commandMessage = document.querySelector('#command-message');
@@ -39,7 +40,13 @@ const restored = loadMediaProjectSnapshot();
 const project = createMediaProject();
 let currentPlayer = null;
 
-if (restored?.activeCategory) project.activeCategory = restored.activeCategory;
+if (restored) {
+  project.id = restored.id || project.id;
+  project.createdAt = restored.createdAt || project.createdAt;
+  project.updatedAt = restored.updatedAt || project.updatedAt;
+  project.activeCategory = restored.activeCategory || project.activeCategory;
+  project.source = restored.source || null;
+}
 
 function makeDesktopButton(category, index) {
   const button = document.createElement('button');
@@ -185,7 +192,7 @@ function renderSource(source) {
     const detail = [source.mediaType, String(source.container).toUpperCase(), formatBytes(source.bytes), formatDuration(source.duration)];
     if (source.mediaType === 'video') detail.push(`${source.width}×${source.height}`);
     sourceSummary.textContent = detail.join(' · ');
-    phaseNote.textContent = source.warning || 'Loaded locally. No file bytes were uploaded or sent to a backend.';
+    sourceNote.textContent = source.warning || 'Loaded locally. No file bytes were uploaded or sent to a backend.';
     statusPrimary.textContent = 'Local media loaded · no upload';
   } else {
     const card = document.createElement('div');
@@ -202,7 +209,7 @@ function renderSource(source) {
     playerWrap.append(card);
     sourceName.textContent = source.provider + ' source';
     sourceSummary.textContent = source.url;
-    phaseNote.textContent = 'URL validated against the provider allowlist. No network request was made.';
+    sourceNote.textContent = 'URL validated against the provider allowlist. No network request was made.';
     statusPrimary.textContent = 'Validated link reference · not fetched';
   }
 
@@ -336,6 +343,9 @@ window.addEventListener('pagehide', () => {
 
 selectCategory(project.activeCategory || 'video');
 
-if (restored?.source?.relinkRequired) {
+if (restored?.source?.kind === 'provider-link') {
+  renderSource(restored.source);
+} else if (restored?.source?.relinkRequired) {
+  projectBadge.textContent = 'Relink required';
   phaseNote.textContent = `Previous session metadata found for ${restored.source.name || 'local media'}. Select the original file again to relink it securely.`;
 }
