@@ -185,3 +185,15 @@ test('measured comparison reports actual metadata and only recorded operations',
   assert.deepEqual(comparison.operations.map((item) => item.type), ['video-trim', 'resize-aspect']);
   assert.equal(measuredAspect(1000, 1000), '1:1');
 });
+
+
+test('measured comparison keeps absent metadata absent rather than coercing null to zero', () => {
+  const comparison = measuredComparison(
+    { duration: null, bytes: null, width: null, height: null, container: '' },
+    { outputDuration: null, outputBytes: null, outputWidth: null, outputHeight: null, outputFormat: '', operations: [] }
+  );
+  assert.equal(comparison.original.duration, null);
+  assert.equal(comparison.result.duration, null);
+  assert.equal(comparison.durationDelta, null);
+  assert.equal(comparison.bytesDelta, null);
+});
