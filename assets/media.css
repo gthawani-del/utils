@@ -3952,3 +3952,18 @@
   min-height: 54px;
   background: #f5f7fa;
 }
+
+
+.video-mute-control {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px !important;
+  color: var(--media-muted);
+  font-size: 9px !important;
+  white-space: nowrap;
+}
+
+.video-mute-control input {
+  margin: 0;
+}

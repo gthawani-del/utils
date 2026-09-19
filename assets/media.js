@@ -52,6 +52,7 @@ const playheadInput = document.querySelector('#video-playhead');
 const playheadLabel = document.querySelector('#video-playhead-label');
 const selectionLabel = document.querySelector('#video-selection-label');
 const playbackRateSelect = document.querySelector('#video-playback-rate');
+const videoMuteInput = document.querySelector('#video-mute');
 const undoButton = document.querySelector('#video-undo');
 const redoButton = document.querySelector('#video-redo');
 const timelineStatus = document.querySelector('#timeline-status');
@@ -208,9 +209,13 @@ function syncVideoControls() {
   trimEndInput.value = edits.trimEnd.toFixed(2);
   playheadInput.max = String(duration);
   playbackRateSelect.value = String(edits.playbackRate);
+  videoMuteInput.checked = edits.muted;
   selectionLabel.textContent = `Selection ${formatEditorTime(selectionDuration(edits, duration))}`;
 
-  if (currentPlayer) currentPlayer.playbackRate = edits.playbackRate;
+  if (currentPlayer) {
+    currentPlayer.playbackRate = edits.playbackRate;
+    currentPlayer.muted = edits.muted;
+  }
   updateUndoRedo();
   updateTimelineSelection(edits, duration);
 }
@@ -235,7 +240,8 @@ function recordVideoEdit(next) {
   if (!current) return;
   const changed = current.trimStart !== next.trimStart
     || current.trimEnd !== next.trimEnd
-    || current.playbackRate !== next.playbackRate;
+    || current.playbackRate !== next.playbackRate
+    || current.muted !== next.muted;
   if (!changed) return;
 
   videoHistory.push(current);
@@ -789,6 +795,10 @@ trimEndInput.addEventListener('change', () => {
 
 playbackRateSelect.addEventListener('change', () => {
   applyVideoPatch({ playbackRate: Number(playbackRateSelect.value) });
+});
+
+videoMuteInput.addEventListener('change', () => {
+  applyVideoPatch({ muted: videoMuteInput.checked });
 });
 
 playheadInput.addEventListener('input', () => {
