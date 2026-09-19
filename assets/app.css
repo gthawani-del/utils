@@ -1109,3 +1109,9 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
 @media(min-width:701px){
   .cleanup-canvas-shell { background:#f3f4f6; }
 }
+
+@media(max-width:700px){
+  body[data-mobile-tool="watermarkremove"].mobile-editing .mobile-batch-chip {
+    display:none !important;
+  }
+}
