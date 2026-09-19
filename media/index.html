@@ -11,6 +11,7 @@
 <body class="media-body">
   <input id="media-file-input" class="visually-hidden" type="file" accept="video/*,audio/*,.mp4,.mov,.m4a,.webm,.ogg,.wav,.mp3,.flac,.aac,.avi">
   <input id="transcript-file-input" class="visually-hidden" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip">
+  <input id="lyrics-file-input" class="visually-hidden" type="file" accept=".lrc,.txt,text/plain">
   <div class="media-app">
     <aside class="media-sidebar" aria-label="Media Studio sections">
       <a class="media-brand" href="/" aria-label="Utility OS home"><span class="media-brand-mark">U</span><span>Utility OS</span></a>
@@ -73,6 +74,77 @@
             <div class="source-caption"><div><strong id="source-name"></strong><span id="source-summary"></span></div><button class="media-button" type="button" data-media-action="upload">Replace source</button></div>
             <p class="phase-note source-note" id="source-note">Source ready.</p>
           </div>
+
+          <section class="lyrics-panel hidden" id="lyrics-panel" aria-labelledby="lyrics-title">
+            <div class="lyrics-heading">
+              <div>
+                <p class="workspace-eyebrow">Lyrics & Karaoke</p>
+                <h3 id="lyrics-title">Sync lyrics to the playhead</h3>
+              </div>
+              <span>Local preview</span>
+            </div>
+
+            <div class="lyrics-toolbar">
+              <button class="media-button empty-primary" id="lyrics-import" type="button">Import LRC / TXT</button>
+              <button class="media-button" id="lyrics-add-line" type="button">+ Add line</button>
+              <button class="media-button" id="lyrics-stamp-line" type="button">Stamp selected at playhead</button>
+            </div>
+
+            <div class="lyrics-style-grid">
+              <label>Visual style
+                <select id="lyrics-style">
+                  <option value="classic">Classic</option>
+                  <option value="bold">Bold Pop</option>
+                  <option value="minimal">Minimal</option>
+                </select>
+              </label>
+              <label>Text effect
+                <select id="lyrics-effect">
+                  <option value="fade">Fade</option>
+                  <option value="pop">Pop</option>
+                  <option value="none">None</option>
+                </select>
+              </label>
+              <label>Background
+                <select id="lyrics-background">
+                  <option value="transparent">Transparent</option>
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="lyrics-preview lyrics-style-classic lyrics-effect-fade lyrics-background-transparent" id="lyrics-preview">
+              <div class="lyrics-preview-text" id="lyrics-preview-text">Import or add lyrics to preview</div>
+              <small id="lyrics-preview-meta">No timing yet</small>
+            </div>
+
+            <div class="lyrics-layout">
+              <div class="lyrics-editor-column">
+                <div class="lyrics-empty" id="lyrics-empty">
+                  <strong>No lyrics loaded</strong>
+                  <span>Import standard/enhanced LRC or plain TXT. TXT lines can be stamped to the current media playhead one by one.</span>
+                </div>
+                <div class="lyrics-list" id="lyrics-list"></div>
+              </div>
+
+              <aside class="lyrics-guide">
+                <strong>Karaoke timing</strong>
+                <p>Standard LRC gives line-level highlighting. Enhanced LRC with explicit &lt;time&gt; word markers enables true word-level highlighting.</p>
+                <p>We do not invent word timings from plain text.</p>
+                <div class="lyrics-future">
+                  <span>Waveform / spectrum</span>
+                  <small>Reserved for the Audio → Video rendering phase.</small>
+                </div>
+              </aside>
+            </div>
+
+            <div class="lyrics-export-row">
+              <button class="media-button" id="lyrics-export-lrc" type="button" disabled>Export LRC</button>
+              <button class="media-button" id="lyrics-export-txt" type="button" disabled>Export TXT</button>
+              <span id="lyrics-status" role="status" aria-live="polite">Lyrics stay local. Visual styles are preview-only until rendering is implemented.</span>
+            </div>
+          </section>
 
           <section class="transcript-panel hidden" id="transcript-panel" aria-labelledby="transcript-title">
             <div class="transcript-heading">

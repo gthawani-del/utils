@@ -1,5 +1,6 @@
 import { ingestLocalMedia, releaseMediaSource, validateMediaUrl } from '/lib/media/ingest.js';
-import { createMediaProject, loadMediaProjectSnapshot, setProjectAudioEdits, setProjectCategory, setProjectSource, setProjectTranscript, setProjectVideoEdits } from '/lib/media/project.js';
+import { createMediaProject, loadMediaProjectSnapshot, setProjectAudioEdits, setProjectCategory, setProjectLyrics, setProjectSource, setProjectTranscript, setProjectVideoEdits } from '/lib/media/project.js';
+import { initLyricsWorkspace } from '/lib/media/lyrics/workspace.js';
 import { initTranscriptWorkspace } from '/lib/media/transcript/workspace.js';
 import { createAudioEdits, audioSelectionDuration, normalizeAudioEdits, previewVolumeAt, updateAudioEdits } from '/lib/media/audio/edits.js';
 import { createVideoEdits, normalizeVideoEdits, selectionDuration, updateVideoEdits } from '/lib/media/video/edits.js';
@@ -72,6 +73,7 @@ let audioHistory = [];
 let audioFuture = [];
 let playingAudioSelection = false;
 let transcriptWorkspace = null;
+let lyricsWorkspace = null;
 
 if (restored) {
   project.id = restored.id || project.id;
@@ -82,6 +84,7 @@ if (restored) {
   project.videoEdits = restored.videoEdits || null;
   project.audioEdits = restored.audioEdits || null;
   project.transcript = restored.transcript || null;
+  project.lyrics = restored.lyrics || null;
 }
 
 function makeDesktopButton(category, index) {
@@ -139,6 +142,7 @@ function selectCategory(id) {
   updateVideoEditorVisibility();
   updateAudioEditorVisibility();
   transcriptWorkspace?.updateVisibility();
+  lyricsWorkspace?.updateVisibility();
 }
 
 function formatEditorTime(seconds) {
@@ -500,6 +504,7 @@ function renderSource(source) {
   updateVideoEditorVisibility();
   updateAudioEditorVisibility();
   transcriptWorkspace?.onSourceChanged();
+  lyricsWorkspace?.onSourceChanged();
   if (source.kind === 'local-file' && source.mediaType === 'video') {
     syncVideoControls();
     updatePlayhead(currentPlayer?.currentTime || 0);
@@ -531,12 +536,15 @@ async function handleFile(file) {
       project.videoEdits = null;
       project.audioEdits = null;
       project.transcript = null;
+      project.lyrics = null;
       setProjectVideoEdits(project, null);
       setProjectAudioEdits(project, null);
       setProjectTranscript(project, null);
+      setProjectLyrics(project, null);
       resetVideoHistory();
       resetAudioHistory();
       transcriptWorkspace?.resetForNewSource();
+      lyricsWorkspace?.resetForNewSource();
     }
     setProjectSource(project, result.source);
     renderSource(result.source);
@@ -569,8 +577,11 @@ linkForm.addEventListener('submit', (event) => {
 
   if (project.source?.kind === 'local-file') releaseMediaSource(project.source);
   project.transcript = null;
+  project.lyrics = null;
   setProjectTranscript(project, null);
+  setProjectLyrics(project, null);
   transcriptWorkspace?.resetForNewSource();
+  lyricsWorkspace?.resetForNewSource();
   const source = {
     kind: 'provider-link',
     provider: checked.provider,
@@ -805,6 +816,19 @@ window.addEventListener('pagehide', () => {
   if (project.source?.kind === 'local-file') releaseMediaSource(project.source);
 });
 
+lyricsWorkspace = initLyricsWorkspace({
+  getProject: () => project,
+  getPlayer: () => currentPlayer,
+  getSource: () => project.source,
+  saveLyrics: (lyrics) => {
+    project.lyrics = lyrics;
+    setProjectLyrics(project, lyrics);
+  },
+  setStatus: (message) => {
+    if (sourceNote && !sourceStage.classList.contains('hidden')) sourceNote.textContent = message;
+  }
+});
+
 transcriptWorkspace = initTranscriptWorkspace({
   getProject: () => project,
   getPlayer: () => currentPlayer,
@@ -820,6 +844,7 @@ transcriptWorkspace = initTranscriptWorkspace({
 
 selectCategory(project.activeCategory || 'video');
 transcriptWorkspace.onSourceChanged();
+lyricsWorkspace.onSourceChanged();
 
 if (restored?.source?.kind === 'provider-link') {
   renderSource(restored.source);

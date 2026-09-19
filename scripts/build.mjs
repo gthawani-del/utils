@@ -8,7 +8,7 @@ const productionEntries = ['index.html', 'image', 'media', 'assets', 'lib', 'wor
 const required = [
   'index.html', 'image/index.html', 'media/index.html',
   'assets/app.css', 'assets/home.js', 'assets/image.js', 'assets/media.css', 'assets/media.js',
-  'workers/image.worker.js', 'lib/security/index.js', 'lib/media/ingest.js', 'lib/media/project.js', 'lib/media/audio/edits.js', 'lib/media/transcript/subtitles.js', 'lib/media/transcript/workspace.js', 'lib/media/video/edits.js', 'lib/image/edits.js', 'lib/image/layers.js', 'lib/image/watermark.js', 'lib/image/cleanup.js', 'lib/image/text-replace.js', 'lib/image/compiler.js', 'lib/image/performance.js', 'lib/image/asset-doctor.js', 'lib/image/smart-crop.js', 'lib/image/web-pack.js', 'lib/image/watermark-detect.js', 'lib/image/browser-processor.js', 'vercel.json'
+  'workers/image.worker.js', 'lib/security/index.js', 'lib/media/ingest.js', 'lib/media/project.js', 'lib/media/audio/edits.js', 'lib/media/lyrics/lyrics.js', 'lib/media/lyrics/workspace.js', 'lib/media/transcript/subtitles.js', 'lib/media/transcript/workspace.js', 'lib/media/video/edits.js', 'lib/image/edits.js', 'lib/image/layers.js', 'lib/image/watermark.js', 'lib/image/cleanup.js', 'lib/image/text-replace.js', 'lib/image/compiler.js', 'lib/image/performance.js', 'lib/image/asset-doctor.js', 'lib/image/smart-crop.js', 'lib/image/web-pack.js', 'lib/image/watermark-detect.js', 'lib/image/browser-processor.js', 'vercel.json'
 ];
 
 for (const file of required) await access(resolve(root, file));
