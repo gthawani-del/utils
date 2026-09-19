@@ -875,6 +875,7 @@ window.addEventListener('pagehide', () => {
 versionWorkspace = initVersionWorkspace({
   getProject: () => project,
   getSource: () => project.source,
+  getVideoEdits: () => currentVideoEdits(),
   saveVersioning: (versioning) => {
     project.versions = versioning.versions;
     project.activeVersionId = versioning.activeVersionId;

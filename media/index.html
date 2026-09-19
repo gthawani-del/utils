@@ -107,7 +107,7 @@
               <div class="render-proof-copy">
                 <strong>Processing engine</strong>
                 <span id="render-proof-state" data-status="idle">Idle</span>
-                <small>Step 2 proof only: copies media through the isolated worker, validates the returned playable Blob, then releases it. It does not create a Version or transform media.</small>
+                <small>Processing status for the render foundation. “Verify render engine” remains a no-transform proof; Create Version now performs the Step 3 video trim.</small>
               </div>
               <progress id="render-proof-progress" max="100" value="0">0%</progress>
               <span id="render-proof-elapsed">Elapsed —</span>
@@ -134,22 +134,25 @@
               <div class="version-compare-grid">
                 <article class="version-compare-pane original-pane">
                   <div class="version-pane-heading"><div><span>A · ORIGINAL</span><strong id="compare-original-name">Original source</strong></div><span class="version-source-lock">Immutable</span></div>
+                  <div class="version-compare-media" id="compare-original-player"></div>
                   <div class="version-pane-placeholder">
                     <span class="version-pane-icon" aria-hidden="true">▶</span>
                     <strong>Original source</strong>
-                    <small>The playable source remains in the main preview above. It is never overwritten by edit state.</small>
+                    <small>The source is immutable. Use the player above or this compare player when available.</small>
                   </div>
                   <div class="version-metrics" id="compare-original-metrics"></div>
                 </article>
 
                 <article class="version-compare-pane result-pane">
                   <div class="version-pane-heading"><div><span>B · PROCESSED</span><strong id="compare-result-title">No rendered result</strong></div><span class="version-result-state">Not rendered</span></div>
+                  <div class="version-compare-media hidden" id="compare-result-player"></div>
                   <div class="version-result-empty" id="compare-result-empty">
                     <span class="version-pane-icon" aria-hidden="true">◇</span>
                     <strong>No Rendered Version yet</strong>
                     <small>Current trim, volume, fade and other edit controls remain Preview state. Create Version does not generate media until the real render pipeline is introduced.</small>
                   </div>
                   <div class="version-metrics hidden" id="compare-result-metrics"></div>
+                  <button class="media-button version-export" id="version-export" type="button" disabled>Export this Version</button>
                 </article>
               </div>
             </div>
@@ -545,7 +548,7 @@
               <button class="media-button empty-primary" id="video-play-selection" type="button">Play selection</button>
               <button class="media-button" id="video-reset-edits" type="button">Reset trim</button>
             </div>
-            <p class="video-editor-note">These controls change the browser preview and project edit state only. Export rendering is not enabled in this foundation step.</p>
+            <p class="video-editor-note">In/Out remain non-destructive Preview state until Create Version. Step 3 renders trim only; Preview speed is not included in the rendered Version yet.</p>
           </section>
 
           <div class="timeline-shell">

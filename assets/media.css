@@ -3899,3 +3899,32 @@
     justify-content: stretch;
   }
 }
+
+
+.version-state-badge[data-status="ready"] {
+  background: #e1f4ed;
+  color: #147257;
+}
+
+.version-compare-media {
+  margin-top: 9px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0f1520;
+}
+
+.version-compare-media:has(video) + .version-pane-placeholder {
+  display: none;
+}
+
+.version-compare-media video {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  background: #000;
+}
+
+.version-export {
+  width: 100%;
+  margin-top: 8px;
+}
