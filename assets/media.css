@@ -4244,3 +4244,19 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+.command-plan-item[data-execution="renderable"] {
+  border-color: #cbd9f6;
+  background: #f8faff;
+}
+
+.command-plan-item[data-execution="renderable"] .command-plan-badge {
+  background: #e7edff;
+  color: #3755a6;
+}
+
+.command-plan-item[data-execution="workflow"] .command-plan-badge {
+  background: #e2f4ed;
+  color: #087a56;
+}

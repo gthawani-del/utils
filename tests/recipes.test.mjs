@@ -67,3 +67,16 @@ test('recipes duplicate and delete without modifying the original', () => {
   assert.equal(loadCustomRecipes(storage).length, 1);
   assert.equal(loadCustomRecipes(storage)[0].id, copy.recipe.id);
 });
+
+
+test('recipe hydration exposes Version-renderable actions without pretending workflow actions are render output', () => {
+  const videoProject = { source: { kind: 'local-file', mediaType: 'video', duration: 60 } };
+  const reel = builtInRecipes().find((item) => item.name === 'Instagram Reel');
+  const videoPlan = planFromActionSpecs(reel.actions, videoProject);
+  assert.equal(videoPlan.find((item) => item.type === 'set-aspect').execution, 'renderable');
+  assert.equal(videoPlan.find((item) => item.type === 'run-qc').execution, 'workflow');
+
+  const audioPlan = planFromActionSpecs(reel.actions, project);
+  assert.equal(audioPlan.find((item) => item.type === 'set-aspect').execution, 'workflow');
+  assert.equal(audioPlan.find((item) => item.type === 'run-qc').execution, 'workflow');
+});

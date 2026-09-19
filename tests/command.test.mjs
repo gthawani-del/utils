@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCommand, reevaluateAction } from '../lib/media/command/grammar.js';
+import { parseCommand, planCapabilities, reevaluateAction } from '../lib/media/command/grammar.js';
 
 const audioProject = {
   source: { kind: 'local-file', mediaType: 'audio', duration: 60 }
@@ -47,4 +47,41 @@ test('explicit navigation aliases route to known workspaces', () => {
   const plan = parseCommand('open Audio Studio then show QC', audioProject);
   assert.deepEqual(plan.actions.map((item) => item.params.category), ['audio', 'qc']);
   assert.equal(plan.actions.every((item) => item.status === 'ready'), true);
+});
+
+
+test('supported Planned Actions distinguish renderable Version edits from working workflow actions', () => {
+  const audio = parseCommand('trim from 5s to 20s, volume 80%, fade in 2s and run QC', audioProject);
+  assert.deepEqual(audio.actions.map((item) => item.execution), ['renderable', 'renderable', 'renderable', 'workflow']);
+  assert.deepEqual(planCapabilities(audio.actions), {
+    total: 4,
+    renderable: 3,
+    workflow: 1,
+    blocked: 0,
+    canPreview: true,
+    canCreateVersion: true
+  });
+
+  const videoProject = { source: { kind: 'local-file', mediaType: 'video', duration: 60 } };
+  const video = parseCommand('trim from 2s to 12s and make 9:16', videoProject);
+  assert.deepEqual(video.actions.map((item) => item.execution), ['renderable', 'renderable']);
+  assert.equal(video.actions.find((item) => item.type === 'set-aspect').status, 'ready');
+});
+
+test('working non-Version actions remain Preview-capable but do not falsely enable Create Version', () => {
+  const plan = parseCommand('make 9:16 and open Audio Studio', audioProject);
+  assert.equal(plan.actions.every((item) => item.status === 'ready'), true);
+  assert.equal(plan.actions.every((item) => item.execution === 'workflow'), true);
+  const capabilities = planCapabilities(plan.actions);
+  assert.equal(capabilities.canPreview, true);
+  assert.equal(capabilities.canCreateVersion, false);
+});
+
+test('blocked actions prevent both Preview and Create Version until resolved or removed', () => {
+  const plan = parseCommand('trim from 1s to 10s and normalize audio', audioProject);
+  const capabilities = planCapabilities(plan.actions);
+  assert.equal(capabilities.renderable, 1);
+  assert.equal(capabilities.blocked, 1);
+  assert.equal(capabilities.canPreview, false);
+  assert.equal(capabilities.canCreateVersion, false);
 });
