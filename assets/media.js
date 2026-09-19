@@ -879,6 +879,7 @@ versionWorkspace = initVersionWorkspace({
   getSource: () => project.source,
   getPlayer: () => currentPlayer,
   getVideoEdits: () => currentVideoEdits(),
+  getAudioEdits: () => currentAudioEdits(),
   saveVersioning: (versioning) => {
     project.versions = versioning.versions;
     project.activeVersionId = versioning.activeVersionId;

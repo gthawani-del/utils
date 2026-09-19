@@ -3944,3 +3944,11 @@
   background: #fff0e5;
   color: #9a540d;
 }
+
+
+.version-compare-media audio {
+  display: block;
+  width: 100%;
+  min-height: 54px;
+  background: #f5f7fa;
+}

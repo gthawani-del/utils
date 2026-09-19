@@ -138,7 +138,7 @@
                   <div class="version-pane-placeholder">
                     <span class="version-pane-icon" aria-hidden="true">▶</span>
                     <strong>Original source</strong>
-                    <small>The source is immutable. Use the player above or this compare player when available.</small>
+                    <small>The source is immutable. Audio and video sources can be played here for comparison when locally linked.</small>
                   </div>
                   <div class="version-metrics" id="compare-original-metrics"></div>
                 </article>
@@ -498,7 +498,7 @@
               <button type="button" disabled>Normalize</button>
               <button type="button" disabled>Separate Stems</button>
             </div>
-            <p class="audio-editor-note">Trim, volume and fades affect local preview/project state only. Cleanup, normalization, stems and rendered export are not enabled yet.</p>
+            <p class="audio-editor-note">In/Out remain non-destructive Preview state until Create Version. Step 4 renders real audio trim; volume and fades remain Preview-only until Step 5.</p>
           </section>
 
           <section class="video-editor-panel hidden" id="video-editor-panel" aria-labelledby="video-editor-title">
