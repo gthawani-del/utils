@@ -73,6 +73,66 @@
             <p class="phase-note source-note" id="source-note">Source ready.</p>
           </div>
 
+          <section class="audio-editor-panel hidden" id="audio-editor-panel" aria-labelledby="audio-editor-title">
+            <div class="audio-editor-heading">
+              <div>
+                <p class="workspace-eyebrow">Audio foundation</p>
+                <h3 id="audio-editor-title">Trim, level & fades</h3>
+              </div>
+              <span>Preview-safe</span>
+            </div>
+
+            <div class="audio-editor-toolbar">
+              <button class="audio-tool-button" id="audio-undo" type="button" disabled>↶ Undo</button>
+              <button class="audio-tool-button" id="audio-redo" type="button" disabled>↷ Redo</button>
+              <label class="audio-volume-control">Volume
+                <input id="audio-volume" type="range" min="0" max="100" step="1" value="100">
+                <output id="audio-volume-value">100%</output>
+              </label>
+            </div>
+
+            <div class="audio-trim-grid">
+              <label>In point (seconds)
+                <input id="audio-trim-start" type="number" min="0" step="0.01" value="0">
+              </label>
+              <button class="audio-tool-button" id="audio-set-in" type="button">Set In at playhead</button>
+              <label>Out point (seconds)
+                <input id="audio-trim-end" type="number" min="0" step="0.01" value="0">
+              </label>
+              <button class="audio-tool-button" id="audio-set-out" type="button">Set Out at playhead</button>
+            </div>
+
+            <div class="audio-fade-grid">
+              <label>Fade in (seconds)
+                <input id="audio-fade-in" type="number" min="0" step="0.1" value="0">
+              </label>
+              <label>Fade out (seconds)
+                <input id="audio-fade-out" type="number" min="0" step="0.1" value="0">
+              </label>
+            </div>
+
+            <div class="audio-scrubber-wrap">
+              <div class="audio-scrubber-meta">
+                <span id="audio-playhead-label">00:00.00</span>
+                <strong id="audio-selection-label">Selection 00:00.00</strong>
+              </div>
+              <input id="audio-playhead" class="audio-playhead" type="range" min="0" max="0" step="0.01" value="0" aria-label="Audio playhead">
+            </div>
+
+            <div class="audio-editor-actions">
+              <button class="media-button empty-primary" id="audio-play-selection" type="button">Play selection</button>
+              <button class="media-button" id="audio-reset-edits" type="button">Reset audio edits</button>
+            </div>
+
+            <div class="audio-future-actions" aria-label="Planned Audio Studio actions">
+              <button type="button" disabled>Clean Voice</button>
+              <button type="button" disabled>Remove Silence</button>
+              <button type="button" disabled>Normalize</button>
+              <button type="button" disabled>Separate Stems</button>
+            </div>
+            <p class="audio-editor-note">Trim, volume and fades affect local preview/project state only. Cleanup, normalization, stems and rendered export are not enabled yet.</p>
+          </section>
+
           <section class="video-editor-panel hidden" id="video-editor-panel" aria-labelledby="video-editor-title">
             <div class="video-editor-heading">
               <div>

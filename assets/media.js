@@ -1,5 +1,6 @@
 import { ingestLocalMedia, releaseMediaSource, validateMediaUrl } from '/lib/media/ingest.js';
-import { createMediaProject, loadMediaProjectSnapshot, setProjectCategory, setProjectSource, setProjectVideoEdits } from '/lib/media/project.js';
+import { createMediaProject, loadMediaProjectSnapshot, setProjectAudioEdits, setProjectCategory, setProjectSource, setProjectVideoEdits } from '/lib/media/project.js';
+import { createAudioEdits, audioSelectionDuration, normalizeAudioEdits, previewVolumeAt, updateAudioEdits } from '/lib/media/audio/edits.js';
 import { createVideoEdits, normalizeVideoEdits, selectionDuration, updateVideoEdits } from '/lib/media/video/edits.js';
 
 const categories = [
@@ -48,12 +49,27 @@ const undoButton = document.querySelector('#video-undo');
 const redoButton = document.querySelector('#video-redo');
 const timelineStatus = document.querySelector('#timeline-status');
 const videoTrackPlaceholder = document.querySelector('#video-track-placeholder');
+const audioEditorPanel = document.querySelector('#audio-editor-panel');
+const audioTrimStartInput = document.querySelector('#audio-trim-start');
+const audioTrimEndInput = document.querySelector('#audio-trim-end');
+const audioPlayheadInput = document.querySelector('#audio-playhead');
+const audioPlayheadLabel = document.querySelector('#audio-playhead-label');
+const audioSelectionLabel = document.querySelector('#audio-selection-label');
+const audioVolumeInput = document.querySelector('#audio-volume');
+const audioVolumeValue = document.querySelector('#audio-volume-value');
+const audioFadeInInput = document.querySelector('#audio-fade-in');
+const audioFadeOutInput = document.querySelector('#audio-fade-out');
+const audioUndoButton = document.querySelector('#audio-undo');
+const audioRedoButton = document.querySelector('#audio-redo');
 const restored = loadMediaProjectSnapshot();
 const project = createMediaProject();
 let currentPlayer = null;
 let videoHistory = [];
 let videoFuture = [];
 let playingSelection = false;
+let audioHistory = [];
+let audioFuture = [];
+let playingAudioSelection = false;
 
 if (restored) {
   project.id = restored.id || project.id;
@@ -62,6 +78,7 @@ if (restored) {
   project.activeCategory = restored.activeCategory || project.activeCategory;
   project.source = restored.source || null;
   project.videoEdits = restored.videoEdits || null;
+  project.audioEdits = restored.audioEdits || null;
 }
 
 function makeDesktopButton(category, index) {
@@ -117,6 +134,7 @@ function selectCategory(id) {
     emptyCopy.textContent = category.copy;
   }
   updateVideoEditorVisibility();
+  updateAudioEditorVisibility();
 }
 
 function formatEditorTime(seconds) {
@@ -218,6 +236,113 @@ function resetVideoHistory() {
   videoHistory = [];
   videoFuture = [];
   updateUndoRedo();
+}
+
+function hasEditableAudio() {
+  return project.activeCategory === 'audio'
+    && project.source?.kind === 'local-file'
+    && project.source?.mediaType === 'audio'
+    && currentPlayer?.tagName === 'AUDIO';
+}
+
+function updateAudioEditorVisibility() {
+  const visible = hasEditableAudio();
+  audioEditorPanel.classList.toggle('hidden', !visible);
+  if (visible) timelineStatus.textContent = 'Audio preview active';
+  else if (!hasEditableVideo()) timelineStatus.textContent = 'Source preview';
+}
+
+function currentAudioEdits() {
+  if (!project.source || project.source.mediaType !== 'audio') return null;
+  const duration = Number(project.source.duration || 0);
+  return normalizeAudioEdits(project.audioEdits || createAudioEdits(duration), duration);
+}
+
+function updateAudioUndoRedo() {
+  audioUndoButton.disabled = audioHistory.length === 0;
+  audioRedoButton.disabled = audioFuture.length === 0;
+}
+
+function updateAudioTimelineSelection(edits, duration) {
+  const start = duration > 0 ? (edits.trimStart / duration) * 100 : 0;
+  const end = duration > 0 ? (edits.trimEnd / duration) * 100 : 100;
+  const audioTrack = document.querySelector('.audio-placeholder');
+  audioTrack.style.setProperty('--audio-trim-start', start.toFixed(3) + '%');
+  audioTrack.style.setProperty('--audio-trim-end', end.toFixed(3) + '%');
+  audioTrack.classList.toggle('audio-trim-active', edits.trimStart > 0 || edits.trimEnd < duration);
+}
+
+function updateAudioPlayhead(time) {
+  const duration = Number(project.source?.duration || 0);
+  const value = Math.min(duration, Math.max(0, Number(time) || 0));
+  audioPlayheadInput.value = String(value);
+  audioPlayheadLabel.textContent = formatEditorTime(value);
+}
+
+function syncAudioPreviewVolume(time = currentPlayer?.currentTime || 0) {
+  const edits = currentAudioEdits();
+  if (!edits || !currentPlayer || currentPlayer.tagName !== 'AUDIO') return;
+  currentPlayer.volume = previewVolumeAt(time, edits, Number(project.source?.duration || 0));
+}
+
+function syncAudioControls() {
+  const edits = currentAudioEdits();
+  const duration = Number(project.source?.duration || 0);
+  if (!edits || !Number.isFinite(duration)) return;
+
+  audioTrimStartInput.max = String(duration);
+  audioTrimEndInput.max = String(duration);
+  audioTrimStartInput.value = edits.trimStart.toFixed(2);
+  audioTrimEndInput.value = edits.trimEnd.toFixed(2);
+  audioFadeInInput.max = String(Math.max(0, edits.trimEnd - edits.trimStart));
+  audioFadeOutInput.max = String(Math.max(0, edits.trimEnd - edits.trimStart));
+  audioFadeInInput.value = edits.fadeIn.toFixed(1);
+  audioFadeOutInput.value = edits.fadeOut.toFixed(1);
+  audioPlayheadInput.max = String(duration);
+  audioVolumeInput.value = String(Math.round(edits.volume * 100));
+  audioVolumeValue.textContent = Math.round(edits.volume * 100) + '%';
+  audioSelectionLabel.textContent = `Selection ${formatEditorTime(audioSelectionDuration(edits, duration))}`;
+
+  syncAudioPreviewVolume();
+  updateAudioUndoRedo();
+  updateAudioTimelineSelection(edits, duration);
+}
+
+function recordAudioEdit(next) {
+  const current = currentAudioEdits();
+  if (!current) return;
+  const changed = current.trimStart !== next.trimStart
+    || current.trimEnd !== next.trimEnd
+    || current.volume !== next.volume
+    || current.fadeIn !== next.fadeIn
+    || current.fadeOut !== next.fadeOut;
+  if (!changed) return;
+
+  audioHistory.push(current);
+  if (audioHistory.length > 40) audioHistory.shift();
+  audioFuture = [];
+  setProjectAudioEdits(project, next);
+  syncAudioControls();
+}
+
+function applyAudioPatch(patch) {
+  const current = currentAudioEdits();
+  if (!current) return;
+  const duration = Number(project.source?.duration || 0);
+  recordAudioEdit(updateAudioEdits(current, patch, duration));
+}
+
+function restoreAudioEdit(next) {
+  setProjectAudioEdits(project, next);
+  syncAudioControls();
+  const edits = currentAudioEdits();
+  if (currentPlayer && edits && currentPlayer.currentTime < edits.trimStart) currentPlayer.currentTime = edits.trimStart;
+}
+
+function resetAudioHistory() {
+  audioHistory = [];
+  audioFuture = [];
+  updateAudioUndoRedo();
 }
 
 function formatBytes(bytes) {
@@ -323,6 +448,24 @@ function renderSource(source) {
     } else {
       project.videoEdits = null;
       setProjectVideoEdits(project, null);
+      const duration = Number(source.duration || 0);
+      project.audioEdits = normalizeAudioEdits(project.audioEdits || createAudioEdits(duration), duration);
+      setProjectAudioEdits(project, project.audioEdits);
+      media.addEventListener('timeupdate', () => {
+        updateAudioPlayhead(media.currentTime);
+        syncAudioPreviewVolume(media.currentTime);
+        const edits = currentAudioEdits();
+        if (playingAudioSelection && edits && media.currentTime >= edits.trimEnd) {
+          media.pause();
+          media.currentTime = edits.trimStart;
+          syncAudioPreviewVolume(edits.trimStart);
+          playingAudioSelection = false;
+        }
+      });
+      media.addEventListener('seeked', () => {
+        updateAudioPlayhead(media.currentTime);
+        syncAudioPreviewVolume(media.currentTime);
+      });
     }
     sourceName.textContent = source.name;
     const detail = [source.mediaType, String(source.container).toUpperCase(), formatBytes(source.bytes), formatDuration(source.duration)];
@@ -351,9 +494,14 @@ function renderSource(source) {
 
   updateMetadataPanel(source);
   updateVideoEditorVisibility();
+  updateAudioEditorVisibility();
   if (source.kind === 'local-file' && source.mediaType === 'video') {
     syncVideoControls();
     updatePlayhead(currentPlayer?.currentTime || 0);
+  }
+  if (source.kind === 'local-file' && source.mediaType === 'audio') {
+    syncAudioControls();
+    updateAudioPlayhead(currentPlayer?.currentTime || 0);
   }
 }
 
@@ -376,8 +524,11 @@ async function handleFile(file) {
     if (project.source?.kind === 'local-file') releaseMediaSource(project.source);
     if (!preserveEdits) {
       project.videoEdits = null;
+      project.audioEdits = null;
       setProjectVideoEdits(project, null);
+      setProjectAudioEdits(project, null);
       resetVideoHistory();
+      resetAudioHistory();
     }
     setProjectSource(project, result.source);
     renderSource(result.source);
@@ -452,6 +603,85 @@ document.addEventListener('click', (event) => {
     const name = placeholder.dataset.placeholderAction;
     phaseNote.textContent = `${name} is planned for a later phase; Step 2 only adds secure source ingestion and shared project state.`;
   }
+});
+
+audioTrimStartInput.addEventListener('change', () => {
+  const current = currentAudioEdits();
+  if (!current) return;
+  applyAudioPatch({ trimStart: Math.min(Number(audioTrimStartInput.value), current.trimEnd) });
+});
+
+audioTrimEndInput.addEventListener('change', () => {
+  const current = currentAudioEdits();
+  if (!current) return;
+  applyAudioPatch({ trimEnd: Math.max(Number(audioTrimEndInput.value), current.trimStart) });
+});
+
+audioFadeInInput.addEventListener('change', () => applyAudioPatch({ fadeIn: Number(audioFadeInInput.value) }));
+audioFadeOutInput.addEventListener('change', () => applyAudioPatch({ fadeOut: Number(audioFadeOutInput.value) }));
+
+audioVolumeInput.addEventListener('input', () => {
+  audioVolumeValue.textContent = audioVolumeInput.value + '%';
+  const current = currentAudioEdits();
+  if (!current || !currentPlayer) return;
+  const preview = updateAudioEdits(current, { volume: Number(audioVolumeInput.value) / 100 }, Number(project.source?.duration || 0));
+  currentPlayer.volume = previewVolumeAt(currentPlayer.currentTime, preview, Number(project.source?.duration || 0));
+});
+audioVolumeInput.addEventListener('change', () => applyAudioPatch({ volume: Number(audioVolumeInput.value) / 100 }));
+
+audioPlayheadInput.addEventListener('input', () => {
+  if (!currentPlayer || currentPlayer.tagName !== 'AUDIO') return;
+  playingAudioSelection = false;
+  currentPlayer.currentTime = Number(audioPlayheadInput.value) || 0;
+  updateAudioPlayhead(currentPlayer.currentTime);
+  syncAudioPreviewVolume(currentPlayer.currentTime);
+});
+
+document.querySelector('#audio-set-in').addEventListener('click', () => {
+  const current = currentAudioEdits();
+  if (!current || !currentPlayer) return;
+  applyAudioPatch({ trimStart: Math.min(currentPlayer.currentTime, current.trimEnd) });
+});
+
+document.querySelector('#audio-set-out').addEventListener('click', () => {
+  const current = currentAudioEdits();
+  if (!current || !currentPlayer) return;
+  applyAudioPatch({ trimEnd: Math.max(currentPlayer.currentTime, current.trimStart) });
+});
+
+document.querySelector('#audio-play-selection').addEventListener('click', async () => {
+  const edits = currentAudioEdits();
+  if (!edits || !currentPlayer) return;
+  currentPlayer.currentTime = edits.trimStart;
+  syncAudioPreviewVolume(edits.trimStart);
+  playingAudioSelection = true;
+  try {
+    await currentPlayer.play();
+  } catch {
+    playingAudioSelection = false;
+    sourceNote.textContent = 'The browser blocked playback. Press the native play control once, then retry the selection.';
+  }
+});
+
+document.querySelector('#audio-reset-edits').addEventListener('click', () => {
+  const duration = Number(project.source?.duration || 0);
+  recordAudioEdit(createAudioEdits(duration));
+});
+
+audioUndoButton.addEventListener('click', () => {
+  const current = currentAudioEdits();
+  const previous = audioHistory.pop();
+  if (!current || !previous) return;
+  audioFuture.push(current);
+  restoreAudioEdit(previous);
+});
+
+audioRedoButton.addEventListener('click', () => {
+  const current = currentAudioEdits();
+  const next = audioFuture.pop();
+  if (!current || !next) return;
+  audioHistory.push(current);
+  restoreAudioEdit(next);
 });
 
 trimStartInput.addEventListener('change', () => {
