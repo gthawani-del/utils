@@ -938,3 +938,256 @@
     padding-inline: 18px;
   }
 }
+
+
+.hidden { display: none !important; }
+
+.empty-stage.dragging,
+.source-stage.dragging {
+  outline: 2px dashed var(--media-blue);
+  outline-offset: -8px;
+  background: #f4f8ff;
+}
+
+.shell-badge.active-project {
+  background: #e8f7f1;
+  color: #087a56;
+}
+
+.source-stage {
+  min-height: 315px;
+  display: grid;
+  align-content: center;
+  gap: 14px;
+  padding: 18px;
+  background: linear-gradient(180deg, #fbfcfe, #f6f8fb);
+}
+
+.source-player-wrap {
+  min-height: 210px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #d8e0eb;
+  border-radius: 14px;
+  background: #0e141d;
+}
+
+.source-video {
+  display: block;
+  width: 100%;
+  max-height: 480px;
+  background: #000;
+}
+
+.source-audio {
+  width: min(660px, calc(100% - 28px));
+}
+
+.source-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.source-caption > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.source-caption strong,
+.source-caption span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-caption strong {
+  font-size: 13px;
+}
+
+.source-caption span {
+  color: var(--media-muted);
+  font-size: 10px;
+}
+
+.source-note {
+  margin: 0 !important;
+  text-align: left;
+}
+
+.link-source-card {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 14px;
+  align-items: center;
+  width: min(560px, calc(100% - 28px));
+  padding: 20px;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--media-ink);
+}
+
+.link-source-card > span {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  background: #edf3ff;
+  color: var(--media-blue);
+  font-size: 25px;
+}
+
+.link-source-card div {
+  display: grid;
+  gap: 5px;
+}
+
+.link-source-card strong {
+  font-size: 14px;
+}
+
+.link-source-card div span {
+  color: var(--media-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.media-info-panel {
+  padding: 14px 15px;
+  border-bottom: 1px solid var(--media-line);
+}
+
+.media-info-title {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 12px;
+}
+
+.media-info-panel > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-top: 1px solid #eef1f5;
+  font-size: 9px;
+}
+
+.media-info-panel > div span {
+  color: var(--media-muted);
+}
+
+.media-info-panel > div strong {
+  max-width: 58%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.media-dialog {
+  width: min(520px, calc(100% - 28px));
+  border: 1px solid #dbe2ec;
+  border-radius: 18px;
+  padding: 0;
+  box-shadow: 0 24px 80px rgba(16, 24, 40, .22);
+}
+
+.media-dialog::backdrop {
+  background: rgba(15, 23, 42, .48);
+  backdrop-filter: blur(4px);
+}
+
+.media-dialog form {
+  padding: 20px;
+}
+
+.dialog-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.dialog-heading h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.dialog-close {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--media-line);
+  border-radius: 10px;
+  background: #fff;
+  color: #667085;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.media-dialog form > p {
+  margin: 12px 0 16px;
+  color: var(--media-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.dialog-field {
+  display: grid;
+  gap: 7px;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.dialog-field input {
+  min-height: 46px;
+  border: 1px solid #cfd8e7;
+  border-radius: 11px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--media-ink);
+}
+
+.link-error {
+  min-height: 19px;
+  margin: 7px 0;
+  color: #b42318;
+  font-size: 10px;
+}
+
+.dialog-submit {
+  width: 100%;
+}
+
+.media-busy {
+  cursor: progress;
+}
+
+.media-busy button {
+  cursor: progress;
+}
+
+@media (max-width: 759px) {
+  .source-caption {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .source-caption .media-button {
+    width: 100%;
+  }
+
+  .source-player-wrap {
+    min-height: 180px;
+  }
+}
+
+@media (min-width: 1120px) {
+  .source-stage {
+    min-height: 370px;
+  }
+}

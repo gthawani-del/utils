@@ -9,66 +9,36 @@
   <link rel="stylesheet" href="/assets/media.css">
 </head>
 <body class="media-body">
+  <input id="media-file-input" class="visually-hidden" type="file" accept="video/*,audio/*,.mp4,.mov,.m4a,.webm,.ogg,.wav,.mp3,.flac,.aac,.avi">
   <div class="media-app">
     <aside class="media-sidebar" aria-label="Media Studio sections">
-      <a class="media-brand" href="/" aria-label="Utility OS home">
-        <span class="media-brand-mark">U</span>
-        <span>Utility OS</span>
-      </a>
-
-      <div class="sidebar-product">
-        <span class="sidebar-product-icon">▣</span>
-        <div>
-          <strong>Media Studio</strong>
-          <small>All your media tools in one place</small>
-        </div>
-      </div>
-
+      <a class="media-brand" href="/" aria-label="Utility OS home"><span class="media-brand-mark">U</span><span>Utility OS</span></a>
+      <div class="sidebar-product"><span class="sidebar-product-icon">▣</span><div><strong>Media Studio</strong><small>All your media tools in one place</small></div></div>
       <nav class="desktop-category-nav" id="desktop-category-nav"></nav>
-
       <div class="sidebar-links">
-        <button type="button" data-placeholder-action="Projects"><span>□</span>Projects</button>
+        <button type="button" data-media-action="open-project"><span>□</span>Projects</button>
         <button type="button" data-placeholder-action="Recipes"><span>▤</span>Recipes</button>
         <button type="button" data-placeholder-action="Media Library"><span>▱</span>Media Library</button>
         <button type="button" data-placeholder-action="Settings"><span>⚙</span>Settings</button>
       </div>
-
-      <div class="sidebar-note">
-        <strong>Local-first by design.</strong>
-        <span>No media is uploaded in this UI-shell phase.</span>
-      </div>
+      <div class="sidebar-note"><strong>Local-first by design.</strong><span>Files are signature-checked and previewed from local Blob URLs. Provider links are validated but not fetched.</span></div>
     </aside>
 
     <main class="media-main">
       <header class="media-header">
         <div class="media-heading">
-          <a class="mobile-brand" href="/" aria-label="Utility OS home">
-            <span class="media-brand-mark">U</span>
-            <span>Utility OS</span>
-          </a>
-          <div>
-            <h1>Media Studio</h1>
-            <p>Create <span>·</span> Edit <span>·</span> Enhance <span>·</span> Deliver</p>
-          </div>
+          <a class="mobile-brand" href="/" aria-label="Utility OS home"><span class="media-brand-mark">U</span><span>Utility OS</span></a>
+          <div><h1>Media Studio</h1><p>Create <span>·</span> Edit <span>·</span> Enhance <span>·</span> Deliver</p></div>
         </div>
-
         <div class="header-tools">
-          <button class="media-button recipe-button" type="button" data-placeholder-action="Recipes">
-            <span aria-hidden="true">▤</span> Recipes
-          </button>
-          <button class="media-button export-button desktop-only" type="button" disabled title="Export becomes available after a media project exists">
-            <span aria-hidden="true">⇧</span> Export
-          </button>
+          <button class="media-button recipe-button" type="button" data-placeholder-action="Recipes"><span aria-hidden="true">▤</span> Recipes</button>
+          <button class="media-button export-button desktop-only" type="button" disabled title="Export becomes available after editing is implemented"><span aria-hidden="true">⇧</span> Export</button>
         </div>
       </header>
 
       <section class="command-section" aria-labelledby="command-title">
         <h2 id="command-title" class="visually-hidden">Command Assistant</h2>
-        <form class="command-bar" id="command-form">
-          <span class="command-spark" aria-hidden="true">✦</span>
-          <input id="command-input" type="text" autocomplete="off" maxlength="220" placeholder="Tell Utility OS what to do…">
-          <button type="submit" aria-label="Plan command">Plan</button>
-        </form>
+        <form class="command-bar" id="command-form"><span class="command-spark" aria-hidden="true">✦</span><input id="command-input" type="text" autocomplete="off" maxlength="220" placeholder="Tell Utility OS what to do…"><button type="submit" aria-label="Plan command">Plan</button></form>
         <p class="command-example">e.g. “Remove silence, add captions and make a 9:16 reel under 25 MB”</p>
         <div class="command-message" id="command-message" role="status" aria-live="polite"></div>
       </section>
@@ -76,83 +46,47 @@
       <nav class="mobile-category-rail" id="mobile-category-rail" aria-label="Media Studio categories"></nav>
 
       <section class="start-actions" aria-label="Start a media project">
-        <button class="start-card primary-start" type="button" data-placeholder-action="Upload Media">
-          <span class="start-icon">⇧</span>
-          <span><strong>Upload Media</strong><small>Video, audio, images…</small></span>
-        </button>
-        <button class="start-card" type="button" data-placeholder-action="Paste Link">
-          <span class="start-icon">⌁</span>
-          <span><strong>Paste Link</strong><small>Supported providers later</small></span>
-        </button>
-        <button class="start-card" type="button" data-placeholder-action="Open Project">
-          <span class="start-icon">□</span>
-          <span><strong>Open Project</strong><small>Continue where you left off</small></span>
-        </button>
-        <button class="start-card recipe-start" type="button" data-placeholder-action="Use a Recipe">
-          <span class="start-icon">▤</span>
-          <span><strong>Use a Recipe</strong><small>Repeatable workflows</small></span>
-        </button>
+        <button class="start-card primary-start" type="button" data-media-action="upload"><span class="start-icon">⇧</span><span><strong>Upload Media</strong><small>Video or audio · stays local</small></span></button>
+        <button class="start-card" type="button" data-media-action="paste-link"><span class="start-icon">⌁</span><span><strong>Paste Link</strong><small>YouTube or Vimeo · validate only</small></span></button>
+        <button class="start-card" type="button" data-media-action="open-project"><span class="start-icon">□</span><span><strong>Open Project</strong><small>Restore session metadata</small></span></button>
+        <button class="start-card recipe-start" type="button" data-placeholder-action="Use a Recipe"><span class="start-icon">▤</span><span><strong>Use a Recipe</strong><small>Repeatable workflows later</small></span></button>
       </section>
 
       <section class="media-workspace" aria-labelledby="workspace-title">
         <div class="workspace-main">
           <div class="workspace-topline">
-            <div>
-              <p class="workspace-eyebrow">Current workspace</p>
-              <h2 id="workspace-title">Video Editor</h2>
-            </div>
-            <span class="shell-badge">UI shell</span>
+            <div><p class="workspace-eyebrow">Current workspace</p><h2 id="workspace-title">Video Editor</h2></div>
+            <span class="shell-badge" id="project-badge">No project</span>
           </div>
 
-          <div class="empty-stage">
-            <div class="empty-visual" aria-hidden="true">
-              <span class="empty-frame"></span>
-              <span class="empty-play">▶</span>
-            </div>
+          <div class="empty-stage" id="empty-stage">
+            <div class="empty-visual" aria-hidden="true"><span class="empty-frame"></span><span class="empty-play">▶</span></div>
             <h3 id="empty-title">Start with your media</h3>
-            <p id="empty-copy">Upload or open a project to begin. Your media will stay in one shared workspace as you move between Media Studio tools.</p>
-            <div class="empty-actions">
-              <button class="media-button empty-primary" type="button" data-placeholder-action="Upload Media">Upload Media</button>
-              <button class="media-button" type="button" data-placeholder-action="Open Project">Open Project</button>
-            </div>
-            <p class="phase-note" id="phase-note">Step 1 is interface-only. Processing is intentionally not enabled yet.</p>
+            <p id="empty-copy">Upload a local video or audio file. The same source stays available as you move between Media Studio sections.</p>
+            <div class="empty-actions"><button class="media-button empty-primary" type="button" data-media-action="upload">Upload Media</button><button class="media-button" type="button" data-media-action="paste-link">Paste Link</button></div>
+            <p class="phase-note" id="phase-note">Step 2 adds secure source ingestion only. No editing or transcription is enabled yet.</p>
+          </div>
+
+          <div class="source-stage hidden" id="source-stage">
+            <div class="source-player-wrap" id="source-player-wrap"></div>
+            <div class="source-caption"><div><strong id="source-name"></strong><span id="source-summary"></span></div><button class="media-button" type="button" data-media-action="upload">Replace source</button></div>
+            <p class="phase-note source-note" id="source-note">Source ready.</p>
           </div>
 
           <div class="timeline-shell" aria-hidden="true">
-            <div class="timeline-toolbar">
-              <span>Timeline</span>
-              <span>00:00:00</span>
-            </div>
-            <div class="timeline-track">
-              <span class="track-label">Video</span>
-              <span class="track-placeholder"></span>
-            </div>
-            <div class="timeline-track">
-              <span class="track-label">Audio</span>
-              <span class="track-placeholder audio-placeholder"></span>
-            </div>
-            <div class="timeline-track">
-              <span class="track-label">Captions</span>
-              <span class="track-placeholder caption-placeholder"></span>
-            </div>
+            <div class="timeline-toolbar"><span>Timeline</span><span>Editing not enabled</span></div>
+            <div class="timeline-track"><span class="track-label">Video</span><span class="track-placeholder"></span></div>
+            <div class="timeline-track"><span class="track-label">Audio</span><span class="track-placeholder audio-placeholder"></span></div>
+            <div class="timeline-track"><span class="track-label">Captions</span><span class="track-placeholder caption-placeholder"></span></div>
           </div>
         </div>
 
         <aside class="context-panel" aria-label="Contextual tools">
-          <div class="context-tabs">
-            <button class="active" type="button">Quick Actions</button>
-            <button type="button" disabled>Media Info</button>
-          </div>
-          <div class="context-empty">
-            <span class="context-icon" aria-hidden="true">◇</span>
-            <strong>No media loaded</strong>
-            <p>Contextual controls appear here after a project is opened.</p>
-          </div>
+          <div class="context-tabs"><button class="active" type="button">Quick Actions</button><button type="button" disabled>Media Info</button></div>
+          <div class="context-empty" id="context-empty"><span class="context-icon" aria-hidden="true">◇</span><strong>No media loaded</strong><p>Securely load a local source to inspect basic media metadata.</p></div>
+          <div class="media-info-panel hidden" id="media-info-panel"></div>
           <div class="context-recipes">
-            <div class="context-heading">
-              <strong>Recipes</strong>
-              <button type="button" data-placeholder-action="Recipes">View all</button>
-            </div>
+            <div class="context-heading"><strong>Recipes</strong><button type="button" data-placeholder-action="Recipes">View all</button></div>
             <div class="recipe-row"><span>▶</span><div><strong>YouTube Ready</strong><small>Delivery preset</small></div></div>
             <div class="recipe-row"><span>▯</span><div><strong>Instagram Reel</strong><small>9:16 social output</small></div></div>
             <div class="recipe-row"><span>◉</span><div><strong>Podcast Clean</strong><small>Dialogue workflow</small></div></div>
@@ -160,20 +94,27 @@
         </aside>
       </section>
 
-      <footer class="media-statusbar">
-        <span><i class="status-dot"></i> Local-first shell ready</span>
-        <span>No processing engines loaded</span>
-      </footer>
+      <footer class="media-statusbar"><span><i class="status-dot"></i> <span id="status-primary">Secure ingestion ready</span></span><span>No FFmpeg · No Whisper · No backend</span></footer>
     </main>
   </div>
 
   <nav class="mobile-bottom-nav" aria-label="Utility OS navigation">
     <a href="/"><span>⌂</span><small>Home</small></a>
     <a class="active" href="/media"><span>▣</span><small>Media Studio</small></a>
-    <button type="button" data-placeholder-action="Projects"><span>□</span><small>Projects</small></button>
+    <button type="button" data-media-action="open-project"><span>□</span><small>Projects</small></button>
     <button type="button" data-placeholder-action="Media Library"><span>▱</span><small>Library</small></button>
     <button type="button" data-placeholder-action="Recipes"><span>▤</span><small>Recipes</small></button>
   </nav>
+
+  <dialog class="media-dialog" id="link-dialog" aria-labelledby="link-dialog-title">
+    <form id="link-form">
+      <div class="dialog-heading"><div><p class="workspace-eyebrow">Safe URL input</p><h2 id="link-dialog-title">Paste media link</h2></div><button id="link-cancel" class="dialog-close" type="button" aria-label="Close">×</button></div>
+      <p>Step 2 only validates and stores the reference locally. It does not fetch the remote media.</p>
+      <label class="dialog-field">YouTube or Vimeo URL<input id="media-link-input" type="url" inputmode="url" autocomplete="off" placeholder="https://www.youtube.com/watch?v=…" required></label>
+      <div class="link-error" id="link-error" role="alert"></div>
+      <button class="media-button empty-primary dialog-submit" type="submit">Validate link</button>
+    </form>
+  </dialog>
 
   <script type="module" src="/assets/media.js"></script>
 </body>
