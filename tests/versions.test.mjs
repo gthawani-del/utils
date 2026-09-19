@@ -136,3 +136,52 @@ test('delete protects Original, current branch bases and parent lineage', () => 
   assert.equal(leaf.state.versions.length, 1);
   assert.equal(leaf.state.activeVersionId, null);
 });
+
+
+import {
+  compareReference,
+  durationSyncMode,
+  equivalentCompareTime,
+  measuredAspect,
+  measuredComparison
+} from '../lib/media/compare/model.js';
+
+test('duration-aware comparison uses absolute sync only when durations genuinely match', () => {
+  assert.equal(durationSyncMode(60, 60.2), 'absolute');
+  assert.equal(durationSyncMode(60, 45), 'relative');
+  assert.equal(durationSyncMode(null, 45), 'unavailable');
+  assert.equal(equivalentCompareTime(30, 60, 45), 22.5);
+  assert.equal(equivalentCompareTime(30, 60, 60.1), 30);
+});
+
+test('parent comparison resolves only an actual previous Version', () => {
+  const versions = [
+    { id: 'v1', parentVersionId: 'original', status: 'ready', name: 'V1' },
+    { id: 'v2', parentVersionId: 'v1', status: 'ready', name: 'V2' }
+  ];
+  assert.equal(compareReference(versions[1], versions, 'parent').id, 'v1');
+  assert.equal(compareReference(versions[0], versions, 'parent').type, 'original');
+});
+
+test('measured comparison reports actual metadata and only recorded operations', () => {
+  const comparison = measuredComparison(
+    { duration: 60, bytes: 1000, width: 1920, height: 1080, container: 'mp4' },
+    {
+      outputDuration: 30,
+      outputBytes: 700,
+      outputWidth: 1080,
+      outputHeight: 1920,
+      outputFormat: 'webm',
+      operations: [
+        { type: 'video-trim', label: 'Video trim' },
+        { type: 'resize-aspect', label: 'Fit to 9:16' }
+      ]
+    }
+  );
+  assert.equal(comparison.original.aspect, '16:9');
+  assert.equal(comparison.result.aspect, '9:16');
+  assert.equal(comparison.durationDelta, -30);
+  assert.equal(comparison.bytesDelta, -300);
+  assert.deepEqual(comparison.operations.map((item) => item.type), ['video-trim', 'resize-aspect']);
+  assert.equal(measuredAspect(1000, 1000), '1:1');
+});
