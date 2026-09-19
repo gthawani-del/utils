@@ -954,3 +954,91 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
   user-select: none;
   touch-action: manipulation;
 }
+
+@media (max-width:700px) {
+  /* Keep the source image dominant while adding a watermark. Controls scroll within the compact sheet. */
+  body[data-mobile-tool="watermark"].mobile-editing {
+    --mobile-sheet-height: 238px;
+  }
+  body[data-mobile-tool="watermark"].mobile-editing .watermark-section {
+    padding: 6px 12px 10px;
+  }
+  body[data-mobile-tool="watermark"].mobile-editing .watermark-section > .section-inline-heading {
+    min-height: 30px;
+    margin-bottom: 5px;
+  }
+  body[data-mobile-tool="watermark"].mobile-editing .watermark-section > .section-inline-heading h3 {
+    font-size: 19px;
+  }
+  body[data-mobile-tool="watermark"].mobile-editing .watermark-controls {
+    gap: 7px;
+  }
+  body[data-mobile-tool="watermark"].mobile-editing .watermark-subsection {
+    padding: 8px;
+  }
+  body[data-mobile-tool="watermark"].mobile-editing .watermark-section .form-grid {
+    gap: 6px;
+  }
+
+  body[data-mobile-tool="watermarkremove"].mobile-editing {
+    --mobile-sheet-height: 218px;
+  }
+  body[data-mobile-tool="watermarkremove"].mobile-editing .cleanup-section {
+    display: block !important;
+    padding: 7px 12px 9px;
+  }
+  body[data-mobile-tool="watermarkremove"].mobile-editing .cleanup-section > .section-inline-heading {
+    display: none;
+  }
+  body[data-mobile-tool="watermarkremove"].mobile-editing .mobile-canvas-shell {
+    visibility: hidden;
+  }
+  body[data-mobile-tool="watermarkremove"].mobile-editing .cleanup-workspace {
+    display: block;
+  }
+  body[data-mobile-tool="watermarkremove"].mobile-editing .cleanup-canvas-shell {
+    position: fixed;
+    z-index: 25;
+    top: 54px;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--mobile-dock-height) + var(--mobile-sheet-height));
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    background: #e8eaee;
+    padding: 12px;
+  }
+  body[data-mobile-tool="watermarkremove"].mobile-editing .cleanup-canvas {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  body[data-mobile-tool="watermarkremove"].mobile-editing .cleanup-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  body[data-mobile-tool="watermarkremove"].mobile-editing .cleanup-actions {
+    grid-template-columns: repeat(4,minmax(0,1fr));
+    gap: 5px;
+  }
+  body[data-mobile-tool="watermarkremove"].mobile-editing .cleanup-actions button {
+    min-width: 0;
+    padding: 8px 4px;
+    font-size: 10px;
+  }
+  body[data-mobile-tool="watermarkremove"].mobile-editing .cleanup-controls > .microcopy {
+    display: none;
+  }
+  body[data-mobile-tool="watermarkremove"].mobile-editing .cleanup-mode-hint {
+    display: block;
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.25;
+    color: var(--muted);
+  }
+}

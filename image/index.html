@@ -176,6 +176,7 @@
             <div class="cleanup-workspace">
               <div class="cleanup-canvas-shell"><canvas id="cleanup-canvas" width="900" height="520" aria-label="Cleanup mask editor"></canvas><div id="cleanup-empty" class="cleanup-empty">Select a raster image to paint a cleanup mask.</div></div>
               <div class="cleanup-controls">
+                <p id="cleanup-mode-hint" class="cleanup-mode-hint hidden">Brush only over a watermark you are authorized to remove. Best on simple backgrounds; complex textures may vary.</p>
                 <label>Brush size <output id="cleanup-brush-value">36</output> px<input id="cleanup-brush" type="range" min="6" max="120" value="36"></label>
                 <div class="cleanup-actions"><button class="secondary-button" id="cleanup-undo-stroke" type="button" disabled>Undo stroke</button><button class="secondary-button" id="cleanup-clear-mask" type="button" disabled>Clear mask</button><button class="primary-button" id="cleanup-apply" type="button" disabled>Remove selected area</button><button class="secondary-button" id="cleanup-undo" type="button" disabled>Undo cleanup</button></div>
                 <p class="microcopy">Mask preview is shown in red. Cleanup is non-destructive: the original file remains untouched and the mask is applied only during preview/export.</p>
@@ -318,7 +319,8 @@
             <div class="mobile-more-grid">
               <button type="button" data-mobile-more-target="replace"><span>↔</span><strong>Replace Text</strong></button>
               <button type="button" data-mobile-more-target="design"><span>□</span><strong>Design</strong></button>
-              <button type="button" data-mobile-more-target="watermark"><span>W</span><strong>Watermark</strong></button>
+              <button type="button" data-mobile-more-target="watermark"><span>W</span><strong>Add Watermark</strong></button>
+              <button type="button" data-mobile-more-target="watermarkremove"><span>⌫</span><strong>Remove Watermark</strong></button>
               <button type="button" data-mobile-more-target="compiler"><span>▦</span><strong>Compiler</strong></button>
               <button type="button" data-mobile-more-target="assetdoctor"><span>✓</span><strong>Asset Doctor</strong></button>
               <button type="button" data-mobile-more-target="webpack"><span>&lt;/&gt;</span><strong>Web Pack</strong></button>
