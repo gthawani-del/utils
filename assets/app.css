@@ -163,6 +163,9 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
 .cleanup-controls { display: grid; gap: 16px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
 .cleanup-actions { display: grid; gap: 8px; }
 
+
+.mobile-editor-chrome, .mobile-tool-dock, .mobile-sheet-header { display: none; }
+
 .hidden { display: none !important; }
 .visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 @media (max-width: 980px) {
@@ -175,6 +178,43 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
 }
 @media (max-width: 700px) {
   .site-header { padding-inline: 14px; }
+  body.mobile-editing { height: 100dvh; overflow: hidden; background: #eef0f3; }
+  body.mobile-editing .site-header, body.mobile-editing .studio-heading, body.mobile-editing #drop-zone, body.mobile-editing .file-panel, body.mobile-editing .preview-grid, body.mobile-editing .comparison-card, body.mobile-editing #jpeg-warning, body.mobile-editing #upscale-warning { display: none !important; }
+  body.mobile-editing .studio-shell { width: 100%; height: 100dvh; padding: 0; margin: 0; }
+  body.mobile-editing .workspace { display: block; height: 100dvh; margin: 0; }
+  body.mobile-editing .editor-panel { height: 100dvh; min-width: 0; }
+  body.mobile-editing .mobile-editor-chrome { display: flex; position: fixed; inset: 0 0 78px 0; z-index: 15; flex-direction: column; background: #eef0f3; }
+  .mobile-editor-topbar { min-height: 62px; display: flex; align-items: center; gap: 8px; padding: max(8px, env(safe-area-inset-top)) 12px 8px; background: rgba(255,255,255,.96); border-bottom: 1px solid rgba(19,22,27,.08); }
+  .mobile-history-actions { display: flex; gap: 6px; }
+  .mobile-topbar-spacer { flex: 1; }
+  .mobile-round-button, .mobile-pill-button { min-width: 42px; min-height: 42px; border: 0; border-radius: 999px; background: #fff; color: var(--text); font-weight: 760; box-shadow: 0 1px 0 rgba(16,24,40,.08); }
+  .mobile-round-button { font-size: 24px; }
+  .mobile-pill-button { padding: 0 14px; font-size: 12px; }
+  .mobile-pill-button.emphasis { background: var(--accent); color: #fff; }
+  .mobile-canvas-shell { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; padding: 12px; background: #e8eaee; }
+  .mobile-canvas-shell img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; box-shadow: 0 8px 32px rgba(16,24,40,.12); }
+  .mobile-canvas-shell > span:not(.mobile-canvas-status) { color: var(--muted); font-size: 13px; }
+  .mobile-canvas-status { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 7px 10px; border-radius: 999px; background: rgba(17,24,39,.82); color: #fff; font-size: 11px; }
+  .mobile-batch-chip { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 3; border: 1px solid rgba(17,24,39,.1); border-radius: 999px; background: rgba(255,255,255,.94); padding: 7px 11px; font-weight: 750; font-size: 11px; }
+  body.mobile-editing .control-card { position: fixed; left: 0; right: 0; bottom: 78px; z-index: 40; max-height: min(43dvh, 430px); margin: 0; overflow-y: auto; overscroll-behavior: contain; border: 0; border-top: 1px solid var(--border); border-radius: 22px 22px 0 0; box-shadow: 0 -12px 40px rgba(16,24,40,.12); background: #fff; }
+  body.mobile-editing .control-card > .control-header, body.mobile-editing .control-card > .control-section, body.mobile-editing .control-card > .advanced, body.mobile-editing .control-card > .action-row { display: none; }
+  body.mobile-editing .mobile-sheet-header { position: sticky; top: 0; z-index: 3; display: grid; place-items: center; gap: 5px; min-height: 48px; padding: 7px 16px 10px; background: rgba(255,255,255,.96); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); }
+  .mobile-sheet-handle { width: 38px; height: 4px; border-radius: 99px; background: #d3d6db; }
+  body[data-mobile-tool="adjust"].mobile-editing .edit-section, body[data-mobile-tool="crop"].mobile-editing .crop-section, body[data-mobile-tool="cleanup"].mobile-editing .cleanup-section, body[data-mobile-tool="design"].mobile-editing .design-section, body[data-mobile-tool="watermark"].mobile-editing .watermark-section, body[data-mobile-tool="export"].mobile-editing .export-section { display: block; }
+  body.mobile-editing .control-section { border-bottom: 0; padding: 14px 16px 18px; }
+  body.mobile-editing .mobile-tool-dock { position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; display: flex; align-items: stretch; gap: 2px; height: 78px; padding: 7px 8px max(7px, env(safe-area-inset-bottom)); background: rgba(255,255,255,.97); border-top: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+  .mobile-tool-dock::-webkit-scrollbar { display: none; }
+  .mobile-tool-button { flex: 1 0 62px; min-width: 62px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); display: grid; place-items: center; align-content: center; gap: 3px; }
+  .mobile-tool-button span { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; font-size: 16px; font-weight: 800; }
+  .mobile-tool-button small { font-size: 10px; font-weight: 720; }
+  .mobile-tool-button.active { color: var(--text); }
+  .mobile-tool-button.active span { background: var(--surface-2); }
+  .mobile-tool-button[data-mobile-tool="export"] { color: var(--text); }
+  body.mobile-editing .section-inline-heading { flex-direction: row; }
+  body.mobile-editing .edit-groups, body.mobile-editing .cleanup-workspace, body.mobile-editing .layer-workspace { grid-template-columns: 1fr; }
+  body.mobile-editing .form-grid, body.mobile-editing .edit-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  body.mobile-editing .action-row { padding: 14px 16px 18px; }
+
   .local-badge { display: none; }
   .home-shell, .studio-shell { width: min(100% - 20px, 1320px); }
   .home-shell { padding-top: 52px; }

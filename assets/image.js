@@ -10,7 +10,7 @@ import { normalizeCleanup } from '/lib/image/cleanup.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
-const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, previewTimer: 0, previewAbort: null };
+const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileShowOriginal: false, redoHistory: [], previewTimer: 0, previewAbort: null };
 const $ = (selector) => document.querySelector(selector);
 const els = {
   input: $('#file-input'), choose: $('#choose-files'), add: $('#add-more'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'),
@@ -25,7 +25,8 @@ const els = {
   layerText: $('#layer-text'), layerFont: $('#layer-font'), layerFontSize: $('#layer-font-size'), layerFontWeight: $('#layer-font-weight'), layerAlign: $('#layer-align'), layerColor: $('#layer-color'), layerLetterSpacing: $('#layer-letter-spacing'), layerLineSpacing: $('#layer-line-spacing'), layerStrokeWidth: $('#layer-stroke-width'), layerStrokeColor: $('#layer-stroke-color'), layerShadowEnabled: $('#layer-shadow-enabled'), layerShadowColor: $('#layer-shadow-color'), layerShadowBlur: $('#layer-shadow-blur'), layerShadowX: $('#layer-shadow-x'), layerShadowY: $('#layer-shadow-y'), layerBgEnabled: $('#layer-bg-enabled'), layerBgColor: $('#layer-bg-color'),
   layerFill: $('#layer-fill'), layerFill2: $('#layer-fill-2'), layerGradient: $('#layer-gradient'), layerGradientAngle: $('#layer-gradient-angle'), shapeStrokeColor: $('#shape-stroke-color'), shapeStrokeWidth: $('#shape-stroke-width'), layerX: $('#layer-x'), layerY: $('#layer-y'), layerWidth: $('#layer-width'), layerHeight: $('#layer-height'), layerRotation: $('#layer-rotation'), layerOpacity: $('#layer-opacity'),
   watermarkEnabled: $('#watermark-enabled'), watermarkControls: $('#watermark-controls'), watermarkType: $('#watermark-type'), watermarkPosition: $('#watermark-position'), watermarkOpacity: $('#watermark-opacity'), watermarkRotation: $('#watermark-rotation'), watermarkMargin: $('#watermark-margin'), watermarkTiled: $('#watermark-tiled'), watermarkTileGap: $('#watermark-tile-gap'), watermarkCustomPosition: $('#watermark-custom-position'), watermarkX: $('#watermark-x'), watermarkY: $('#watermark-y'), watermarkTextFields: $('#watermark-text-fields'), watermarkImageFields: $('#watermark-image-fields'), watermarkText: $('#watermark-text'), watermarkFont: $('#watermark-font'), watermarkFontSize: $('#watermark-font-size'), watermarkColor: $('#watermark-color'), watermarkLogoInput: $('#watermark-logo-input'), chooseWatermarkLogo: $('#choose-watermark-logo'), watermarkLogoName: $('#watermark-logo-name'), watermarkLogoWidth: $('#watermark-logo-width'),
-  cleanupCanvas: $('#cleanup-canvas'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo')
+  cleanupCanvas: $('#cleanup-canvas'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo'),
+  mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileRevert: $('#mobile-revert'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')]
 };
 
 initialize();
@@ -43,7 +44,7 @@ function initialize() {
   }
   wireEvents();
   updateConditionalControls();
-  renderLayerList(); renderLayerProperties(); updateWatermarkConditional();
+  renderLayerList(); renderLayerProperties(); updateWatermarkConditional(); setMobileMode('adjust'); syncMobileEditingState();
 }
 
 function wireEvents() {
@@ -83,6 +84,15 @@ function wireEvents() {
   els.cleanupBrush.addEventListener('input', () => { els.cleanupBrushValue.textContent = els.cleanupBrush.value; });
   els.cleanupCanvas.addEventListener('pointerdown', beginCleanupStroke); els.cleanupCanvas.addEventListener('pointermove', continueCleanupStroke); els.cleanupCanvas.addEventListener('pointerup', endCleanupStroke); els.cleanupCanvas.addEventListener('pointercancel', endCleanupStroke);
   els.cleanupUndoStroke.addEventListener('click', undoCleanupStroke); els.cleanupClearMask.addEventListener('click', clearCleanupMask); els.cleanupApply.addEventListener('click', applyCleanupMask); els.cleanupUndo.addEventListener('click', undoCleanupApplication);
+  for (const button of els.mobileToolButtons) button.addEventListener('click', () => setMobileMode(button.dataset.mobileTool));
+  els.mobileExit.addEventListener('click', exitMobileEditor);
+  els.mobileUndo.addEventListener('click', undoEdit);
+  els.mobileRedo.addEventListener('click', redoEdit);
+  els.mobileRevert.addEventListener('click', () => { resetToOriginal(); renderSelected(); });
+  for (const type of ['pointerdown','keydown']) els.mobileCompare.addEventListener(type, (event) => { if (type === 'keydown' && ![' ','Enter'].includes(event.key)) return; state.mobileShowOriginal = true; renderMobileCanvas(selectedItem()); });
+  for (const type of ['pointerup','pointercancel','pointerleave','keyup']) els.mobileCompare.addEventListener(type, () => { state.mobileShowOriginal = false; renderMobileCanvas(selectedItem()); });
+  els.mobileBatchChip.addEventListener('click', () => document.querySelector('.file-panel')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+  window.addEventListener('resize', syncMobileEditingState);
   window.addEventListener('pagehide', () => { state.previewAbort?.abort(); cleanupUrls(); });
 }
 
@@ -121,7 +131,7 @@ async function addFiles(files) {
     const firstReady = state.items.find((item) => item.status === 'ready');
     if (firstReady) selectItem(firstReady.id, true);
   }
-  renderList(); renderSelected();
+  renderList(); renderSelected(); syncMobileEditingState();
 }
 
 function makeRejectedItem(file, reason) {
@@ -172,6 +182,7 @@ function renderSelected() {
     els.outputPreview.textContent = item.status === 'processing' ? 'Processing…' : (item.error && item.status !== 'ready' ? item.error : 'Process to preview');
   }
   renderComparison(item);
+  renderMobileCanvas(item);
   renderCleanupEditor(item);
   updateWarnings(); updateButtons();
 }
@@ -198,7 +209,7 @@ function resetToOriginal() {
   els.preset.value = 'custom'; els.resizeMode.value = 'fit'; els.width.value = item.inspect.dimensions.width; els.height.value = item.inspect.dimensions.height; els.percentage.value = 100; els.longest.value = Math.max(item.inspect.dimensions.width, item.inspect.dimensions.height); els.shortest.value = Math.min(item.inspect.dimensions.width, item.inspect.dimensions.height);
   els.preserveAspect.checked = true; els.cropMode.value = 'none'; els.cropX.value = 0; els.cropY.value = 0; els.cropWidth.value = item.inspect.dimensions.width; els.cropHeight.value = item.inspect.dimensions.height;
   els.format.value = item.inspect.kind === 'svg' ? 'png' : item.inspect.kind; els.quality.value = 82; els.qualityValue.textContent = '82'; els.targetSize.value = ''; els.rotate.value = 0; els.flipX.checked = false; els.flipY.checked = false;
-  applyEditsToControls(DEFAULT_EDITS); state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.lastCommittedGeometry = { rotate: 0, flipX: false, flipY: false }; updateUndoButton();
+  applyEditsToControls(DEFAULT_EDITS); state.editHistory = []; state.redoHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.lastCommittedGeometry = { rotate: 0, flipX: false, flipY: false }; updateUndoButton();
   state.layers = []; state.selectedLayerId = null; renderLayerList(); renderLayerProperties(); resetWatermarkControls();
   item.cleanupStrokes = []; item.cleanupApplied = false; renderCleanupEditor(item);
   if (item.editPreviewUrl) { revokeObjectUrl(item.editPreviewUrl); item.editPreviewUrl = ''; item.editPreviewBlob = null; }
@@ -313,7 +324,7 @@ async function downloadAll() {
 function triggerDownload(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.rel = 'noopener'; document.body.append(a); a.click(); a.remove(); }
 
 async function clearAll() {
-  state.previewAbort?.abort(); clearTimeout(state.previewTimer); runner.terminateAll(); cleanupUrls(); state.items = []; state.selectedId = null; state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.layers = []; state.selectedLayerId = null; state.watermarkLogoFile = null; renderLayerList(); renderLayerProperties(); resetWatermarkControls(); await clearWorkspace(); els.workspace.classList.add('hidden'); els.list.replaceChildren(); els.input.value = ''; els.clear.textContent = 'Workspace cleared'; setTimeout(() => { els.clear.textContent = 'Clear workspace'; }, 1600);
+  state.previewAbort?.abort(); clearTimeout(state.previewTimer); runner.terminateAll(); cleanupUrls(); state.items = []; state.selectedId = null; state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.layers = []; state.selectedLayerId = null; state.watermarkLogoFile = null; state.redoHistory = []; renderLayerList(); renderLayerProperties(); resetWatermarkControls(); await clearWorkspace(); els.workspace.classList.add('hidden'); els.list.replaceChildren(); els.input.value = ''; syncMobileEditingState(); els.clear.textContent = 'Workspace cleared'; setTimeout(() => { els.clear.textContent = 'Clear workspace'; }, 1600);
 }
 
 function cleanupUrls() { for (const item of state.items) { revokeObjectUrl(item.originalUrl); revokeObjectUrl(item.outputUrl); revokeObjectUrl(item.editPreviewUrl); item.originalUrl = ''; item.outputUrl = ''; item.editPreviewUrl = ''; } }
@@ -415,6 +426,7 @@ function commitEditChange() {
   const lastGeometry = state.lastCommittedGeometry || { rotate: 0, flipX: false, flipY: false };
   if (!editsEqual(current, state.lastCommittedEdits) || JSON.stringify(geometry) !== JSON.stringify(lastGeometry)) {
     state.editHistory.push({ edits: state.lastCommittedEdits, geometry: lastGeometry });
+    state.redoHistory = [];
     if (state.editHistory.length > 30) state.editHistory.shift();
     state.lastCommittedEdits = current; state.lastCommittedGeometry = geometry;
   }
@@ -424,9 +436,19 @@ function commitEditChange() {
 function undoEdit() {
   const previous = state.editHistory.pop();
   if (!previous) return;
+  state.redoHistory.push({ edits: collectEdits(), geometry: { rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked } });
   applyEditsToControls(previous.edits);
   els.rotate.value = previous.geometry.rotate; els.flipX.checked = previous.geometry.flipX; els.flipY.checked = previous.geometry.flipY;
   state.lastCommittedEdits = normalizeEdits(previous.edits); state.lastCommittedGeometry = { ...previous.geometry };
+  updateUndoButton(); scheduleEditPreview(20);
+}
+
+function redoEdit() {
+  const next = state.redoHistory.pop();
+  if (!next) return;
+  state.editHistory.push({ edits: collectEdits(), geometry: { rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked } });
+  applyEditsToControls(next.edits); els.rotate.value = next.geometry.rotate; els.flipX.checked = next.geometry.flipX; els.flipY.checked = next.geometry.flipY;
+  state.lastCommittedEdits = normalizeEdits(next.edits); state.lastCommittedGeometry = { ...next.geometry };
   updateUndoButton(); scheduleEditPreview(20);
 }
 
@@ -442,7 +464,7 @@ function resetEdits() {
   updateUndoButton(); scheduleEditPreview(20);
 }
 
-function updateUndoButton() { els.undoEdit.disabled = state.editHistory.length === 0; }
+function updateUndoButton() { const noUndo = state.editHistory.length === 0; els.undoEdit.disabled = noUndo; if (els.mobileUndo) els.mobileUndo.disabled = noUndo; if (els.mobileRedo) els.mobileRedo.disabled = state.redoHistory.length === 0; }
 
 function scheduleEditPreview(delay = 260) {
   clearTimeout(state.previewTimer);
@@ -454,7 +476,7 @@ async function previewSelectedEdits() {
   if (!item?.inspect || state.busy || !item.originalUrl) { els.editComparison.classList.add('hidden'); return; }
   state.previewAbort?.abort();
   const controller = new AbortController(); state.previewAbort = controller;
-  els.previewStatus.textContent = 'Rendering preview…';
+  els.previewStatus.textContent = 'Rendering preview…'; if (els.mobileCanvasStatus) els.mobileCanvasStatus.classList.remove('hidden');
   try {
     const settings = collectSettings(); settings.targetBytes = 0; settings.format = 'png'; settings.previewMaxEdge = 1400; settings.cleanup = cleanupForItem(item);
     const payload = await createProcessingPayload('preview', item, settings);
@@ -464,8 +486,8 @@ async function previewSelectedEdits() {
     if (item.editPreviewUrl) revokeObjectUrl(item.editPreviewUrl);
     item.editPreviewBlob = new Blob([result.value.buffer], { type: result.value.mime });
     item.editPreviewUrl = trackObjectUrl(item.editPreviewBlob);
-    renderComparison(item); els.previewStatus.textContent = 'Preview ready';
-  } catch { if (!controller.signal.aborted) els.previewStatus.textContent = 'Preview unavailable'; }
+    renderComparison(item); renderMobileCanvas(item); els.previewStatus.textContent = 'Preview ready'; if (els.mobileCanvasStatus) els.mobileCanvasStatus.classList.add('hidden');
+  } catch { if (!controller.signal.aborted) els.previewStatus.textContent = 'Preview unavailable'; if (els.mobileCanvasStatus) els.mobileCanvasStatus.classList.add('hidden'); }
 }
 
 function renderComparison(item) {
@@ -479,6 +501,33 @@ function updateComparisonPosition() {
   els.comparisonValue.textContent = String(value);
   els.comparisonOverlay.style.clipPath = `inset(0 ${100 - value}% 0 0)`;
   els.comparisonDivider.style.left = value + '%';
+}
+
+function setMobileMode(mode) {
+  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean Up', design:'Text & Design', watermark:'Watermark', export:'Export' };
+  state.mobileMode = labels[mode] ? mode : 'adjust';
+  document.body.dataset.mobileTool = state.mobileMode;
+  if (els.mobileSheetTitle) els.mobileSheetTitle.textContent = labels[state.mobileMode];
+  for (const button of els.mobileToolButtons || []) button.classList.toggle('active', button.dataset.mobileTool === state.mobileMode);
+}
+
+function syncMobileEditingState() {
+  const mobile = window.matchMedia('(max-width: 700px)').matches;
+  document.body.classList.toggle('mobile-editing', mobile && state.items.some((item) => item.inspect));
+  const count = state.items.filter((item) => item.inspect).length;
+  if (els.mobileBatchChip) { els.mobileBatchChip.textContent = `${count} image${count === 1 ? '' : 's'}`; els.mobileBatchChip.classList.toggle('hidden', count < 2); }
+}
+
+function exitMobileEditor() {
+  document.body.classList.remove('mobile-editing');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderMobileCanvas(item) {
+  if (!els.mobileCanvasImage || !els.mobileCanvasEmpty) return;
+  const src = state.mobileShowOriginal ? item?.originalUrl : (item?.editPreviewUrl || item?.outputUrl || item?.originalUrl);
+  if (!src) { els.mobileCanvasImage.removeAttribute('src'); els.mobileCanvasImage.classList.add('hidden'); els.mobileCanvasEmpty.classList.remove('hidden'); return; }
+  els.mobileCanvasImage.src = src; els.mobileCanvasImage.classList.remove('hidden'); els.mobileCanvasEmpty.classList.add('hidden');
 }
 
 function showCompatibility(message) { els.compatibility.textContent = message; els.compatibility.classList.remove('hidden'); }

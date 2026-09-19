@@ -35,6 +35,25 @@
       </aside>
 
       <section class="editor-panel" aria-label="Image editor">
+        <section class="mobile-editor-chrome" aria-label="Mobile image editor">
+          <div class="mobile-editor-topbar">
+            <button class="mobile-round-button" id="mobile-exit-editor" type="button" aria-label="Back to Image Studio">‹</button>
+            <div class="mobile-history-actions" role="group" aria-label="Edit history">
+              <button class="mobile-round-button" id="mobile-undo-edit" type="button" aria-label="Undo" disabled>↶</button>
+              <button class="mobile-round-button" id="mobile-redo-edit" type="button" aria-label="Redo" disabled>↷</button>
+            </div>
+            <div class="mobile-topbar-spacer"></div>
+            <button class="mobile-pill-button" id="mobile-compare" type="button">Original</button>
+            <button class="mobile-pill-button emphasis" id="mobile-revert" type="button">Revert</button>
+          </div>
+          <div class="mobile-canvas-shell" id="mobile-canvas-shell">
+            <img id="mobile-canvas-image" alt="Selected image editing canvas">
+            <span id="mobile-canvas-empty">Select an image</span>
+            <span id="mobile-canvas-status" class="mobile-canvas-status hidden">Rendering…</span>
+          </div>
+          <button class="mobile-batch-chip hidden" id="mobile-batch-chip" type="button">1 image</button>
+        </section>
+
         <div class="preview-grid">
           <article class="preview-card"><div class="preview-label">Original</div><div class="preview-stage" id="original-preview"><span>Select an image</span></div><dl id="original-stats" class="stats"></dl></article>
           <article class="preview-card"><div class="preview-label">Output</div><div class="preview-stage" id="output-preview"><span>Process to preview</span></div><dl id="output-stats" class="stats"></dl></article>
@@ -54,11 +73,12 @@
         <div id="upscale-warning" class="notice warning hidden">Upscaling increases dimensions but cannot create genuine missing detail.</div>
 
         <div class="control-card">
+          <div class="mobile-sheet-header"><span class="mobile-sheet-handle" aria-hidden="true"></span><strong id="mobile-sheet-title">Adjust</strong></div>
           <div class="control-header"><div><p class="eyebrow">Configure</p><h2>Output settings</h2></div><button class="text-button" id="reset-settings" type="button">Reset to Original</button></div>
 
-          <div class="control-section"><h3>Preset</h3><div class="form-row"><label>Preset<select id="preset"><option value="custom">Custom</option></select></label></div></div>
+          <div class="control-section preset-section export-section"><h3>Preset</h3><div class="form-row"><label>Preset<select id="preset"><option value="custom">Custom</option></select></label></div></div>
 
-          <div class="control-section"><h3>Resize</h3><div class="form-grid">
+          <div class="control-section resize-section export-section"><h3>Resize</h3><div class="form-grid">
             <label>Mode<select id="resize-mode"><option value="fit">Fit</option><option value="fill">Fill</option><option value="contain">Contain</option><option value="percentage">Percentage</option><option value="longest">Longest edge</option><option value="shortest">Shortest edge</option></select></label>
             <label>Width<input id="width" type="number" min="1" max="12000" inputmode="numeric"></label>
             <label>Height<input id="height" type="number" min="1" max="12000" inputmode="numeric"></label>
@@ -67,7 +87,7 @@
             <label id="shortest-wrap" class="hidden">Shortest edge<input id="shortest-edge" type="number" min="1" max="12000" value="1080"></label>
           </div><label class="check-row"><input id="preserve-aspect" type="checkbox" checked> Preserve aspect ratio</label></div>
 
-          <div class="control-section"><h3>Crop</h3><div class="form-grid">
+          <div class="control-section crop-section"><h3>Crop</h3><div class="form-grid">
             <label>Crop<select id="crop-mode"><option value="none">None</option><option value="free">Free</option><option value="ratio">1:1</option><option value="ratio-4-5">4:5</option><option value="ratio-16-9">16:9</option><option value="ratio-9-16">9:16</option><option value="custom">Custom ratio</option></select></label>
             <label id="custom-ratio-wrap" class="hidden">Custom ratio<input id="custom-ratio" type="number" min="0.05" max="20" step="0.01" value="1"></label>
           </div><div id="free-crop" class="form-grid hidden"><label>X<input id="crop-x" type="number" min="0" value="0"></label><label>Y<input id="crop-y" type="number" min="0" value="0"></label><label>Width<input id="crop-width" type="number" min="1"></label><label>Height<input id="crop-height" type="number" min="1"></label></div></div>
@@ -197,17 +217,25 @@
             </div>
           </div>
 
-          <div class="control-section"><h3>Format & compression</h3><div class="form-grid">
+          <div class="control-section format-section export-section"><h3>Format & compression</h3><div class="form-grid">
             <label>Format<select id="format"><option value="jpeg">JPEG</option><option value="png">PNG</option><option value="webp">WebP</option><option value="avif">AVIF (if supported)</option></select></label>
             <label>Quality <output id="quality-value">82</output>%<input id="quality" type="range" min="5" max="98" value="82"></label>
             <label>Target size (KB)<input id="target-size" type="number" min="1" placeholder="Optional"></label>
             <label>Background<input id="background" type="color" value="#ffffff"></label>
           </div><p class="microcopy">Target-size compression uses iterative encoding; a fixed quality is never treated as a guaranteed file size.</p></div>
 
-          <details class="advanced"><summary>Advanced controls</summary><div class="control-section nested"><h3>Privacy & metadata</h3><label class="check-row"><input type="checkbox" checked disabled> Privacy-clean export: metadata and GPS are stripped</label><div id="metadata-box" class="metadata-box"></div></div><div class="control-section nested"><h3>Export naming</h3><div class="form-grid"><label>Prefix<input id="prefix" type="text" maxlength="40"></label><label>Suffix<input id="suffix" type="text" maxlength="40"></label></div><label class="check-row"><input id="preserve-name" type="checkbox" checked> Preserve original filename stem</label></div></details>
+          <details class="advanced export-section"><summary>Advanced controls</summary><div class="control-section nested"><h3>Privacy & metadata</h3><label class="check-row"><input type="checkbox" checked disabled> Privacy-clean export: metadata and GPS are stripped</label><div id="metadata-box" class="metadata-box"></div></div><div class="control-section nested"><h3>Export naming</h3><div class="form-grid"><label>Prefix<input id="prefix" type="text" maxlength="40"></label><label>Suffix<input id="suffix" type="text" maxlength="40"></label></div><label class="check-row"><input id="preserve-name" type="checkbox" checked> Preserve original filename stem</label></div></details>
 
-          <div class="action-row"><button class="primary-button" id="process-selected" type="button">Process selected</button><button class="secondary-button" id="process-all" type="button">Process all</button><button class="secondary-button" id="download-selected" type="button" disabled>Download selected</button><button class="secondary-button" id="download-all" type="button" disabled>Download All (ZIP)</button></div>
+          <div class="action-row export-section"><button class="primary-button" id="process-selected" type="button">Process selected</button><button class="secondary-button" id="process-all" type="button">Process all</button><button class="secondary-button" id="download-selected" type="button" disabled>Download selected</button><button class="secondary-button" id="download-all" type="button" disabled>Download All (ZIP)</button></div>
         </div>
+        <nav class="mobile-tool-dock" aria-label="Image editing tools">
+          <button class="mobile-tool-button active" type="button" data-mobile-tool="adjust"><span>☼</span><small>Adjust</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="crop"><span>⌗</span><small>Crop</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="cleanup"><span>◇</span><small>Clean</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="design"><span>T</span><small>Design</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="watermark"><span>W</span><small>Mark</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="export"><span>⇧</span><small>Export</small></button>
+        </nav>
       </section>
     </section>
   </main>
