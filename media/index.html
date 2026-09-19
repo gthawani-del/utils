@@ -43,6 +43,17 @@
         <form class="command-bar" id="command-form"><span class="command-spark" aria-hidden="true">✦</span><input id="command-input" type="text" autocomplete="off" maxlength="220" placeholder="Tell Utility OS what to do…"><button type="submit" aria-label="Plan command">Plan</button></form>
         <p class="command-example">e.g. “Remove silence, add captions and make a 9:16 reel under 25 MB”</p>
         <div class="command-message" id="command-message" role="status" aria-live="polite"></div>
+        <section class="command-plan hidden" id="command-plan" aria-labelledby="command-plan-title">
+          <div class="command-plan-top">
+            <div><p class="workspace-eyebrow">Command Assistant</p><h3 id="command-plan-title">Planned Actions</h3></div>
+            <span id="command-plan-summary">0 planned</span>
+          </div>
+          <div class="command-plan-list" id="command-plan-list"></div>
+          <div class="command-plan-footer">
+            <p>Nothing executes until you press Run plan. Blocked actions must be removed or resolved first.</p>
+            <div><button class="media-button" id="command-clear-plan" type="button">Clear</button><button class="media-button empty-primary" id="command-run-plan" type="button" disabled>Run plan</button></div>
+          </div>
+        </section>
       </section>
 
       <nav class="mobile-category-rail" id="mobile-category-rail" aria-label="Media Studio categories"></nav>

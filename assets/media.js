@@ -2,6 +2,7 @@ import { ingestLocalMedia, releaseMediaSource, validateMediaUrl } from '/lib/med
 import { createMediaProject, loadMediaProjectSnapshot, setProjectAudioEdits, setProjectAudioVideo, setProjectCategory, setProjectCompiler, setProjectDelivery, setProjectLyrics, setProjectSource, setProjectTranscript, setProjectVideoEdits } from '/lib/media/project.js';
 import { initAudioVideoWorkspace } from '/lib/media/audio-video/workspace.js';
 import { initCompilerWorkspace } from '/lib/media/compiler/workspace.js';
+import { initCommandAssistant } from '/lib/media/command/workspace.js';
 import { initQcWorkspace } from '/lib/media/qc/workspace.js';
 import { initDeliveryWorkspace } from '/lib/media/delivery/workspace.js';
 import { initLyricsWorkspace } from '/lib/media/lyrics/workspace.js';
@@ -32,8 +33,6 @@ const sourceName = document.querySelector('#source-name');
 const sourceSummary = document.querySelector('#source-summary');
 const phaseNote = document.querySelector('#phase-note');
 const sourceNote = document.querySelector('#source-note');
-const commandForm = document.querySelector('#command-form');
-const commandInput = document.querySelector('#command-input');
 const commandMessage = document.querySelector('#command-message');
 const fileInput = document.querySelector('#media-file-input');
 const linkDialog = document.querySelector('#link-dialog');
@@ -82,6 +81,7 @@ let audioVideoWorkspace = null;
 let compilerWorkspace = null;
 let qcWorkspace = null;
 let deliveryWorkspace = null;
+let commandAssistant = null;
 
 if (restored) {
   project.id = restored.id || project.id;
@@ -158,6 +158,7 @@ function selectCategory(id) {
   compilerWorkspace?.updateVisibility();
   qcWorkspace?.updateVisibility();
   deliveryWorkspace?.updateVisibility();
+  commandAssistant?.refresh();
 }
 
 function formatEditorTime(seconds) {
@@ -841,15 +842,6 @@ emptyStage.addEventListener('drop', (event) => {
   handleFile(event.dataTransfer?.files?.[0]);
 });
 
-commandForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  if (!commandInput.value.trim()) {
-    commandMessage.textContent = 'Enter an outcome first. No command has been executed.';
-    return;
-  }
-  commandMessage.textContent = 'Command planning is a later phase. Nothing was processed.';
-});
-
 window.addEventListener('pagehide', () => {
   audioVideoWorkspace?.destroy();
   clearPlayer();
@@ -948,6 +940,80 @@ transcriptWorkspace = initTranscriptWorkspace({
     setProjectTranscript(project, transcript);
   },
   setStatus: (message) => {
+    if (sourceNote && !sourceStage.classList.contains('hidden')) sourceNote.textContent = message;
+  }
+});
+
+commandAssistant = initCommandAssistant({
+  getProject: () => project,
+  executeAction: async (item) => {
+    const duration = Number(project.source?.duration || 0);
+
+    if (item.type === 'open-category') {
+      selectCategory(item.params.category);
+      return { ok: true };
+    }
+
+    if (item.type === 'trim') {
+      const start = Number(item.params.start);
+      const end = Number(item.params.end);
+      if (!project.source || project.source.kind !== 'local-file') return { ok: false, reason: 'Trim requires a relinked local source.' };
+
+      if (project.source.mediaType === 'video') {
+        const current = currentVideoEdits();
+        if (!current) return { ok: false, reason: 'Video trim state is unavailable.' };
+        recordVideoEdit(updateVideoEdits(current, { trimStart: start, trimEnd: end }, duration));
+        return { ok: true };
+      }
+
+      if (project.source.mediaType === 'audio') {
+        const current = currentAudioEdits();
+        if (!current) return { ok: false, reason: 'Audio trim state is unavailable.' };
+        recordAudioEdit(updateAudioEdits(current, { trimStart: start, trimEnd: end }, duration));
+        return { ok: true };
+      }
+
+      return { ok: false, reason: 'Unsupported media type for trim.' };
+    }
+
+    if (item.type === 'volume') {
+      const current = currentAudioEdits();
+      if (!current) return { ok: false, reason: 'Volume command requires local audio.' };
+      recordAudioEdit(updateAudioEdits(current, { volume: Number(item.params.percent) / 100 }, duration));
+      return { ok: true };
+    }
+
+    if (item.type === 'fade-in' || item.type === 'fade-out') {
+      const current = currentAudioEdits();
+      if (!current) return { ok: false, reason: 'Fade command requires local audio.' };
+      const key = item.type === 'fade-in' ? 'fadeIn' : 'fadeOut';
+      recordAudioEdit(updateAudioEdits(current, { [key]: Number(item.params.seconds) }, duration));
+      return { ok: true };
+    }
+
+    if (item.type === 'set-aspect') {
+      if (!audioVideoWorkspace) return { ok: false, reason: 'Audio → Video workspace is unavailable.' };
+      audioVideoWorkspace.setAspect(item.params.aspect);
+      selectCategory('audio-video');
+      return { ok: true };
+    }
+
+    if (item.type === 'run-qc') {
+      selectCategory('qc');
+      qcWorkspace.run('QC report run by Command Assistant.');
+      return { ok: true };
+    }
+
+    if (item.type === 'apply-qc-fixes') {
+      selectCategory('qc');
+      qcWorkspace.applySafeFixes();
+      return { ok: true };
+    }
+
+    return { ok: false, reason: `Unsupported command action: ${item.type}` };
+  },
+  setStatus: (message) => {
+    commandMessage.textContent = message;
     if (sourceNote && !sourceStage.classList.contains('hidden')) sourceNote.textContent = message;
   }
 });
