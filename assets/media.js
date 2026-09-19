@@ -866,6 +866,7 @@ emptyStage.addEventListener('drop', (event) => {
 });
 
 window.addEventListener('pagehide', () => {
+  versionWorkspace?.destroy();
   audioVideoWorkspace?.destroy();
   clearPlayer();
   if (project.source?.kind === 'local-file') releaseMediaSource(project.source);

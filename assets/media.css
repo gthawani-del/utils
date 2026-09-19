@@ -3789,3 +3789,113 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+
+.render-proof-card {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(120px, .8fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px 12px;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  background: #f9fbfe;
+}
+
+.render-proof-copy {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 3px 7px;
+  align-items: center;
+}
+
+.render-proof-copy strong {
+  font-size: 9.5px;
+}
+
+.render-proof-copy > span {
+  justify-self: start;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #eef1f5;
+  color: #657185;
+  font-size: 7.5px;
+  font-weight: 850;
+}
+
+.render-proof-copy > span[data-status="running"],
+.render-proof-copy > span[data-status="queued"],
+.render-proof-copy > span[data-status="validating"] {
+  background: #e8edff;
+  color: #3d58a6;
+}
+
+.render-proof-copy > span[data-status="completed"] {
+  background: #e1f4ed;
+  color: #147257;
+}
+
+.render-proof-copy > span[data-status="failed"],
+.render-proof-copy > span[data-status="timed_out"] {
+  background: #fff0e5;
+  color: #9a540d;
+}
+
+.render-proof-copy > span[data-status="cancelled"] {
+  background: #f0f2f6;
+  color: #697487;
+}
+
+.render-proof-copy small {
+  grid-column: 1 / -1;
+  color: var(--media-muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.render-proof-card progress {
+  width: 100%;
+  min-width: 120px;
+}
+
+#render-proof-elapsed {
+  white-space: nowrap;
+  color: var(--media-muted);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.render-proof-actions {
+  display: flex;
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .render-proof-card {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .render-proof-copy {
+    grid-column: 1 / -1;
+  }
+
+  .render-proof-actions {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 759px) {
+  .render-proof-card {
+    grid-template-columns: 1fr;
+  }
+
+  .render-proof-copy {
+    grid-column: auto;
+  }
+
+  .render-proof-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    justify-content: stretch;
+  }
+}

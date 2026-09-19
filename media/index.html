@@ -103,6 +103,20 @@
               </div>
             </div>
 
+            <div class="render-proof-card" aria-label="Media processing worker foundation">
+              <div class="render-proof-copy">
+                <strong>Processing engine</strong>
+                <span id="render-proof-state" data-status="idle">Idle</span>
+                <small>Step 2 proof only: copies media through the isolated worker, validates the returned playable Blob, then releases it. It does not create a Version or transform media.</small>
+              </div>
+              <progress id="render-proof-progress" max="100" value="0">0%</progress>
+              <span id="render-proof-elapsed">Elapsed —</span>
+              <div class="render-proof-actions">
+                <button class="media-button" id="render-proof-start" type="button">Verify render engine</button>
+                <button class="media-button" id="render-proof-cancel" type="button" disabled>Cancel</button>
+              </div>
+            </div>
+
             <div class="version-compare-shell" id="version-compare-shell" data-mode="side-by-side" data-mobile-view="original">
               <div class="version-compare-toolbar">
                 <div class="version-compare-modes" aria-label="Comparison mode">
