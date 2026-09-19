@@ -9,6 +9,7 @@ import { normalizeLayers } from '../lib/image/layers.js';
 import { normalizeWatermark, resolveWatermarkPosition } from '../lib/image/watermark.js';
 import { normalizeCleanup, cleanupHasMask } from '../lib/image/cleanup.js';
 import { replacementsToCleanup } from '../lib/image/text-replace.js';
+import { PERFORMANCE_FORMATS, normalizePerformanceBudget, performanceCandidateWidths, chooseBudgetCandidate } from '../lib/image/performance.js';
 
 try { Object.defineProperty(self, 'fetch', { value: () => Promise.reject(new Error('Network disabled in Utility OS workers.')), writable: false }); } catch {}
 
@@ -18,6 +19,7 @@ self.onmessage = async (event) => {
     if (op === 'inspect') return send(await inspect(event.data));
     if (op === 'process') return send(await processImage(event.data));
     if (op === 'preview') return send(await processImage({ ...event.data, preview: true }));
+    if (op === 'performance-budget') return send(await optimizePerformanceBudget(event.data));
     if (op === 'zip') return send(await createZip(event.data));
     return send(unsupported('Unsupported worker operation.'));
   } catch {
@@ -209,7 +211,7 @@ function render(source, crop, target, settings) {
   ctx.imageSmoothingQuality = 'high';
   const mode = settings.resizeMode || 'fit';
   const outputKind = settings.format || 'png';
-  if (outputKind === 'jpeg' || settings.background) {
+  if (outputKind === 'jpeg') {
     ctx.fillStyle = settings.background || '#ffffff';
     ctx.fillRect(0, 0, target.width, target.height);
   }
@@ -408,15 +410,45 @@ async function encode(canvas, mime, quality) {
 }
 
 async function encodeToTarget(canvas, mime, targetBytes) {
-  let low = 0.05, high = 0.98, best = null, bestQuality = low;
+  let low = 0.05, high = 0.98, bestUnder = null, bestUnderQuality = 0, nearest = null, nearestQuality = low;
   for (let i = 0; i < 8; i++) {
     const quality = (low + high) / 2;
     const blob = await encode(canvas, mime, quality);
     if (blob.type !== mime) return { blob, quality };
-    if (!best || Math.abs(blob.size - targetBytes) < Math.abs(best.size - targetBytes)) { best = blob; bestQuality = quality; }
-    if (blob.size > targetBytes) high = quality; else low = quality;
+    if (!nearest || Math.abs(blob.size - targetBytes) < Math.abs(nearest.size - targetBytes)) { nearest = blob; nearestQuality = quality; }
+    if (blob.size <= targetBytes) {
+      if (!bestUnder || quality > bestUnderQuality) { bestUnder = blob; bestUnderQuality = quality; }
+      low = quality;
+    } else high = quality;
   }
-  return { blob: best, quality: bestQuality };
+  return bestUnder ? { blob: bestUnder, quality: bestUnderQuality } : { blob: nearest, quality: nearestQuality };
+}
+
+async function optimizePerformanceBudget({ buffer, settings = {}, watermarkLogoBuffer = null }) {
+  const inspected=await inspect({buffer:buffer.slice(0)}); if(inspected.state!=='completed')return inspected;
+  const budget=normalizePerformanceBudget(settings.performanceBudget);
+  const dims=inspected.value.dimensions; const crop=calculateCrop(dims.width,dims.height,settings.crop);
+  const mode=settings.resizeMode||'fit';
+  let intended;
+  if(mode==='fill'||mode==='contain') intended={width:positiveInt(settings.width,crop.width),height:positiveInt(settings.height,crop.height)};
+  else intended=calculateResize(crop.width,crop.height,settings);
+  const noUpscaleWidth=Math.min(intended.width,crop.width,budget.maxWidth);
+  const aspect=Math.max(.0001,intended.width/Math.max(1,intended.height));
+  const widths=performanceCandidateWidths(noUpscaleWidth);
+  let attempts=0; const testedFormats=new Set();
+  for(const width of widths){
+    const height=Math.max(1,Math.round(width/aspect)); const candidates=[];
+    for(const format of PERFORMANCE_FORMATS){
+      attempts++; testedFormats.add(format);
+      const candidateSettings={...settings,resizeMode:mode==='contain'?'contain':mode==='fill'?'fill':'fit',width,height,preserveAspect:true,format,targetBytes:budget.maxBytes,quality:.98,performanceBudget:undefined};
+      const result=await processImage({buffer,settings:candidateSettings,watermarkLogoBuffer});
+      if(result.state!=='completed')continue;
+      candidates.push(result.value);
+    }
+    const best=chooseBudgetCandidate(candidates,budget);
+    if(best) return ok({...best,performance:{maxWidth:budget.maxWidth,maxBytes:budget.maxBytes,minQuality:budget.minQuality,attempts,testedFormats:[...testedFormats]}});
+  }
+  return unsupported(`No AVIF, WebP or JPEG candidate met ${budget.maxWidth}px / ${Math.round(budget.maxBytes/1024)} KB while staying above ${Math.round(budget.minQuality*100)}% encoder quality. Raise the size budget, lower the quality guardrail, or allow a smaller source.`,'PERFORMANCE_BUDGET_UNMET');
 }
 
 async function createZip({ files = [] }) {

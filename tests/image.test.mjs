@@ -8,6 +8,7 @@ import { DEFAULT_WATERMARK, normalizeWatermark, resolveWatermarkPosition } from 
 import { normalizeCleanup, cleanupHasMask } from '../lib/image/cleanup.js';
 import { normalizeTextSelection, selectionFromPoints, replacementsToCleanup, replacementLayerFromSelection } from '../lib/image/text-replace.js';
 import { COMPILER_PRESETS, MAX_COMPILER_OUTPUTS, normalizeCompilerOutput, normalizeCompilerOutputs, compilerSettings } from '../lib/image/compiler.js';
+import { PERFORMANCE_FORMATS, normalizePerformanceBudget, performanceCandidateWidths, chooseBudgetCandidate } from '../lib/image/performance.js';
 
 test('fit resize preserves aspect ratio', () => {
   assert.deepEqual(calculateResize(4000, 2000, { resizeMode: 'fit', width: 1000, height: 1000, preserveAspect: true }), { width: 1000, height: 500 });
@@ -147,4 +148,32 @@ test('compiler derives each output independently from base settings', () => {
   assert.equal(result.height, 1080);
   assert.deepEqual(result.crop, { mode: 'none' });
   assert.equal(result.quality, .82);
+});
+
+
+test('performance budget clamps limits and tests modern plus fallback formats', () => {
+  const budget=normalizePerformanceBudget({maxWidth:99999,maxBytes:1,minQuality:2});
+  assert.equal(budget.maxWidth,12000);
+  assert.equal(budget.maxBytes,8192);
+  assert.equal(budget.minQuality,.95);
+  assert.deepEqual(PERFORMANCE_FORMATS,['avif','webp','jpeg']);
+});
+
+test('performance width search descends without exceeding the starting width', () => {
+  const widths=performanceCandidateWidths(1920);
+  assert.equal(widths[0],1920);
+  assert.ok(widths.every((width,index)=>index===0||width<widths[index-1]));
+  assert.ok(widths.every((width)=>width<=1920&&width>=64));
+});
+
+test('performance candidate selection enforces bytes width and quality before ranking', () => {
+  const budget={maxWidth:1920,maxBytes:180*1024,minQuality:.5};
+  const best=chooseBudgetCandidate([
+    {kind:'jpeg',width:1920,size:170*1024,quality:.42},
+    {kind:'webp',width:1632,size:175*1024,quality:.82},
+    {kind:'avif',width:1632,size:160*1024,quality:.86},
+    {kind:'jpeg',width:1920,size:220*1024,quality:.9}
+  ],budget);
+  assert.equal(best.kind,'avif');
+  assert.equal(best.width,1632);
 });

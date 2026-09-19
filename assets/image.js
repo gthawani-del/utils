@@ -9,6 +9,7 @@ import { DEFAULT_WATERMARK, normalizeWatermark } from '/lib/image/watermark.js';
 import { normalizeCleanup } from '/lib/image/cleanup.js';
 import { normalizeTextSelection, selectionFromPoints, replacementLayerFromSelection } from '/lib/image/text-replace.js';
 import { COMPILER_PRESETS, MAX_COMPILER_OUTPUTS, MAX_COMPILER_PACK_BYTES, normalizeCompilerOutput, normalizeCompilerOutputs, compilerSettings } from '/lib/image/compiler.js';
+import { normalizePerformanceBudget } from '/lib/image/performance.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
@@ -30,7 +31,8 @@ const els = {
   cleanupCanvas: $('#cleanup-canvas'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo'),
   replaceSelector: $('#replace-selector'), replaceSelectorImage: $('#replace-selector-image'), replaceSelectorEmpty: $('#replace-selector-empty'), replaceSelectionBox: $('#replace-selection-box'), mobileReplaceSelection: $('#mobile-replace-selection'), replaceStatus: $('#replace-status'), replaceText: $('#replace-text'), replaceFont: $('#replace-font'), replaceFontSize: $('#replace-font-size'), replaceFontWeight: $('#replace-font-weight'), replaceColor: $('#replace-color'), replaceAlign: $('#replace-align'), replaceClearSelection: $('#replace-clear-selection'), replaceApply: $('#replace-apply'), replaceUndo: $('#replace-undo'),
   mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileRevert: $('#mobile-revert'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileLayerHint: $('#mobile-layer-hint'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value'), mobileCropButtons: [...document.querySelectorAll('[data-crop-choice]')], mobilePrecisionToggle: $('#mobile-precision-toggle'), mobileFilesBackdrop: $('#mobile-files-backdrop'), mobileFilesClose: $('#mobile-files-close'), mobileExportSelected: $('#mobile-export-selected'), mobileExportAll: $('#mobile-export-all'), mobileExportStatus: $('#mobile-export-status'),
-  compilerPresetGrid: $('#compiler-preset-grid'), compilerCount: $('#compiler-count'), compilerFit: $('#compiler-fit'), compilerCustomName: $('#compiler-custom-name'), compilerCustomWidth: $('#compiler-custom-width'), compilerCustomHeight: $('#compiler-custom-height'), compilerAddCustom: $('#compiler-add-custom'), compilerCustomList: $('#compiler-custom-list'), compilerGenerate: $('#compiler-generate'), compilerStatus: $('#compiler-status')
+  compilerPresetGrid: $('#compiler-preset-grid'), compilerCount: $('#compiler-count'), compilerFit: $('#compiler-fit'), compilerCustomName: $('#compiler-custom-name'), compilerCustomWidth: $('#compiler-custom-width'), compilerCustomHeight: $('#compiler-custom-height'), compilerAddCustom: $('#compiler-add-custom'), compilerCustomList: $('#compiler-custom-list'), compilerGenerate: $('#compiler-generate'), compilerStatus: $('#compiler-status'),
+  performanceMaxWidth: $('#performance-max-width'), performanceMaxSize: $('#performance-max-size'), performanceMinQuality: $('#performance-min-quality'), performanceMinQualityValue: $('#performance-min-quality-value'), performanceRun: $('#performance-run'), performanceDownload: $('#performance-download'), performanceResult: $('#performance-result'), performanceResultTitle: $('#performance-result-title'), performanceResultDetail: $('#performance-result-detail'), performanceStatus: $('#performance-status')
 };
 
 initialize();
@@ -63,7 +65,7 @@ function wireEvents() {
   els.cropMode.addEventListener('change', () => { updateConditionalControls(); syncMobileCropButtons(); scheduleEditPreview(80); });
   els.format.addEventListener('change', () => { updateWarnings(); els.targetSize.disabled = els.format.value === 'png'; });
   els.quality.addEventListener('input', () => { els.qualityValue.textContent = els.quality.value; });
-  for (const el of [els.width, els.height, els.percentage, els.longest, els.shortest]) el.addEventListener('input', updateWarnings);
+  for (const el of [els.width, els.height, els.percentage, els.longest, els.shortest]) el.addEventListener('input', () => { updateWarnings(); invalidatePerformanceResult(); });
   for (const el of [els.customRatio, els.cropX, els.cropY, els.cropWidth, els.cropHeight]) el.addEventListener('input', () => scheduleEditPreview(100));
   els.reset.addEventListener('click', resetToOriginal);
   els.processSelected.addEventListener('click', processSelected);
@@ -105,6 +107,9 @@ function wireEvents() {
   els.mobileFilesBackdrop.addEventListener('click', closeMobileFiles); els.mobileFilesClose.addEventListener('click', closeMobileFiles);
   els.mobileExportSelected.addEventListener('click', mobileExportSelected); els.mobileExportAll.addEventListener('click', mobileExportAll);
   els.compilerAddCustom.addEventListener('click', addCompilerCustomOutput); els.compilerGenerate.addEventListener('click', generateCompilerPack);
+  els.performanceMinQuality.addEventListener('input', () => { els.performanceMinQualityValue.textContent = els.performanceMinQuality.value; invalidatePerformanceResult(); });
+  for (const control of [els.performanceMaxWidth, els.performanceMaxSize]) control.addEventListener('input', invalidatePerformanceResult);
+  els.performanceRun.addEventListener('click', runPerformanceBudget); els.performanceDownload.addEventListener('click', downloadPerformanceResult);
   els.mobilePrecisionToggle.addEventListener('click', toggleMobilePrecision);
   els.mobileCanvasImage.addEventListener('pointerdown', beginLayerDrag); els.mobileCanvasImage.addEventListener('pointermove', continueLayerDrag); els.mobileCanvasImage.addEventListener('pointerup', endLayerDrag); els.mobileCanvasImage.addEventListener('pointercancel', endLayerDrag);
   window.addEventListener('resize', syncMobileEditingState);
@@ -122,7 +127,7 @@ async function addFiles(files) {
       state.items.push(makeRejectedItem(file, budget.reason));
       continue;
     }
-    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [] };
+    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], performanceResult: null, performanceResultUrl: '' };
     state.items.push(item);
     renderList();
     try {
@@ -150,7 +155,7 @@ async function addFiles(files) {
 }
 
 function makeRejectedItem(file, reason) {
-  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [] };
+  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], performanceResult: null, performanceResultUrl: '' };
 }
 
 function selectItem(id, reset = false) {
@@ -202,6 +207,7 @@ function renderSelected() {
   renderMobileCanvas(item);
   renderCleanupEditor(item);
   renderReplaceSelector(item);
+  renderPerformanceResult(item);
   updateWarnings(); updateButtons();
 }
 
@@ -229,7 +235,7 @@ function resetToOriginal() {
   els.format.value = item.inspect.kind === 'svg' ? 'png' : item.inspect.kind; els.quality.value = 82; els.qualityValue.textContent = '82'; els.targetSize.value = ''; els.rotate.value = 0; els.flipX.checked = false; els.flipY.checked = false;
   applyEditsToControls(DEFAULT_EDITS); state.editHistory = []; state.redoHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.lastCommittedGeometry = { rotate: 0, flipX: false, flipY: false }; updateUndoButton();
   state.layers = []; state.selectedLayerId = null; renderLayerList(); renderLayerProperties(); resetWatermarkControls();
-  item.cleanupStrokes = []; item.cleanupApplied = false; item.replaceSelection = null; item.textReplacements = []; item.replaceHistory = []; renderCleanupEditor(item); renderReplaceSelector(item);
+  item.cleanupStrokes = []; item.cleanupApplied = false; item.replaceSelection = null; item.textReplacements = []; item.replaceHistory = []; invalidatePerformanceResult(item); renderCleanupEditor(item); renderReplaceSelector(item);
   if (item.editPreviewUrl) { revokeObjectUrl(item.editPreviewUrl); item.editPreviewUrl = ''; item.editPreviewBlob = null; }
   els.editComparison.classList.add('hidden');
   updateConditionalControls(); syncMobileCropButtons(); updateWarnings();
@@ -322,6 +328,8 @@ function updateButtons() {
   els.add.disabled = state.busy;
   if (els.mobileExportSelected) els.mobileExportSelected.disabled = state.busy || !item?.inspect;
   if (els.mobileExportAll) els.mobileExportAll.disabled = state.busy || !state.items.some((entry) => entry.inspect);
+  if (els.performanceRun) els.performanceRun.disabled = state.busy || !item?.inspect;
+  if (els.performanceDownload) els.performanceDownload.disabled = state.busy || !item?.performanceResult;
 }
 
 function downloadSelected() { const item = selectedItem(); if (item?.outputUrl && item.outputName) triggerDownload(item.outputUrl, item.outputName); }
@@ -347,7 +355,7 @@ async function clearAll() {
   closeMobileFiles(); state.previewAbort?.abort(); clearTimeout(state.previewTimer); runner.terminateAll(); cleanupUrls(); state.items = []; state.selectedId = null; state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.layers = []; state.selectedLayerId = null; state.watermarkLogoFile = null; state.compilerCustomOutputs = []; state.compilerSelectedIds = new Set(); state.redoHistory = []; renderCompiler(); renderLayerList(); renderLayerProperties(); resetWatermarkControls(); await clearWorkspace(); els.workspace.classList.add('hidden'); els.list.replaceChildren(); els.input.value = ''; syncMobileEditingState(); els.clear.textContent = 'Workspace cleared'; setTimeout(() => { els.clear.textContent = 'Clear workspace'; }, 1600);
 }
 
-function cleanupUrls() { for (const item of state.items) { revokeObjectUrl(item.originalUrl); revokeObjectUrl(item.outputUrl); revokeObjectUrl(item.editPreviewUrl); item.originalUrl = ''; item.outputUrl = ''; item.editPreviewUrl = ''; } }
+function cleanupUrls() { for (const item of state.items) { revokeObjectUrl(item.originalUrl); revokeObjectUrl(item.outputUrl); revokeObjectUrl(item.editPreviewUrl); revokeObjectUrl(item.performanceResultUrl); item.originalUrl = ''; item.outputUrl = ''; item.editPreviewUrl = ''; item.performanceResultUrl = ''; } }
 function renderReplaceSelector(item) {
   const src = item?.editPreviewUrl || item?.outputUrl || item?.originalUrl || '';
   if (src) { els.replaceSelectorImage.src = src; els.replaceSelectorImage.classList.remove('hidden'); els.replaceSelectorEmpty.classList.add('hidden'); }
@@ -594,6 +602,7 @@ function resetEdits() {
 function updateUndoButton() { const noUndo = state.editHistory.length === 0; els.undoEdit.disabled = noUndo; if (els.mobileUndo) els.mobileUndo.disabled = noUndo; if (els.mobileRedo) els.mobileRedo.disabled = state.redoHistory.length === 0; }
 
 function scheduleEditPreview(delay = 260) {
+  invalidatePerformanceResult();
   clearTimeout(state.previewTimer);
   state.previewTimer = setTimeout(previewSelectedEdits, delay);
 }
@@ -661,6 +670,47 @@ function updateMobileAdjustValue() {
   if (key === 'flipX' || key === 'flipY') els.mobileAdjustValue.textContent = control.checked ? 'On' : 'Off';
   else if (key === 'rotate') els.mobileAdjustValue.textContent = control.value + '°';
   else { const output = document.querySelector('#' + key + '-value'); els.mobileAdjustValue.textContent = output?.textContent ?? control.value; }
+}
+
+function performanceBudgetInput() {
+  return normalizePerformanceBudget({ maxWidth:Number(els.performanceMaxWidth.value), maxBytes:Number(els.performanceMaxSize.value)*1024, minQuality:Number(els.performanceMinQuality.value)/100 });
+}
+
+function invalidatePerformanceResult(item = selectedItem()) {
+  if (!item?.performanceResult && !item?.performanceResultUrl) return;
+  if (item.performanceResultUrl) revokeObjectUrl(item.performanceResultUrl);
+  item.performanceResult = null; item.performanceResultUrl = '';
+  if (item === selectedItem()) renderPerformanceResult(item);
+}
+
+function renderPerformanceResult(item) {
+  const result=item?.performanceResult;
+  els.performanceResult.classList.toggle('hidden', !result);
+  els.performanceDownload.disabled=state.busy||!result;
+  if(!result){ if(!state.busy) els.performanceStatus.textContent='Uses the current crop, edits, text/design, cleanup and watermark.'; return; }
+  els.performanceResultTitle.textContent=`${result.kind.toUpperCase()} · ${result.width}×${result.height} · ${formatBytes(result.size)}`;
+  els.performanceResultDetail.textContent=`Quality ${Math.round(result.quality*100)}% · ${result.performance.attempts} candidate${result.performance.attempts===1?'':'s'} tested · budget ${formatBytes(result.performance.maxBytes)}`;
+}
+
+async function runPerformanceBudget() {
+  const item=selectedItem(); if(!item?.inspect||state.busy)return;
+  invalidatePerformanceResult(item); setBusy(true);
+  const budget=performanceBudgetInput(); els.performanceStatus.textContent='Testing formats and compression levels…';
+  try {
+    const settings=collectSettings(); settings.layers=layersForItem(item); settings.cleanup=cleanupForItem(item); settings.textReplacements=item.textReplacements||[]; settings.performanceBudget=budget;
+    const payload=await createProcessingPayload('performance-budget',item,settings);
+    const result=await runner.run(payload.message,payload.transfers,45_000);
+    if(result.state!=='completed'){els.performanceStatus.textContent=result.error?.message||'No valid output met the performance budget.';return;}
+    const value=result.value, blob=new Blob([value.buffer],{type:value.mime}); item.performanceResult={...value,blob:null};
+    item.performanceResultUrl=trackObjectUrl(blob); item.performanceResult.blob=blob;
+    const ext=value.kind==='jpeg'?'jpg':value.kind; item.performanceResult.name=exportFilename(item.file.name,ext,{suffix:'-budget',preserveOriginal:true});
+    els.performanceStatus.textContent='Budget met. Optimized copy is ready.'; renderPerformanceResult(item);
+  } catch { els.performanceStatus.textContent='Performance optimization failed safely.'; }
+  finally { setBusy(false); renderPerformanceResult(item); }
+}
+
+function downloadPerformanceResult() {
+  const item=selectedItem(); if(item?.performanceResultUrl&&item.performanceResult?.name) triggerDownload(item.performanceResultUrl,item.performanceResult.name);
 }
 
 function compilerOutputs() { return normalizeCompilerOutputs([...COMPILER_PRESETS, ...state.compilerCustomOutputs]); }
@@ -751,7 +801,7 @@ async function mobileExportAll() {
 }
 
 function setMobileMode(mode) {
-  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean Up', replace:'Replace Text', text:'Text', design:'Design', watermark:'Watermark', compiler:'Compile', export:'Export' };
+  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean Up', replace:'Replace Text', text:'Text', design:'Design', watermark:'Watermark', compiler:'Compile', performance:'Performance Budget', export:'Export' };
   state.mobileMode = labels[mode] ? mode : 'adjust';
   document.body.dataset.mobileTool = state.mobileMode;
   if (els.mobileSheetTitle) els.mobileSheetTitle.textContent = labels[state.mobileMode];

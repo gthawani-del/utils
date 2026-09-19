@@ -185,6 +185,15 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
 .compiler-custom-row input { width: auto; }
 .compiler-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
 
+.performance-advanced { margin-top: 12px; }
+.performance-formats { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; margin-top: 12px; font-size: 11px; color: var(--muted); }
+.performance-formats strong { padding: 5px 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--text); font-size: 10px; }
+.performance-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.performance-result { display: grid; gap: 3px; margin-top: 12px; padding: 11px 12px; border: 1px solid #b9d2c2; border-radius: 12px; background: #f2fbf5; }
+.performance-result strong { font-size: 12px; }
+.performance-result span { color: var(--muted); font-size: 10px; }
+
+
 .replace-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 
@@ -222,7 +231,7 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
   body.mobile-editing .control-card > .control-header, body.mobile-editing .control-card > .control-section, body.mobile-editing .control-card > .advanced, body.mobile-editing .control-card > .action-row { display: none; }
   body.mobile-editing .mobile-sheet-header { position: sticky; top: 0; z-index: 3; display: grid; place-items: center; gap: 5px; min-height: 48px; padding: 7px 16px 10px; background: rgba(255,255,255,.96); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); }
   .mobile-sheet-handle { width: 38px; height: 4px; border-radius: 99px; background: #d3d6db; }
-  body[data-mobile-tool="adjust"].mobile-editing .edit-section, body[data-mobile-tool="crop"].mobile-editing .crop-section, body[data-mobile-tool="cleanup"].mobile-editing .cleanup-section, body[data-mobile-tool="replace"].mobile-editing .replace-text-section, body[data-mobile-tool="text"].mobile-editing .design-section, body[data-mobile-tool="design"].mobile-editing .design-section, body[data-mobile-tool="watermark"].mobile-editing .watermark-section, body[data-mobile-tool="compiler"].mobile-editing .compiler-section, body[data-mobile-tool="export"].mobile-editing .export-section { display: block; }
+  body[data-mobile-tool="adjust"].mobile-editing .edit-section, body[data-mobile-tool="crop"].mobile-editing .crop-section, body[data-mobile-tool="cleanup"].mobile-editing .cleanup-section, body[data-mobile-tool="replace"].mobile-editing .replace-text-section, body[data-mobile-tool="text"].mobile-editing .design-section, body[data-mobile-tool="design"].mobile-editing .design-section, body[data-mobile-tool="watermark"].mobile-editing .watermark-section, body[data-mobile-tool="compiler"].mobile-editing .compiler-section, body[data-mobile-tool="performance"].mobile-editing .performance-section, body[data-mobile-tool="export"].mobile-editing .export-section { display: block; }
   body.mobile-editing .control-section { border-bottom: 0; padding: 14px 16px 18px; }
   body.mobile-editing .mobile-tool-dock { position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; display: flex; align-items: stretch; gap: 2px; height: 78px; padding: 7px 8px max(7px, env(safe-area-inset-bottom)); background: rgba(255,255,255,.97); border-top: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
   .mobile-tool-dock::-webkit-scrollbar { display: none; }
@@ -324,6 +333,9 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
   body[data-mobile-tool="compiler"].mobile-editing .compiler-preset-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   body[data-mobile-tool="compiler"].mobile-editing .compiler-preset-card { padding: 9px; }
   body[data-mobile-tool="compiler"].mobile-editing .compiler-actions { display: grid; }
+    body[data-mobile-tool="performance"].mobile-editing .control-card { max-height: 43dvh; }
+  body[data-mobile-tool="performance"].mobile-editing .performance-section > .section-inline-heading { align-items: center; }
+  body[data-mobile-tool="performance"].mobile-editing .performance-actions { display: grid; grid-template-columns: 1fr 1fr; }
     body[data-mobile-tool="export"].mobile-editing .control-card { max-height: 52dvh; }
   body[data-mobile-tool="export"].mobile-editing .desktop-export-action { display: none; }
   body[data-mobile-tool="export"].mobile-editing .mobile-export-actions { display: grid; width: 100%; gap: 8px; }
