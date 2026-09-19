@@ -15,6 +15,7 @@ const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
 const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, layerDrag: null, replaceDrag: null, mobilePrecision: false, compilerCustomOutputs: [], compilerSelectedIds: new Set(), redoHistory: [], previewTimer: 0, previewAbort: null };
 const $ = (selector) => document.querySelector(selector);
+const EDIT_KEYS = ['brightness','exposure','contrast','saturation','vibrance','highlights','shadows','temperature','tint','gamma','sharpen','blur','grayscale','sepia','straighten'];
 const els = {
   input: $('#file-input'), choose: $('#choose-files'), add: $('#add-more'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'),
   originalPreview: $('#original-preview'), outputPreview: $('#output-preview'), originalStats: $('#original-stats'), outputStats: $('#output-stats'), metadata: $('#metadata-box'),
@@ -577,8 +578,6 @@ function duplicateSelectedLayer() {
 }
 function deleteSelectedLayer() { const index = state.layers.findIndex((layer) => layer.id === state.selectedLayerId); if (index < 0) return; state.layers.splice(index,1); state.selectedLayerId = state.layers[Math.min(index,state.layers.length-1)]?.id || null; renderLayerList(); renderLayerProperties(); updateMobileLayerHint(); scheduleEditPreview(40); }
 function moveSelectedLayer(direction) { const index = state.layers.findIndex((layer) => layer.id === state.selectedLayerId); const next = index + direction; if (index < 0 || next < 0 || next >= state.layers.length) return; [state.layers[index],state.layers[next]]=[state.layers[next],state.layers[index]]; renderLayerList(); renderLayerProperties(); scheduleEditPreview(40); }
-
-const EDIT_KEYS = ['brightness','exposure','contrast','saturation','vibrance','highlights','shadows','temperature','tint','gamma','sharpen','blur','grayscale','sepia','straighten'];
 
 function editControls() { return EDIT_KEYS.map((key) => els[key]); }
 
