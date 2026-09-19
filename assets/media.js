@@ -2,6 +2,7 @@ import { ingestLocalMedia, releaseMediaSource, validateMediaUrl } from '/lib/med
 import { createMediaProject, loadMediaProjectSnapshot, setProjectAudioEdits, setProjectAudioVideo, setProjectCategory, setProjectCompiler, setProjectLyrics, setProjectSource, setProjectTranscript, setProjectVideoEdits } from '/lib/media/project.js';
 import { initAudioVideoWorkspace } from '/lib/media/audio-video/workspace.js';
 import { initCompilerWorkspace } from '/lib/media/compiler/workspace.js';
+import { initQcWorkspace } from '/lib/media/qc/workspace.js';
 import { initLyricsWorkspace } from '/lib/media/lyrics/workspace.js';
 import { initTranscriptWorkspace } from '/lib/media/transcript/workspace.js';
 import { createAudioEdits, audioSelectionDuration, normalizeAudioEdits, previewVolumeAt, updateAudioEdits } from '/lib/media/audio/edits.js';
@@ -78,6 +79,7 @@ let transcriptWorkspace = null;
 let lyricsWorkspace = null;
 let audioVideoWorkspace = null;
 let compilerWorkspace = null;
+let qcWorkspace = null;
 
 if (restored) {
   project.id = restored.id || project.id;
@@ -151,6 +153,7 @@ function selectCategory(id) {
   lyricsWorkspace?.updateVisibility();
   audioVideoWorkspace?.updateVisibility();
   compilerWorkspace?.updateVisibility();
+  qcWorkspace?.updateVisibility();
 }
 
 function formatEditorTime(seconds) {
@@ -515,6 +518,7 @@ function renderSource(source) {
   lyricsWorkspace?.onSourceChanged();
   audioVideoWorkspace?.onSourceChanged();
   compilerWorkspace?.onSourceChanged();
+  qcWorkspace?.onSourceChanged();
   if (source.kind === 'local-file' && source.mediaType === 'video') {
     syncVideoControls();
     updatePlayhead(currentPlayer?.currentTime || 0);
@@ -561,6 +565,7 @@ async function handleFile(file) {
       transcriptWorkspace?.resetForNewSource();
       lyricsWorkspace?.resetForNewSource();
       compilerWorkspace?.resetForNewSource();
+      qcWorkspace?.resetForNewSource();
     }
     setProjectSource(project, result.source);
     renderSource(result.source);
@@ -604,6 +609,7 @@ linkForm.addEventListener('submit', (event) => {
   transcriptWorkspace?.resetForNewSource();
   lyricsWorkspace?.resetForNewSource();
   compilerWorkspace?.resetForNewSource();
+  qcWorkspace?.resetForNewSource();
   const source = {
     kind: 'provider-link',
     provider: checked.provider,
@@ -839,6 +845,28 @@ window.addEventListener('pagehide', () => {
   if (project.source?.kind === 'local-file') releaseMediaSource(project.source);
 });
 
+qcWorkspace = initQcWorkspace({
+  getProject: () => project,
+  getSource: () => project.source,
+  saveTranscript: (transcript) => {
+    project.transcript = transcript;
+    setProjectTranscript(project, transcript);
+  },
+  saveVideoEdits: (videoEdits) => {
+    project.videoEdits = videoEdits;
+    setProjectVideoEdits(project, videoEdits);
+    syncVideoControls();
+  },
+  saveAudioEdits: (audioEdits) => {
+    project.audioEdits = audioEdits;
+    setProjectAudioEdits(project, audioEdits);
+    syncAudioControls();
+  },
+  setStatus: (message) => {
+    if (sourceNote && !sourceStage.classList.contains('hidden')) sourceNote.textContent = message;
+  }
+});
+
 compilerWorkspace = initCompilerWorkspace({
   getProject: () => project,
   getSource: () => project.source,
@@ -900,6 +928,7 @@ transcriptWorkspace.onSourceChanged();
 lyricsWorkspace.onSourceChanged();
 audioVideoWorkspace.onSourceChanged();
 compilerWorkspace.onSourceChanged();
+qcWorkspace.onSourceChanged();
 
 if (restored?.source?.kind === 'provider-link') {
   renderSource(restored.source);

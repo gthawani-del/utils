@@ -75,6 +75,32 @@
             <p class="phase-note source-note" id="source-note">Source ready.</p>
           </div>
 
+          <section class="qc-panel hidden" id="qc-panel" aria-labelledby="qc-title">
+            <div class="qc-heading">
+              <div>
+                <p class="workspace-eyebrow">QC & Forensics</p>
+                <h3 id="qc-title">Professional media checks</h3>
+              </div>
+              <span>Evidence-first</span>
+            </div>
+
+            <div class="qc-toolbar">
+              <button class="media-button empty-primary" id="qc-run" type="button">Run QC</button>
+              <button class="media-button" id="qc-fix" type="button" disabled>Apply safe fixes</button>
+              <button class="media-button" id="qc-export" type="button" disabled>Export report JSON</button>
+              <label class="qc-filter"><input id="qc-issues-only" type="checkbox"> Show warnings / partial only</label>
+            </div>
+
+            <div class="qc-summary" id="qc-summary">No report yet.</div>
+            <div class="qc-check-list" id="qc-check-list"></div>
+
+            <div class="qc-boundary">
+              <strong>QC coverage is explicit</strong>
+              <p>The lightweight pass reports only evidence the browser can establish safely from current project metadata. Checks that require packet parsing, full-frame analysis, decoded-audio measurement or platform-specific encoding are marked “Not inspected” instead of being guessed.</p>
+            </div>
+            <p class="qc-status" id="qc-status" role="status" aria-live="polite">QC runs locally and does not upload media.</p>
+          </section>
+
           <section class="compiler-panel hidden" id="compiler-panel" aria-labelledby="compiler-title">
             <div class="compiler-heading">
               <div>
