@@ -14,6 +14,7 @@ import { buildAssetDoctorReport } from '/lib/image/asset-doctor.js';
 import { detectInformationRegions, chooseSmartFocus, smartCropSummary } from '/lib/image/smart-crop.js';
 import { calculateCrop } from '/lib/image/math.js';
 import { buildResponsiveVariants, buildPictureMarkup } from '/lib/image/web-pack.js';
+import { detectWatermarkRegions, boxesToCleanupStrokes } from '/lib/image/watermark-detect.js';
 import { shouldUseBrowserProcessor, processBrowserImage, optimizeBrowserImage } from '/lib/image/browser-processor.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
@@ -35,7 +36,7 @@ const els = {
   layerText: $('#layer-text'), layerFont: $('#layer-font'), layerFontSize: $('#layer-font-size'), layerFontWeight: $('#layer-font-weight'), layerAlign: $('#layer-align'), layerColor: $('#layer-color'), layerLetterSpacing: $('#layer-letter-spacing'), layerLineSpacing: $('#layer-line-spacing'), layerStrokeWidth: $('#layer-stroke-width'), layerStrokeColor: $('#layer-stroke-color'), layerShadowEnabled: $('#layer-shadow-enabled'), layerShadowColor: $('#layer-shadow-color'), layerShadowBlur: $('#layer-shadow-blur'), layerShadowX: $('#layer-shadow-x'), layerShadowY: $('#layer-shadow-y'), layerBgEnabled: $('#layer-bg-enabled'), layerBgColor: $('#layer-bg-color'),
   layerFill: $('#layer-fill'), layerFill2: $('#layer-fill-2'), layerGradient: $('#layer-gradient'), layerGradientAngle: $('#layer-gradient-angle'), shapeStrokeColor: $('#shape-stroke-color'), shapeStrokeWidth: $('#shape-stroke-width'), layerX: $('#layer-x'), layerY: $('#layer-y'), layerWidth: $('#layer-width'), layerHeight: $('#layer-height'), layerRotation: $('#layer-rotation'), layerOpacity: $('#layer-opacity'),
   watermarkEnabled: $('#watermark-enabled'), watermarkControls: $('#watermark-controls'), watermarkType: $('#watermark-type'), watermarkPosition: $('#watermark-position'), watermarkOpacity: $('#watermark-opacity'), watermarkRotation: $('#watermark-rotation'), watermarkMargin: $('#watermark-margin'), watermarkTiled: $('#watermark-tiled'), watermarkTileGap: $('#watermark-tile-gap'), watermarkCustomPosition: $('#watermark-custom-position'), watermarkX: $('#watermark-x'), watermarkY: $('#watermark-y'), watermarkTextFields: $('#watermark-text-fields'), watermarkImageFields: $('#watermark-image-fields'), watermarkText: $('#watermark-text'), watermarkFont: $('#watermark-font'), watermarkFontSize: $('#watermark-font-size'), watermarkColor: $('#watermark-color'), watermarkLogoInput: $('#watermark-logo-input'), chooseWatermarkLogo: $('#choose-watermark-logo'), watermarkLogoName: $('#watermark-logo-name'), watermarkLogoWidth: $('#watermark-logo-width'),
-  cleanupCanvas: $('#cleanup-canvas'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo'), cleanupModeHint: $('#cleanup-mode-hint'),
+  cleanupCanvas: $('#cleanup-canvas'), cleanupBaseImage: $('#cleanup-base-image'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo'), cleanupModeHint: $('#cleanup-mode-hint'), watermarkDetectBar: $('#watermark-detect-bar'), watermarkDetect: $('#watermark-detect'), watermarkDetectStatus: $('#watermark-detect-status'),
   replaceSelector: $('#replace-selector'), replaceSelectorImage: $('#replace-selector-image'), replaceSelectorEmpty: $('#replace-selector-empty'), replaceSelectionBox: $('#replace-selection-box'), mobileReplaceSelection: $('#mobile-replace-selection'), replaceStatus: $('#replace-status'), replaceText: $('#replace-text'), replaceFont: $('#replace-font'), replaceFontSize: $('#replace-font-size'), replaceFontWeight: $('#replace-font-weight'), replaceColor: $('#replace-color'), replaceAlign: $('#replace-align'), replaceClearSelection: $('#replace-clear-selection'), replaceApply: $('#replace-apply'), replaceUndo: $('#replace-undo'),
   mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileExportTop: $('#mobile-export-top'), mobileSheetBack: $('#mobile-sheet-back'), mobileMoreButtons: [...document.querySelectorAll('[data-mobile-more-target]')], mobileMoreRevert: $('#mobile-more-revert'), mobileMoreFiles: $('#mobile-more-files'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileLayerHint: $('#mobile-layer-hint'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value'), mobileCropButtons: [...document.querySelectorAll('[data-crop-choice]')], mobilePrecisionToggle: $('#mobile-precision-toggle'), mobileFilesBackdrop: $('#mobile-files-backdrop'), mobileFilesClose: $('#mobile-files-close'), mobileExportSelected: $('#mobile-export-selected'), mobileExportAll: $('#mobile-export-all'), mobileExportStatus: $('#mobile-export-status'),
   compilerPresetGrid: $('#compiler-preset-grid'), compilerCount: $('#compiler-count'), compilerFit: $('#compiler-fit'), compilerCustomName: $('#compiler-custom-name'), compilerCustomWidth: $('#compiler-custom-width'), compilerCustomHeight: $('#compiler-custom-height'), compilerAddCustom: $('#compiler-add-custom'), compilerCustomList: $('#compiler-custom-list'), compilerGenerate: $('#compiler-generate'), compilerStatus: $('#compiler-status'),
@@ -103,7 +104,8 @@ function wireEvents() {
   els.chooseWatermarkLogo.addEventListener('click', () => els.watermarkLogoInput.click());
   els.watermarkLogoInput.addEventListener('change', () => setWatermarkLogo(els.watermarkLogoInput.files?.[0]));
   els.cleanupBrush.addEventListener('input', () => { els.cleanupBrushValue.textContent = els.cleanupBrush.value; });
-  els.cleanupCanvas.addEventListener('pointerdown', beginCleanupStroke); els.cleanupCanvas.addEventListener('pointermove', continueCleanupStroke); els.cleanupCanvas.addEventListener('pointerup', endCleanupStroke); els.cleanupCanvas.addEventListener('pointercancel', endCleanupStroke);
+  els.watermarkDetect.addEventListener('click', detectWatermarkMask);
+    els.cleanupCanvas.addEventListener('pointerdown', beginCleanupStroke); els.cleanupCanvas.addEventListener('pointermove', continueCleanupStroke); els.cleanupCanvas.addEventListener('pointerup', endCleanupStroke); els.cleanupCanvas.addEventListener('pointercancel', endCleanupStroke);
   els.cleanupUndoStroke.addEventListener('click', undoCleanupStroke); els.cleanupClearMask.addEventListener('click', clearCleanupMask); els.cleanupApply.addEventListener('click', applyCleanupMask); els.cleanupUndo.addEventListener('click', undoCleanupApplication);
   for (const target of [els.replaceSelectorImage, els.mobileCanvasImage]) { target.addEventListener('pointerdown', beginReplaceSelection); target.addEventListener('pointermove', continueReplaceSelection); target.addEventListener('pointerup', endReplaceSelection); target.addEventListener('pointercancel', endReplaceSelection); }
   els.replaceClearSelection.addEventListener('click', clearReplaceSelection); els.replaceApply.addEventListener('click', applyTextReplacement); els.replaceUndo.addEventListener('click', undoTextReplacement);
@@ -505,9 +507,35 @@ function undoTextReplacement() {
   renderLayerList(); renderLayerProperties(); renderReplaceSelector(item); els.replaceStatus.textContent = 'Replacement undone'; scheduleEditPreview(20);
 }
 
+async function detectWatermarkMask() {
+  const item=selectedItem(); if(!item?.originalUrl||item.inspect?.kind==='svg'||state.busy)return;
+  els.watermarkDetect.disabled=true;els.watermarkDetectStatus.textContent='Scanning locally…';
+  try{
+    const img=els.cleanupBaseImage;
+    if(!(img.complete&&img.naturalWidth>0)) await new Promise((resolve,reject)=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',reject,{once:true});img.src=item.originalUrl;});
+    const edge=600,scale=Math.min(1,edge/Math.max(img.naturalWidth,img.naturalHeight));
+    const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.naturalWidth*scale));c.height=Math.max(1,Math.round(img.naturalHeight*scale));
+    const ctx=c.getContext('2d',{alpha:false,willReadFrequently:true});ctx.drawImage(img,0,0,c.width,c.height);
+    const data=ctx.getImageData(0,0,c.width,c.height);
+    let boxes=detectWatermarkRegions(data.data,c.width,c.height,{maxRegions:5});
+    if('TextDetector' in window){
+      try{
+        const detected=await new TextDetector().detect(img);
+        for(const entry of detected||[]){const b=entry.boundingBox;if(b?.width>4&&b?.height>4)boxes.push({x:b.x/img.naturalWidth,y:b.y/img.naturalHeight,width:b.width/img.naturalWidth,height:b.height/img.naturalHeight,score:2});}
+      }catch{}
+    }
+    boxes=boxes.sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,5);
+    if(!boxes.length){els.watermarkDetectStatus.textContent='No likely watermark found · brush manually';return;}
+    item.cleanupStrokes=boxesToCleanupStrokes(boxes,{maxStrokes:80});item.cleanupApplied=false;paintCleanupCanvas(item);updateCleanupButtons(item);
+    els.cleanupState.textContent='Detected mask ready';
+    els.watermarkDetectStatus.textContent=`${boxes.length} likely region${boxes.length===1?'':'s'} · adjust mask if needed`;
+  }catch{els.watermarkDetectStatus.textContent='Detection unavailable · brush manually';}
+  finally{els.watermarkDetect.disabled=false;}
+}
+
 function cleanupForItem(item) { return normalizeCleanup({ enabled:Boolean(item?.cleanupApplied), strokes:item?.cleanupStrokes || [] }); }
 function cleanupPointFromEvent(event) { const rect=els.cleanupCanvas.getBoundingClientRect(); return { x:Math.max(0,Math.min(1,(event.clientX-rect.left)/Math.max(1,rect.width))), y:Math.max(0,Math.min(1,(event.clientY-rect.top)/Math.max(1,rect.height))) }; }
-function beginCleanupStroke(event) { const item=selectedItem(); if(!item?.originalUrl||item.inspect?.kind==='svg'||!item.cleanupImage?.complete) return; event.preventDefault(); els.cleanupCanvas.setPointerCapture?.(event.pointerId); state.cleanupPointerId=event.pointerId; const rect=els.cleanupCanvas.getBoundingClientRect(); const radius=(Number(els.cleanupBrush.value)/2)/Math.max(1,Math.min(rect.width,rect.height)); item.cleanupStrokes.push({radius,points:[cleanupPointFromEvent(event)]}); item.cleanupApplied=false; paintCleanupCanvas(item); updateCleanupButtons(item); }
+function beginCleanupStroke(event) { const item=selectedItem(); if(!item?.originalUrl||item.inspect?.kind==='svg'||!els.cleanupBaseImage.complete||!els.cleanupBaseImage.naturalWidth) return; event.preventDefault(); els.cleanupCanvas.setPointerCapture?.(event.pointerId); state.cleanupPointerId=event.pointerId; const rect=els.cleanupCanvas.getBoundingClientRect(); const radius=(Number(els.cleanupBrush.value)/2)/Math.max(1,Math.min(rect.width,rect.height)); item.cleanupStrokes.push({radius,points:[cleanupPointFromEvent(event)]}); item.cleanupApplied=false; paintCleanupCanvas(item); updateCleanupButtons(item); }
 function continueCleanupStroke(event) { if(state.cleanupPointerId!==event.pointerId) return; const item=selectedItem(); const stroke=item?.cleanupStrokes?.[item.cleanupStrokes.length-1]; if(!stroke)return; const point=cleanupPointFromEvent(event); const last=stroke.points[stroke.points.length-1]; if(Math.hypot(point.x-last.x,point.y-last.y)<.002)return; stroke.points.push(point); paintCleanupCanvas(item); }
 function endCleanupStroke(event) { if(state.cleanupPointerId!==event.pointerId)return; state.cleanupPointerId=null; const item=selectedItem(); if(item){ item.cleanupApplied=false; updateCleanupButtons(item); els.cleanupState.textContent=state.mobileMode==='watermarkremove'?'Watermark mask ready':'Mask ready'; scheduleEditPreview(80); } }
 function undoCleanupStroke() { const item=selectedItem(); if(!item?.cleanupStrokes?.length)return; item.cleanupStrokes.pop(); item.cleanupApplied=false; paintCleanupCanvas(item); updateCleanupButtons(item); scheduleEditPreview(60); }
@@ -515,8 +543,30 @@ function clearCleanupMask() { const item=selectedItem(); if(!item)return; const 
 function applyCleanupMask() { const item=selectedItem(); if(!item?.cleanupStrokes?.length)return; item.cleanupApplied=true; updateCleanupButtons(item); els.cleanupState.textContent=state.mobileMode==='watermarkremove'?'Watermark removal active':'Cleanup active'; scheduleEditPreview(20); }
 function undoCleanupApplication() { const item=selectedItem(); if(!item?.cleanupApplied)return; item.cleanupApplied=false; updateCleanupButtons(item); els.cleanupState.textContent='Mask kept · cleanup undone'; scheduleEditPreview(20); }
 function updateCleanupButtons(item) { const count=item?.cleanupStrokes?.length||0; const watermarkMode=state.mobileMode==='watermarkremove'; els.cleanupUndoStroke.disabled=count===0; els.cleanupClearMask.disabled=count===0; els.cleanupApply.disabled=count===0||Boolean(item?.cleanupApplied); els.cleanupUndo.disabled=!item?.cleanupApplied; if(!count)els.cleanupState.textContent=watermarkMode?'Brush over watermark':'No mask'; else if(item.cleanupApplied)els.cleanupState.textContent=watermarkMode?'Watermark removal active':'Cleanup active'; else els.cleanupState.textContent=`${count} stroke${count===1?'':'s'} ready`; }
-function renderCleanupEditor(item) { const ctx=els.cleanupCanvas.getContext('2d'); if(!item?.originalUrl||item.inspect?.kind==='svg'){ ctx.clearRect(0,0,els.cleanupCanvas.width,els.cleanupCanvas.height); els.cleanupEmpty.classList.remove('hidden'); updateCleanupButtons(item); return; } els.cleanupEmpty.classList.add('hidden'); if(item.cleanupImage?.complete){ paintCleanupCanvas(item); return; } const img=new Image(); item.cleanupImage=img; img.onload=()=>{ const scale=Math.min(1,900/img.naturalWidth,520/img.naturalHeight); els.cleanupCanvas.width=Math.max(1,Math.round(img.naturalWidth*scale)); els.cleanupCanvas.height=Math.max(1,Math.round(img.naturalHeight*scale)); paintCleanupCanvas(item); }; img.src=item.originalUrl; updateCleanupButtons(item); }
-function paintCleanupCanvas(item) { const img=item?.cleanupImage; if(!img?.complete)return; const canvas=els.cleanupCanvas,ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width,canvas.height); ctx.save(); ctx.strokeStyle='rgba(220,38,38,.58)'; ctx.fillStyle='rgba(220,38,38,.58)'; ctx.lineCap='round'; ctx.lineJoin='round'; for(const stroke of item.cleanupStrokes||[]){ const radius=stroke.radius*Math.min(canvas.width,canvas.height); const pts=stroke.points||[]; if(!pts.length)continue; ctx.lineWidth=Math.max(2,radius*2); if(pts.length===1){ctx.beginPath();ctx.arc(pts[0].x*canvas.width,pts[0].y*canvas.height,radius,0,Math.PI*2);ctx.fill();continue;} ctx.beginPath();ctx.moveTo(pts[0].x*canvas.width,pts[0].y*canvas.height);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x*canvas.width,pts[i].y*canvas.height);ctx.stroke(); } ctx.restore(); }
+function renderCleanupEditor(item) {
+  const ctx=els.cleanupCanvas.getContext('2d');
+  if(!item?.originalUrl||item.inspect?.kind==='svg'){
+    ctx.clearRect(0,0,els.cleanupCanvas.width,els.cleanupCanvas.height);
+    els.cleanupBaseImage.removeAttribute('src'); els.cleanupEmpty.classList.remove('hidden'); updateCleanupButtons(item); return;
+  }
+  els.cleanupEmpty.classList.add('hidden');
+  const ready=()=>els.cleanupBaseImage.complete&&els.cleanupBaseImage.naturalWidth>0;
+  const sizeAndPaint=()=>{
+    const img=els.cleanupBaseImage,scale=Math.min(1,900/img.naturalWidth,520/img.naturalHeight);
+    const w=Math.max(1,Math.round(img.naturalWidth*scale)),h=Math.max(1,Math.round(img.naturalHeight*scale));
+    img.width=w;img.height=h;els.cleanupCanvas.width=w;els.cleanupCanvas.height=h;
+    item.cleanupImage=img;paintCleanupCanvas(item);updateCleanupButtons(item);
+  };
+  if(els.cleanupBaseImage.src===item.originalUrl&&ready()){sizeAndPaint();return;}
+  els.cleanupBaseImage.onload=sizeAndPaint;
+  els.cleanupBaseImage.onerror=()=>{els.cleanupEmpty.textContent='Image preview could not be loaded.';els.cleanupEmpty.classList.remove('hidden');};
+  els.cleanupBaseImage.src=item.originalUrl;
+}
+function paintCleanupCanvas(item) {
+  const canvas=els.cleanupCanvas,ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();ctx.strokeStyle='rgba(220,38,38,.62)';ctx.fillStyle='rgba(220,38,38,.62)';ctx.lineCap='round';ctx.lineJoin='round';
+  for(const stroke of item?.cleanupStrokes||[]){const radius=stroke.radius*Math.min(canvas.width,canvas.height),pts=stroke.points||[];if(!pts.length)continue;ctx.lineWidth=Math.max(2,radius*2);if(pts.length===1){ctx.beginPath();ctx.arc(pts[0].x*canvas.width,pts[0].y*canvas.height,radius,0,Math.PI*2);ctx.fill();continue;}ctx.beginPath();ctx.moveTo(pts[0].x*canvas.width,pts[0].y*canvas.height);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x*canvas.width,pts[i].y*canvas.height);ctx.stroke();}ctx.restore();
+}
 
 function watermarkControls() { return [els.watermarkEnabled,els.watermarkType,els.watermarkPosition,els.watermarkOpacity,els.watermarkRotation,els.watermarkMargin,els.watermarkTiled,els.watermarkTileGap,els.watermarkX,els.watermarkY,els.watermarkText,els.watermarkFont,els.watermarkFontSize,els.watermarkColor,els.watermarkLogoWidth]; }
 function collectWatermark() { return normalizeWatermark({ enabled:els.watermarkEnabled.checked,type:els.watermarkType.value,position:els.watermarkPosition.value,opacity:Number(els.watermarkOpacity.value)/100,rotation:Number(els.watermarkRotation.value),margin:Number(els.watermarkMargin.value),tiled:els.watermarkTiled.checked,tileGap:Number(els.watermarkTileGap.value),x:Number(els.watermarkX.value),y:Number(els.watermarkY.value),text:els.watermarkText.value,fontFamily:els.watermarkFont.value,fontSize:Number(els.watermarkFontSize.value),color:els.watermarkColor.value,logoWidth:Number(els.watermarkLogoWidth.value) }); }
@@ -1117,6 +1167,8 @@ function setMobileMode(mode) {
   if (state.mobileMode === 'crop') syncMobileCropButtons();
   const removingWatermark = state.mobileMode === 'watermarkremove';
   if (els.cleanupModeHint) els.cleanupModeHint.classList.toggle('hidden', !removingWatermark);
+  if (els.watermarkDetectBar) els.watermarkDetectBar.classList.toggle('hidden', !removingWatermark);
+  if (els.watermarkDetectStatus && removingWatermark) els.watermarkDetectStatus.textContent = 'Best-effort local detection';
   if (els.cleanupApply) els.cleanupApply.textContent = removingWatermark ? 'Remove watermark' : 'Remove selected area';
   if (els.cleanupState && removingWatermark && !(selectedItem()?.cleanupStrokes?.length)) els.cleanupState.textContent = 'Brush over watermark';
   if (state.mobileMode === 'text' || state.mobileMode === 'design') { renderLayerList(); renderLayerProperties(); updateMobileLayerHint(); } else if (els.mobileLayerHint) els.mobileLayerHint.classList.add('hidden');

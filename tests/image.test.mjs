@@ -14,6 +14,7 @@ import { buildAssetDoctorReport, plannedOutputDimensions } from '../lib/image/as
 import { parseColorProfileSummary } from '../lib/image/preflight.js';
 import { normalizeSmartRegions, chooseSmartFocus, detectInformationRegions } from '../lib/image/smart-crop.js';
 import { RESPONSIVE_WIDTHS, normalizeResponsiveWidths, buildResponsiveVariants, buildSrcset, buildPictureMarkup } from '../lib/image/web-pack.js';
+import { detectWatermarkRegions, boxesToCleanupStrokes } from '../lib/image/watermark-detect.js';
 
 test('fit resize preserves aspect ratio', () => {
   assert.deepEqual(calculateResize(4000, 2000, { resizeMode: 'fit', width: 1000, height: 1000, preserveAspect: true }), { width: 1000, height: 500 });
@@ -301,4 +302,22 @@ test('picture markup emits modern sources and JPEG fallback with dimensions', ()
   assert.match(markup,/hero-640\.jpg/);
   assert.match(markup,/width="640" height="360"/);
   assert.match(markup,/alt="Hero"/);
+});
+
+
+test('watermark detector finds a synthetic high-contrast text-like band', () => {
+  const w=240,h=160,data=new Uint8ClampedArray(w*h*4);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;let v=150;
+    if(y>65&&y<95&&x>45&&x<200&&((x%12)<3||(y%10)<2))v=245;
+    data[i]=data[i+1]=data[i+2]=v;data[i+3]=255;
+  }
+  const boxes=detectWatermarkRegions(data,w,h,{maxRegions:5});
+  assert.ok(boxes.length>0);
+  assert.ok(boxes.some((b)=>b.y<.65&&b.y+b.height>.35));
+});
+
+test('detected watermark boxes convert to bounded cleanup strokes', () => {
+  const strokes=boxesToCleanupStrokes([{x:.2,y:.3,width:.5,height:.2,score:1}]);
+  assert.ok(strokes.length>1);
+  assert.ok(strokes.every((s)=>s.radius>0&&s.radius<=.05&&s.points.every((p)=>p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1)));
 });
