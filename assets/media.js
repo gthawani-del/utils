@@ -5,6 +5,7 @@ import { initCompilerWorkspace } from '/lib/media/compiler/workspace.js';
 import { initCommandAssistant } from '/lib/media/command/workspace.js';
 import { initQcWorkspace } from '/lib/media/qc/workspace.js';
 import { initDeliveryWorkspace } from '/lib/media/delivery/workspace.js';
+import { initRecipeWorkspace } from '/lib/media/recipes/workspace.js';
 import { initLyricsWorkspace } from '/lib/media/lyrics/workspace.js';
 import { initTranscriptWorkspace } from '/lib/media/transcript/workspace.js';
 import { createAudioEdits, audioSelectionDuration, normalizeAudioEdits, previewVolumeAt, updateAudioEdits } from '/lib/media/audio/edits.js';
@@ -82,6 +83,7 @@ let compilerWorkspace = null;
 let qcWorkspace = null;
 let deliveryWorkspace = null;
 let commandAssistant = null;
+let recipeWorkspace = null;
 
 if (restored) {
   project.id = restored.id || project.id;
@@ -663,7 +665,11 @@ document.addEventListener('click', (event) => {
   const placeholder = event.target.closest('[data-placeholder-action]');
   if (placeholder) {
     const name = placeholder.dataset.placeholderAction;
-    phaseNote.textContent = `${name} is planned for a later phase; Step 2 only adds secure source ingestion and shared project state.`;
+    if (name === 'Recipes' || name === 'Use a Recipe') {
+      recipeWorkspace?.open();
+      return;
+    }
+    phaseNote.textContent = `${name} is planned for a later phase; this control is not enabled yet.`;
   }
 });
 
@@ -946,6 +952,7 @@ transcriptWorkspace = initTranscriptWorkspace({
 
 commandAssistant = initCommandAssistant({
   getProject: () => project,
+  onSaveRecipe: (actions, context) => recipeWorkspace?.openSave(actions, context),
   executeAction: async (item) => {
     const duration = Number(project.source?.duration || 0);
 
@@ -1012,6 +1019,14 @@ commandAssistant = initCommandAssistant({
 
     return { ok: false, reason: `Unsupported command action: ${item.type}` };
   },
+  setStatus: (message) => {
+    commandMessage.textContent = message;
+    if (sourceNote && !sourceStage.classList.contains('hidden')) sourceNote.textContent = message;
+  }
+});
+
+recipeWorkspace = initRecipeWorkspace({
+  loadCommandPlan: (actions, context) => commandAssistant.loadPlan(actions, context),
   setStatus: (message) => {
     commandMessage.textContent = message;
     if (sourceNote && !sourceStage.classList.contains('hidden')) sourceNote.textContent = message;

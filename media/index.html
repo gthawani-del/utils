@@ -51,7 +51,7 @@
           <div class="command-plan-list" id="command-plan-list"></div>
           <div class="command-plan-footer">
             <p>Nothing executes until you press Run plan. Blocked actions must be removed or resolved first.</p>
-            <div><button class="media-button" id="command-clear-plan" type="button">Clear</button><button class="media-button empty-primary" id="command-run-plan" type="button" disabled>Run plan</button></div>
+            <div><button class="media-button" id="command-clear-plan" type="button">Clear</button><button class="media-button" id="command-save-recipe" type="button" disabled>Save as recipe</button><button class="media-button empty-primary" id="command-run-plan" type="button" disabled>Run plan</button></div>
           </div>
         </section>
       </section>
@@ -511,6 +511,33 @@
     <button type="button" data-placeholder-action="Media Library"><span>▱</span><small>Library</small></button>
     <button type="button" data-placeholder-action="Recipes"><span>▤</span><small>Recipes</small></button>
   </nav>
+
+  <dialog class="media-dialog recipe-dialog" id="recipe-dialog" aria-labelledby="recipe-dialog-title">
+    <div class="recipe-dialog-body">
+      <div class="dialog-heading"><div><p class="workspace-eyebrow">Reusable workflows</p><h2 id="recipe-dialog-title">Recipes</h2></div><button id="recipe-close" class="dialog-close" type="button" aria-label="Close">×</button></div>
+      <p class="recipe-intro">Recipes store deterministic instructions only—never rendered media. Applying a recipe creates Planned Actions for review before anything runs.</p>
+
+      <section class="recipe-save-box hidden" id="recipe-save-box">
+        <div><strong id="recipe-save-title">Save Planned Actions as recipe</strong><span>Stored only in this browser.</span></div>
+        <input id="recipe-save-name" type="text" maxlength="80" placeholder="Recipe name">
+        <div><button class="media-button" id="recipe-save-cancel" type="button">Cancel</button><button class="media-button empty-primary" id="recipe-save-confirm" type="button">Save recipe</button></div>
+      </section>
+
+      <section class="recipe-section">
+        <div class="recipe-section-heading"><strong>Built-in recipes</strong><span>Deterministic starting points</span></div>
+        <div class="recipe-grid" id="recipe-builtins"></div>
+      </section>
+
+      <section class="recipe-section">
+        <div class="recipe-section-heading"><strong>My Recipes</strong><span>Persistent browser-local recipes</span></div>
+        <p class="recipe-custom-empty" id="recipe-custom-empty">No custom recipes yet. Build a Command Assistant plan and choose “Save as recipe”.</p>
+        <div class="recipe-grid" id="recipe-customs"></div>
+      </section>
+
+      <div class="recipe-boundary"><strong>Batch apply</strong><span>The recipe schema is reusable, but this Media Studio currently holds one active source. Batch application remains unavailable until multi-source projects exist.</span></div>
+      <p class="recipe-status" id="recipe-status" role="status" aria-live="polite">Recipes are stored locally in browser storage.</p>
+    </div>
+  </dialog>
 
   <dialog class="media-dialog" id="link-dialog" aria-labelledby="link-dialog-title">
     <form id="link-form">
