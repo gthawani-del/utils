@@ -3,20 +3,20 @@ import assert from 'node:assert/strict';
 import { createVideoEdits, normalizeVideoEdits, selectionDuration, updateVideoEdits } from '../lib/media/video/edits.js';
 
 test('video edit state starts as full-duration selection', () => {
-  assert.deepEqual(createVideoEdits(12.5), { trimStart: 0, trimEnd: 12.5, playbackRate: 1, muted: false });
+  assert.deepEqual(createVideoEdits(12.5), { trimStart: 0, trimEnd: 12.5, playbackRate: 1, muted: false, outputAspect: 'original' });
 });
 
 test('video trim bounds are clamped to duration', () => {
   assert.deepEqual(
     normalizeVideoEdits({ trimStart: -2, trimEnd: 99, playbackRate: 7 }, 10),
-    { trimStart: 0, trimEnd: 10, playbackRate: 1, muted: false }
+    { trimStart: 0, trimEnd: 10, playbackRate: 1, muted: false, outputAspect: 'original' }
   );
 });
 
 test('video trim end never precedes trim start', () => {
   assert.deepEqual(
     normalizeVideoEdits({ trimStart: 8, trimEnd: 3, playbackRate: 1 }, 10),
-    { trimStart: 8, trimEnd: 8, playbackRate: 1, muted: false }
+    { trimStart: 8, trimEnd: 8, playbackRate: 1, muted: false, outputAspect: 'original' }
   );
 });
 
@@ -33,4 +33,11 @@ test('video mute patch persists through deterministic edit normalization', () =>
   const muted = updateVideoEdits(initial, { muted: true }, 10);
   assert.equal(muted.muted, true);
   assert.equal(updateVideoEdits(muted, { muted: false }, 10).muted, false);
+});
+
+
+test('video aspect patch is constrained to safe presets', () => {
+  const initial = createVideoEdits(10);
+  assert.equal(updateVideoEdits(initial, { outputAspect: '9:16' }, 10).outputAspect, '9:16');
+  assert.equal(updateVideoEdits(initial, { outputAspect: '3:2' }, 10).outputAspect, 'original');
 });
