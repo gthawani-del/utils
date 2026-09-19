@@ -29,8 +29,9 @@
     </section>
 
     <section id="workspace" class="workspace hidden" aria-live="polite">
+      <button class="mobile-files-backdrop" id="mobile-files-backdrop" type="button" aria-label="Close image list"></button>
       <aside class="file-panel" aria-label="Image files">
-        <div class="panel-title"><div><p class="eyebrow">Files</p><h2 id="file-count">0 images</h2></div><button class="icon-button" id="add-more" type="button" aria-label="Add more images">＋</button></div>
+        <div class="panel-title"><div><p class="eyebrow">Files</p><h2 id="file-count">0 images</h2></div><div class="file-panel-actions"><button class="icon-button" id="add-more" type="button" aria-label="Add more images">＋</button><button class="icon-button mobile-files-close" id="mobile-files-close" type="button" aria-label="Close image list">×</button></div></div>
         <div id="file-list" class="file-list"></div>
       </aside>
 
@@ -259,7 +260,14 @@
 
           <details class="advanced export-section"><summary>Advanced controls</summary><div class="control-section nested"><h3>Privacy & metadata</h3><label class="check-row"><input type="checkbox" checked disabled> Privacy-clean export: metadata and GPS are stripped</label><div id="metadata-box" class="metadata-box"></div></div><div class="control-section nested"><h3>Export naming</h3><div class="form-grid"><label>Prefix<input id="prefix" type="text" maxlength="40"></label><label>Suffix<input id="suffix" type="text" maxlength="40"></label></div><label class="check-row"><input id="preserve-name" type="checkbox" checked> Preserve original filename stem</label></div></details>
 
-          <div class="action-row export-section"><button class="primary-button" id="process-selected" type="button">Process selected</button><button class="secondary-button" id="process-all" type="button">Process all</button><button class="secondary-button" id="download-selected" type="button" disabled>Download selected</button><button class="secondary-button" id="download-all" type="button" disabled>Download All (ZIP)</button></div>
+          <div class="action-row export-section">
+            <div class="mobile-export-actions">
+              <button class="primary-button" id="mobile-export-selected" type="button">Export image</button>
+              <button class="secondary-button hidden" id="mobile-export-all" type="button">Export all as ZIP</button>
+              <span id="mobile-export-status" class="microcopy">Local export · metadata stripped</span>
+            </div>
+            <button class="primary-button desktop-export-action" id="process-selected" type="button">Process selected</button><button class="secondary-button desktop-export-action" id="process-all" type="button">Process all</button><button class="secondary-button desktop-export-action" id="download-selected" type="button" disabled>Download selected</button><button class="secondary-button desktop-export-action" id="download-all" type="button" disabled>Download All (ZIP)</button>
+          </div>
         </div>
         <nav class="mobile-tool-dock" aria-label="Image editing tools">
           <button class="mobile-tool-button active" type="button" data-mobile-tool="adjust"><span>☼</span><small>Adjust</small></button>

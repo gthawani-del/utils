@@ -281,6 +281,20 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
   body[data-mobile-tool="watermark"].mobile-editing .watermark-section > .section-inline-heading { align-items: center; }
   body[data-mobile-tool="watermark"].mobile-editing .watermark-section .form-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   body.mobile-editing .mobile-canvas-image, body.mobile-editing #mobile-canvas-image { touch-action: none; }
+  .mobile-files-backdrop, .mobile-files-close, .mobile-export-actions { display: none; }
+  .file-panel-actions { display: flex; gap: 6px; }
+  body.mobile-editing .mobile-batch-chip { top: 72px; bottom: auto; left: 12px; transform: none; }
+  body.mobile-editing.mobile-files-open .mobile-files-backdrop { display: block; position: fixed; inset: 0; z-index: 74; border: 0; background: rgba(17,24,39,.32); }
+  body.mobile-editing.mobile-files-open .file-panel { display: block !important; position: fixed; z-index: 75; left: 0; right: 0; bottom: 0; top: auto; max-height: 62dvh; overflow: hidden; border: 0; border-radius: 22px 22px 0 0; box-shadow: 0 -16px 44px rgba(16,24,40,.2); }
+  body.mobile-editing.mobile-files-open .file-panel .mobile-files-close { display: inline-grid; place-items: center; }
+  body.mobile-editing.mobile-files-open .file-list { max-height: calc(62dvh - 74px); padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+  body[data-mobile-tool="export"].mobile-editing .control-card { max-height: 52dvh; }
+  body[data-mobile-tool="export"].mobile-editing .desktop-export-action { display: none; }
+  body[data-mobile-tool="export"].mobile-editing .mobile-export-actions { display: grid; width: 100%; gap: 8px; }
+  body[data-mobile-tool="export"].mobile-editing .mobile-export-actions .primary-button { min-height: 48px; font-size: 14px; }
+  body[data-mobile-tool="export"].mobile-editing .mobile-export-actions .secondary-button { min-height: 44px; }
+  body[data-mobile-tool="export"].mobile-editing .preset-section > h3, body[data-mobile-tool="export"].mobile-editing .resize-section > h3, body[data-mobile-tool="export"].mobile-editing .format-section > h3 { font-size: 12px; margin-bottom: 10px; }
+
 
 
 
