@@ -693,3 +693,90 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
     top: 54px;
   }
 }
+
+@media (max-width: 700px) {
+  /* Pass 2: iPhone-like compact primary tools. */
+  body.mobile-editing {
+    --mobile-dock-height: 72px;
+    --mobile-sheet-height: 204px;
+  }
+  body[data-mobile-tool="crop"].mobile-editing { --mobile-sheet-height: 196px; }
+  body[data-mobile-tool="cleanup"].mobile-editing { --mobile-sheet-height: 210px; }
+  body[data-mobile-tool="text"].mobile-editing { --mobile-sheet-height: 218px; }
+  body[data-mobile-tool="more"].mobile-editing { --mobile-sheet-height: 232px; }
+
+  body.mobile-editing .mobile-tool-dock {
+    padding-top: 4px;
+  }
+  body.mobile-editing .mobile-tool-button span {
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+  }
+  body.mobile-editing .mobile-tool-button small {
+    font-size: 15px;
+  }
+
+  body[data-mobile-tool="adjust"].mobile-editing .edit-section {
+    padding-top: 4px;
+  }
+  body.mobile-editing .mobile-adjust-picker {
+    height: 58px;
+    align-items: center;
+  }
+  body.mobile-editing .mobile-adjust-button {
+    min-height: 54px;
+  }
+  body.mobile-editing .mobile-adjust-context {
+    min-height: 28px;
+  }
+
+  body[data-mobile-tool="crop"].mobile-editing .crop-section {
+    padding-top: 5px;
+  }
+  body[data-mobile-tool="crop"].mobile-editing .mobile-crop-presets {
+    margin-bottom: 7px;
+  }
+
+  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-section {
+    padding: 7px 12px 9px;
+  }
+  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-controls label {
+    font-size: 15px;
+  }
+  body[data-mobile-tool="cleanup"].mobile-editing .cleanup-actions {
+    gap: 5px;
+  }
+
+  body[data-mobile-tool="text"].mobile-editing .design-section {
+    padding-top: 6px;
+  }
+  body[data-mobile-tool="text"].mobile-editing .mobile-design-hint,
+  body[data-mobile-tool="text"].mobile-editing .design-section > .section-inline-heading {
+    display: none !important;
+  }
+  body[data-mobile-tool="text"].mobile-editing .layer-toolbar {
+    margin-bottom: 7px;
+  }
+  body[data-mobile-tool="text"].mobile-editing .layer-toolbar .secondary-button {
+    min-height: 42px;
+    padding: 8px 14px;
+    font-size: 16px;
+  }
+  body[data-mobile-tool="text"].mobile-editing .layer-list {
+    margin-bottom: 6px;
+  }
+  body[data-mobile-tool="text"].mobile-editing .layer-properties {
+    padding: 8px;
+  }
+
+  body[data-mobile-tool="more"].mobile-editing .mobile-more-section {
+    padding: 7px 12px 10px;
+  }
+  body[data-mobile-tool="more"].mobile-editing .mobile-more-grid {
+    gap: 6px;
+  }
+  body[data-mobile-tool="more"].mobile-editing .mobile-more-grid button {
+    min-height: 76px;
+  }
+}
