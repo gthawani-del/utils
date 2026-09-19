@@ -884,3 +884,33 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
     padding-top: 8px;
   }
 }
+
+.asset-doctor-section { border-top: 1px solid var(--border); }
+.asset-doctor-badge { display:inline-flex; align-items:center; min-height:28px; padding:4px 9px; border-radius:999px; background:var(--surface-2); color:var(--muted); font-size:11px; font-weight:800; }
+.asset-doctor-badge[data-level="warning"] { background:#fff4d6; color:#7a4b00; }
+.asset-doctor-badge[data-level="error"] { background:#fde8e8; color:#9b1c1c; }
+.asset-doctor-badge[data-level="good"] { background:#eaf8ee; color:#166534; }
+.asset-doctor-list { display:grid; gap:8px; }
+.asset-doctor-item { padding:11px 12px; border:1px solid var(--border); border-radius:12px; background:#fff; }
+.asset-doctor-item-head { display:flex; align-items:center; gap:8px; }
+.asset-doctor-dot { width:9px; height:9px; border-radius:50%; background:#64748b; flex:0 0 auto; }
+.doctor-warning .asset-doctor-dot { background:#d97706; }
+.doctor-error .asset-doctor-dot { background:#dc2626; }
+.doctor-good .asset-doctor-dot { background:#16a34a; }
+.asset-doctor-item p { margin:5px 0 0; color:var(--muted); font-size:11px; line-height:1.4; }
+.asset-doctor-item .asset-doctor-fix { color:var(--text); }
+.asset-doctor-actions { display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+@media (max-width:700px) {
+  body[data-mobile-tool="assetdoctor"].mobile-editing { --mobile-sheet-height:min(58dvh,490px); }
+  body[data-mobile-tool="assetdoctor"].mobile-editing .asset-doctor-section { display:block; padding-top:8px; }
+  body[data-mobile-tool="assetdoctor"].mobile-editing .asset-doctor-section > .section-inline-heading p { display:none; }
+  body[data-mobile-tool="assetdoctor"].mobile-editing .asset-doctor-section > .section-inline-heading { flex-direction:row; align-items:center; min-height:34px; margin-bottom:8px; }
+  body[data-mobile-tool="assetdoctor"].mobile-editing .asset-doctor-section h3 { font-size:22px; margin:0; }
+  body[data-mobile-tool="assetdoctor"].mobile-editing .asset-doctor-item p { font-size:13px; }
+  body[data-mobile-tool="assetdoctor"].mobile-editing .asset-doctor-item strong { font-size:15px; }
+  body[data-mobile-tool="assetdoctor"].mobile-editing #asset-doctor-run { min-height:44px; font-size:15px; }
+}
+
+@media (max-width:700px) {
+  body[data-mobile-tool="assetdoctor"].mobile-editing .asset-doctor-section { display:block !important; }
+}

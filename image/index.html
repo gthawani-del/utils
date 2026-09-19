@@ -311,11 +311,18 @@
               <button type="button" data-mobile-more-target="design"><span>□</span><strong>Design</strong></button>
               <button type="button" data-mobile-more-target="watermark"><span>W</span><strong>Watermark</strong></button>
               <button type="button" data-mobile-more-target="compiler"><span>▦</span><strong>Compiler</strong></button>
+              <button type="button" data-mobile-more-target="assetdoctor"><span>✓</span><strong>Asset Doctor</strong></button>
               <button type="button" data-mobile-more-target="performance"><span>⚡</span><strong>Performance</strong></button>
               <button type="button" data-mobile-more-target="export"><span>⇧</span><strong>Export settings</strong></button>
               <button type="button" id="mobile-more-revert"><span>↺</span><strong>Revert image</strong></button>
               <button type="button" id="mobile-more-files"><span>▤</span><strong>Images</strong></button>
             </div>
+          </div>
+
+          <div class="control-section asset-doctor-section">
+            <div class="section-inline-heading"><div><h3>Asset Doctor</h3><p class="microcopy">Measured pre-export checks only. No guessed quality scores.</p></div><span id="asset-doctor-badge" class="asset-doctor-badge">Not checked</span></div>
+            <div id="asset-doctor-list" class="asset-doctor-list"><p class="microcopy">Run Asset Doctor to inspect the selected image against the current export settings.</p></div>
+            <div class="asset-doctor-actions"><button class="primary-button" id="asset-doctor-run" type="button">Check asset</button><span id="asset-doctor-status" class="microcopy"></span></div>
           </div>
 
           <div class="control-section performance-section">

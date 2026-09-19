@@ -10,6 +10,8 @@ import { normalizeTextSelection, selectionFromPoints, replacementsToCleanup, rep
 import { COMPILER_PRESETS, MAX_COMPILER_OUTPUTS, normalizeCompilerOutput, normalizeCompilerOutputs, compilerSettings } from '../lib/image/compiler.js';
 import { PERFORMANCE_FORMATS, normalizePerformanceBudget, performanceCandidateWidths, chooseBudgetCandidate } from '../lib/image/performance.js';
 import { shouldUseBrowserProcessor } from '../lib/image/browser-processor.js';
+import { buildAssetDoctorReport, plannedOutputDimensions } from '../lib/image/asset-doctor.js';
+import { parseColorProfileSummary } from '../lib/image/preflight.js';
 
 test('fit resize preserves aspect ratio', () => {
   assert.deepEqual(calculateResize(4000, 2000, { resizeMode: 'fit', width: 1000, height: 1000, preserveAspect: true }), { width: 1000, height: 500 });
@@ -184,4 +186,51 @@ test('browser processor is selected for iOS WebKit clients and force-test mode',
   assert.equal(shouldUseBrowserProcessor({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 CriOS/140 Mobile/15E148 Safari/604.1', platform: 'iPhone', maxTouchPoints: 5, search: '' }), true);
   assert.equal(shouldUseBrowserProcessor({ userAgent: 'Mozilla/5.0 Chrome/140 Safari/537.36', platform: 'Linux x86_64', maxTouchPoints: 0, search: '?browserCanvas=1' }), true);
   assert.equal(shouldUseBrowserProcessor({ userAgent: 'Mozilla/5.0 Chrome/140 Safari/537.36', platform: 'Linux x86_64', maxTouchPoints: 0, search: '' }), false);
+});
+
+
+test('asset doctor flags measured upscale, metadata, GPS, transparency loss and unsupported output', () => {
+  const report=buildAssetDoctorReport({
+    fileSize:8*1024*1024,
+    inspect:{dimensions:{width:800,height:600},exif:{hasExif:true,hasGps:true,orientation:6},color:{wideGamut:true,profileName:'Display P3'}},
+    settings:{resizeMode:'fill',width:1600,height:1200,crop:{mode:'none'},format:'jpeg',rotate:0},
+    transparencyDetected:true,
+    supportedFormats:['png','webp']
+  });
+  const codes=new Set(report.issues.map((x)=>x.code));
+  for(const code of ['large-file','upscale','transparency-loss','gps','orientation','color-profile','unsupported-format']) assert.equal(codes.has(code),true);
+});
+
+test('asset doctor reports a clean measured asset without inventing warnings', () => {
+  const report=buildAssetDoctorReport({
+    fileSize:300*1024,
+    inspect:{dimensions:{width:1600,height:900},exif:{hasExif:false,hasGps:false,orientation:1},color:{wideGamut:false,profileName:'sRGB'}},
+    settings:{resizeMode:'fit',width:1600,height:900,preserveAspect:true,crop:{mode:'none'},format:'webp',rotate:0},
+    transparencyDetected:false,
+    supportedFormats:['jpeg','png','webp']
+  });
+  assert.equal(report.issues.length,1);
+  assert.equal(report.issues[0].code,'ready');
+});
+
+test('asset doctor planned dimensions respect rotation and selected preset mismatch', () => {
+  assert.deepEqual(plannedOutputDimensions({width:1200,height:800},{resizeMode:'fill',width:1200,height:630,crop:{mode:'none'},rotate:90}),{width:630,height:1200});
+  const report=buildAssetDoctorReport({
+    fileSize:1000,
+    inspect:{dimensions:{width:1200,height:800},exif:{orientation:1},color:{}},
+    settings:{resizeMode:'fill',width:1000,height:500,crop:{mode:'none'},format:'png',rotate:0},
+    preset:{width:1200,height:630},
+    supportedFormats:['png']
+  });
+  assert.equal(report.issues.some((x)=>x.code==='preset-dimensions'),true);
+});
+
+test('color-profile parser identifies PNG sRGB metadata conservatively', () => {
+  const bytes=new Uint8Array(8+12);
+  bytes.set([137,80,78,71,13,10,26,10],0);
+  bytes.set([0,0,0,0,115,82,71,66,0,0,0,0],8);
+  const color=parseColorProfileSummary('png',bytes);
+  assert.equal(color.hasProfile,true);
+  assert.equal(color.profileName,'sRGB');
+  assert.equal(color.wideGamut,false);
 });

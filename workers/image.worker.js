@@ -2,7 +2,7 @@ import { SECURITY_BUDGET, validateDimensions } from '../lib/security/budget.js';
 import { sniffBytes } from '../lib/security/sniff.js';
 import { sanitizeSvgText } from '../lib/security/svg.js';
 import { ok, fail, unsupported } from '../lib/security/result.js';
-import { preflightDimensions, parseExifSummary } from '../lib/image/preflight.js';
+import { preflightDimensions, parseExifSummary, parseColorProfileSummary } from '../lib/image/preflight.js';
 import { calculateResize, calculateCrop, coverRect } from '../lib/image/math.js';
 import { normalizeEdits, hasPixelEdits } from '../lib/image/edits.js';
 import { normalizeLayers } from '../lib/image/layers.js';
@@ -50,7 +50,8 @@ async function inspect({ buffer }) {
   const exif = kind === 'jpeg' ? parseExifSummary(bytes) : { orientation: 1, hasExif: false, hasGps: false, make: '', model: '', dateTimeOriginal: '' };
   const swapped = kind === 'jpeg' && [5, 6, 7, 8].includes(exif.orientation);
   const dimensions = swapped ? { width: rawDimensions.height, height: rawDimensions.width } : rawDimensions;
-  return ok({ kind, mime: mimeFor(kind), dimensions, exif });
+  const color = parseColorProfileSummary(kind, bytes);
+  return ok({ kind, mime: mimeFor(kind), dimensions, exif, color });
 }
 
 async function processImage({ buffer, settings = {}, preview = false, watermarkLogoBuffer = null }) {

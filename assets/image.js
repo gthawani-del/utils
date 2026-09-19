@@ -10,6 +10,7 @@ import { normalizeCleanup } from '/lib/image/cleanup.js';
 import { normalizeTextSelection, selectionFromPoints, replacementLayerFromSelection } from '/lib/image/text-replace.js';
 import { COMPILER_PRESETS, MAX_COMPILER_OUTPUTS, MAX_COMPILER_PACK_BYTES, normalizeCompilerOutput, normalizeCompilerOutputs, compilerSettings } from '/lib/image/compiler.js';
 import { normalizePerformanceBudget } from '/lib/image/performance.js';
+import { buildAssetDoctorReport } from '/lib/image/asset-doctor.js';
 import { shouldUseBrowserProcessor, processBrowserImage, optimizeBrowserImage } from '/lib/image/browser-processor.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
@@ -35,6 +36,7 @@ const els = {
   replaceSelector: $('#replace-selector'), replaceSelectorImage: $('#replace-selector-image'), replaceSelectorEmpty: $('#replace-selector-empty'), replaceSelectionBox: $('#replace-selection-box'), mobileReplaceSelection: $('#mobile-replace-selection'), replaceStatus: $('#replace-status'), replaceText: $('#replace-text'), replaceFont: $('#replace-font'), replaceFontSize: $('#replace-font-size'), replaceFontWeight: $('#replace-font-weight'), replaceColor: $('#replace-color'), replaceAlign: $('#replace-align'), replaceClearSelection: $('#replace-clear-selection'), replaceApply: $('#replace-apply'), replaceUndo: $('#replace-undo'),
   mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileExportTop: $('#mobile-export-top'), mobileSheetBack: $('#mobile-sheet-back'), mobileMoreButtons: [...document.querySelectorAll('[data-mobile-more-target]')], mobileMoreRevert: $('#mobile-more-revert'), mobileMoreFiles: $('#mobile-more-files'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileLayerHint: $('#mobile-layer-hint'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value'), mobileCropButtons: [...document.querySelectorAll('[data-crop-choice]')], mobilePrecisionToggle: $('#mobile-precision-toggle'), mobileFilesBackdrop: $('#mobile-files-backdrop'), mobileFilesClose: $('#mobile-files-close'), mobileExportSelected: $('#mobile-export-selected'), mobileExportAll: $('#mobile-export-all'), mobileExportStatus: $('#mobile-export-status'),
   compilerPresetGrid: $('#compiler-preset-grid'), compilerCount: $('#compiler-count'), compilerFit: $('#compiler-fit'), compilerCustomName: $('#compiler-custom-name'), compilerCustomWidth: $('#compiler-custom-width'), compilerCustomHeight: $('#compiler-custom-height'), compilerAddCustom: $('#compiler-add-custom'), compilerCustomList: $('#compiler-custom-list'), compilerGenerate: $('#compiler-generate'), compilerStatus: $('#compiler-status'),
+  assetDoctorRun: $('#asset-doctor-run'), assetDoctorList: $('#asset-doctor-list'), assetDoctorBadge: $('#asset-doctor-badge'), assetDoctorStatus: $('#asset-doctor-status'),
   performanceMaxWidth: $('#performance-max-width'), performanceMaxSize: $('#performance-max-size'), performanceMinQuality: $('#performance-min-quality'), performanceMinQualityValue: $('#performance-min-quality-value'), performanceRun: $('#performance-run'), performanceDownload: $('#performance-download'), performanceResult: $('#performance-result'), performanceResultTitle: $('#performance-result-title'), performanceResultDetail: $('#performance-result-detail'), performanceStatus: $('#performance-status')
 };
 
@@ -53,7 +55,7 @@ function initialize() {
   }
   wireEvents();
   updateConditionalControls();
-  renderLayerList(); renderLayerProperties(); updateWatermarkConditional(); renderCompiler(); setMobileMode('adjust'); setMobileAdjust('brightness'); syncMobileEditingState();
+  renderLayerList(); renderLayerProperties(); updateWatermarkConditional(); renderCompiler(); renderAssetDoctor(selectedItem()); setMobileMode('adjust'); setMobileAdjust('brightness'); syncMobileEditingState();
   if (state.useBrowserProcessor) showCompatibility('iPhone/iPad compatibility renderer active. Processing remains local in this browser.');
 }
 
@@ -118,6 +120,7 @@ function wireEvents() {
   els.compilerAddCustom.addEventListener('click', addCompilerCustomOutput); els.compilerGenerate.addEventListener('click', generateCompilerPack);
   els.performanceMinQuality.addEventListener('input', () => { els.performanceMinQualityValue.textContent = els.performanceMinQuality.value; invalidatePerformanceResult(); });
   for (const control of [els.performanceMaxWidth, els.performanceMaxSize]) control.addEventListener('input', invalidatePerformanceResult);
+  els.assetDoctorRun.addEventListener('click', () => runAssetDoctor());
   els.performanceRun.addEventListener('click', runPerformanceBudget); els.performanceDownload.addEventListener('click', downloadPerformanceResult);
   els.mobilePrecisionToggle.addEventListener('click', toggleMobilePrecision);
   els.mobileCanvasImage.addEventListener('pointerdown', beginLayerDrag); els.mobileCanvasImage.addEventListener('pointermove', continueLayerDrag); els.mobileCanvasImage.addEventListener('pointerup', endLayerDrag); els.mobileCanvasImage.addEventListener('pointercancel', endLayerDrag);
@@ -165,7 +168,7 @@ async function addFiles(files) {
       state.items.push(makeRejectedItem(file, budget.reason));
       continue;
     }
-    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], performanceResult: null, performanceResultUrl: '' };
+    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], performanceResult: null, performanceResultUrl: '', transparencyDetected: null, assetDoctorReport: null };
     state.items.push(item);
     renderList();
     try {
@@ -209,7 +212,7 @@ async function addFiles(files) {
 }
 
 function makeRejectedItem(file, reason) {
-  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], performanceResult: null, performanceResultUrl: '' };
+  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], performanceResult: null, performanceResultUrl: '', transparencyDetected: null, assetDoctorReport: null };
 }
 
 function selectItem(id, reset = false) {
@@ -267,6 +270,7 @@ function renderSelected() {
   safeUiCall(() => renderCleanupEditor(item));
   safeUiCall(() => renderReplaceSelector(item));
   safeUiCall(() => renderPerformanceResult(item));
+  safeUiCall(() => renderAssetDoctor(item));
   safeUiCall(updateWarnings); safeUiCall(updateButtons);
 }
 
@@ -294,7 +298,7 @@ function resetToOriginal() {
   els.format.value = item.inspect.kind === 'svg' ? 'png' : item.inspect.kind; els.quality.value = 82; els.qualityValue.textContent = '82'; els.targetSize.value = ''; els.rotate.value = 0; els.flipX.checked = false; els.flipY.checked = false;
   applyEditsToControls(DEFAULT_EDITS); state.editHistory = []; state.redoHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.lastCommittedGeometry = { rotate: 0, flipX: false, flipY: false }; updateUndoButton();
   state.layers = []; state.selectedLayerId = null; renderLayerList(); renderLayerProperties(); resetWatermarkControls();
-  item.cleanupStrokes = []; item.cleanupApplied = false; item.replaceSelection = null; item.textReplacements = []; item.replaceHistory = []; invalidatePerformanceResult(item); renderCleanupEditor(item); renderReplaceSelector(item);
+  item.cleanupStrokes = []; item.cleanupApplied = false; item.replaceSelection = null; item.textReplacements = []; item.replaceHistory = []; item.assetDoctorReport = null; invalidatePerformanceResult(item); renderCleanupEditor(item); renderReplaceSelector(item);
   if (item.editPreviewUrl) { revokeObjectUrl(item.editPreviewUrl); item.editPreviewUrl = ''; item.editPreviewBlob = null; }
   els.editComparison.classList.add('hidden');
   updateConditionalControls(); syncMobileCropButtons(); updateWarnings();
@@ -347,6 +351,7 @@ function collectSettings() {
 
 async function processSelected() {
   const item = selectedItem(); if (!item || item.status === 'unsupported' || item.status === 'failed') return;
+  await runAssetDoctor({ quiet:true });
   setBusy(true); await processItem(item, collectSettings()); setBusy(false); renderList(); renderSelected();
 }
 
@@ -736,6 +741,82 @@ function updateMobileAdjustValue() {
   else { const output = document.querySelector('#' + key + '-value'); els.mobileAdjustValue.textContent = output?.textContent ?? control.value; }
 }
 
+const ENCODER_SUPPORT = new Map();
+
+async function runAssetDoctor({ quiet = false } = {}) {
+  const item = selectedItem();
+  if (!item?.inspect) return null;
+  if (!quiet) {
+    els.assetDoctorStatus.textContent = 'Checking…';
+    els.assetDoctorRun.disabled = true;
+  }
+  try {
+    if (item.transparencyDetected === null) item.transparencyDetected = await detectTransparency(item);
+    const supportedFormats = [];
+    for (const kind of ['jpeg','png','webp','avif']) if (await supportsOutputKind(kind)) supportedFormats.push(kind);
+    const preset = IMAGE_PRESETS.find((entry) => entry.id === els.preset.value) || null;
+    item.assetDoctorReport = buildAssetDoctorReport({
+      fileSize: item.file.size,
+      inspect: item.inspect,
+      settings: collectSettings(),
+      preset,
+      transparencyDetected: item.transparencyDetected === true,
+      supportedFormats
+    });
+    renderAssetDoctor(item);
+    return item.assetDoctorReport;
+  } catch {
+    if (!quiet) els.assetDoctorStatus.textContent = 'Check unavailable for this asset.';
+    return null;
+  } finally {
+    if (!quiet) els.assetDoctorRun.disabled = false;
+  }
+}
+
+function renderAssetDoctor(item) {
+  if (!els.assetDoctorList || !els.assetDoctorBadge) return;
+  els.assetDoctorList.replaceChildren();
+  const report = item?.assetDoctorReport;
+  if (!report) {
+    const p=document.createElement('p'); p.className='microcopy'; p.textContent='Run Asset Doctor to inspect the selected image against the current export settings.';
+    els.assetDoctorList.append(p); els.assetDoctorBadge.textContent='Not checked'; els.assetDoctorBadge.dataset.level='neutral'; els.assetDoctorStatus.textContent=''; return;
+  }
+  const { errors,warnings,info } = report.counts;
+  els.assetDoctorBadge.textContent = errors ? `${errors} error${errors===1?'':'s'}` : warnings ? `${warnings} warning${warnings===1?'':'s'}` : info ? `${info} note${info===1?'':'s'}` : 'Ready';
+  els.assetDoctorBadge.dataset.level = errors ? 'error' : warnings ? 'warning' : 'good';
+  for (const finding of report.issues) {
+    const card=document.createElement('article'); card.className=`asset-doctor-item doctor-${finding.severity}`;
+    const head=document.createElement('div'); head.className='asset-doctor-item-head';
+    const dot=document.createElement('span'); dot.className='asset-doctor-dot'; dot.setAttribute('aria-hidden','true');
+    const title=document.createElement('strong'); title.textContent=finding.title; head.append(dot,title);
+    const detail=document.createElement('p'); detail.textContent=finding.detail;
+    const fix=document.createElement('p'); fix.className='asset-doctor-fix'; fix.textContent=`Fix: ${finding.fix}`;
+    card.append(head,detail,fix); els.assetDoctorList.append(card);
+  }
+  els.assetDoctorStatus.textContent = `Planned output: ${report.target.width}×${report.target.height}`;
+}
+
+async function detectTransparency(item) {
+  if (!item?.originalUrl || item.inspect?.kind === 'jpeg' || item.inspect?.kind === 'svg') return false;
+  const img = new Image(); img.decoding='async';
+  await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=item.originalUrl;});
+  const sourceW=img.naturalWidth||img.width, sourceH=img.naturalHeight||img.height;
+  const edge=1024, scale=Math.min(1,edge/Math.max(sourceW,sourceH));
+  const canvas=document.createElement('canvas'); canvas.width=Math.max(1,Math.round(sourceW*scale)); canvas.height=Math.max(1,Math.round(sourceH*scale));
+  const ctx=canvas.getContext('2d',{alpha:true,willReadFrequently:true}); ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  const data=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+  for(let i=3;i<data.length;i+=4) if(data[i]<255) return true;
+  return false;
+}
+
+async function supportsOutputKind(kind) {
+  if (ENCODER_SUPPORT.has(kind)) return ENCODER_SUPPORT.get(kind);
+  const mime=({jpeg:'image/jpeg',png:'image/png',webp:'image/webp',avif:'image/avif'})[kind];
+  const canvas=document.createElement('canvas'); canvas.width=1; canvas.height=1;
+  const supported=await new Promise((resolve)=>canvas.toBlob((blob)=>resolve(Boolean(blob&&blob.type===mime)),mime,.8));
+  ENCODER_SUPPORT.set(kind,supported); return supported;
+}
+
 function performanceBudgetInput() {
   return normalizePerformanceBudget({ maxWidth:Number(els.performanceMaxWidth.value), maxBytes:Number(els.performanceMaxSize.value)*1024, minQuality:Number(els.performanceMinQuality.value)/100 });
 }
@@ -844,6 +925,7 @@ function closeMobileFiles() { document.body.classList.remove('mobile-files-open'
 
 async function mobileExportSelected() {
   const item = selectedItem(); if (!item?.inspect || state.busy) return;
+  await runAssetDoctor({ quiet:true });
   setBusy(true); els.mobileExportStatus.textContent = 'Preparing export…';
   try {
     await processItem(item, collectSettings()); renderList(); renderSelected();
@@ -863,8 +945,8 @@ async function mobileExportAll() {
 }
 
 function setMobileMode(mode) {
-  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean', text:'Text', more:'More', replace:'Replace Text', design:'Design', watermark:'Watermark', compiler:'Compiler', performance:'Performance', export:'Export' };
-  const advanced = new Set(['replace','design','watermark','compiler','performance','export']);
+  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean', text:'Text', more:'More', replace:'Replace Text', design:'Design', watermark:'Watermark', compiler:'Compiler', assetdoctor:'Asset Doctor', performance:'Performance', export:'Export' };
+  const advanced = new Set(['replace','design','watermark','compiler','assetdoctor','performance','export']);
   state.mobileMode = labels[mode] ? mode : 'adjust';
   document.body.dataset.mobileTool = state.mobileMode;
   if (els.mobileSheetTitle) els.mobileSheetTitle.textContent = labels[state.mobileMode];
@@ -873,6 +955,7 @@ function setMobileMode(mode) {
     const active = button.dataset.mobileTool === state.mobileMode || (button.dataset.mobileTool === 'more' && advanced.has(state.mobileMode));
     button.classList.toggle('active', active);
   }
+  if (state.mobileMode === 'assetdoctor') runAssetDoctor({ quiet:true });
   if (state.mobileMode === 'cleanup') requestAnimationFrame(() => renderCleanupEditor(selectedItem()));
   if (state.mobileMode === 'replace') requestAnimationFrame(() => renderReplaceSelector(selectedItem()));
   if (state.mobileMode === 'crop') syncMobileCropButtons();
