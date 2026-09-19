@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  deleteVersionState,
+  duplicateVersionState,
+  renameVersionState,
+  setActiveVersionState,
+  setBranchBaseState
+} from '../lib/media/versions/actions.js';
+import {
   ORIGINAL_VERSION_ID,
   activeVersion,
   editingBaseLabel,
@@ -74,4 +81,58 @@ test('invalid active/base version references fall safely back to Original', () =
   });
   assert.equal(state.activeVersionId, null);
   assert.equal(state.baseVersionId, 'original');
+});
+
+
+const branchState = {
+  versions: [
+    { id: 'v1', parentVersionId: 'original', status: 'ready', name: 'V1', outputDuration: 8 },
+    { id: 'v2', parentVersionId: 'v1', status: 'ready', name: 'V2', outputDuration: 6 }
+  ],
+  activeVersionId: 'v2',
+  baseVersionId: 'original'
+};
+
+test('version actions support rename, active selection and explicit branch bases', () => {
+  const renamed = renameVersionState(branchState, 'v1', '  Client Cut  ');
+  assert.equal(renamed.ok, true);
+  assert.equal(renamed.state.versions[0].name, 'Client Cut');
+
+  const activeOriginal = setActiveVersionState(branchState, 'original');
+  assert.equal(activeOriginal.state.activeVersionId, null);
+
+  const branch = setBranchBaseState(branchState, 'v1');
+  assert.equal(branch.state.baseVersionId, 'v1');
+  assert.equal(branch.state.activeVersionId, 'v1');
+
+  const originalBranch = setBranchBaseState(branch.state, 'original');
+  assert.equal(originalBranch.state.baseVersionId, 'original');
+  assert.equal(originalBranch.state.activeVersionId, null);
+});
+
+test('duplicate creates a separate stable Version without inventing persistence', () => {
+  const result = duplicateVersionState(branchState, 'v1', {
+    newId: 'v3',
+    createdAt: '2026-09-19T12:00:00Z',
+    blobRef: { kind: 'session-blob-url', url: 'blob:copy', sessionOnly: true },
+    sessionAvailable: true
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.version.id, 'v3');
+  assert.equal(result.version.name, 'V1 Copy');
+  assert.equal(result.version.parentVersionId, 'original');
+  assert.equal(result.version.sessionAvailable, true);
+});
+
+test('delete protects Original, current branch bases and parent lineage', () => {
+  assert.equal(deleteVersionState(branchState, 'original').ok, false);
+  assert.equal(deleteVersionState(branchState, 'v1').ok, false);
+
+  const baseOnV1 = { ...branchState, baseVersionId: 'v1' };
+  assert.equal(deleteVersionState(baseOnV1, 'v1').ok, false);
+
+  const leaf = deleteVersionState(branchState, 'v2');
+  assert.equal(leaf.ok, true);
+  assert.equal(leaf.state.versions.length, 1);
+  assert.equal(leaf.state.activeVersionId, null);
 });
