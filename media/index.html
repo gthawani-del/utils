@@ -75,6 +75,56 @@
             <p class="phase-note source-note" id="source-note">Source ready.</p>
           </div>
 
+          <section class="delivery-panel hidden" id="delivery-panel" aria-labelledby="delivery-title">
+            <div class="delivery-heading">
+              <div>
+                <p class="workspace-eyebrow">Pro Workflow & Delivery</p>
+                <h3 id="delivery-title">Recover, mark, rebuild & hand off</h3>
+              </div>
+              <span>Professional workflow</span>
+            </div>
+
+            <div class="delivery-recovery" id="delivery-recovery" role="status">Checking session autosave…</div>
+
+            <div class="delivery-preset-row">
+              <label>Professional preset
+                <select id="delivery-preset">
+                  <option value="youtube-master">YouTube Master</option>
+                  <option value="vertical-social">Vertical Social</option>
+                  <option value="square-social">Square Social</option>
+                  <option value="podcast-audio">Podcast Audio</option>
+                  <option value="archive-handoff">Archive / Handoff</option>
+                </select>
+              </label>
+              <button class="media-button" id="delivery-prepare-preset" type="button">Prepare in renderer</button>
+              <p id="delivery-preset-note"></p>
+            </div>
+
+            <div class="delivery-markers">
+              <div class="delivery-subheading"><strong>Markers & chapters</strong><span>Click a marker time to seek the current local player.</span></div>
+              <div class="delivery-marker-form">
+                <input id="delivery-marker-label" type="text" maxlength="160" placeholder="Marker / chapter name">
+                <label><input id="delivery-marker-chapter" type="checkbox"> Chapter</label>
+                <button class="media-button empty-primary" id="delivery-add-marker" type="button">Add at playhead</button>
+              </div>
+              <div class="delivery-marker-empty" id="delivery-marker-empty">No markers yet.</div>
+              <div class="delivery-marker-list" id="delivery-marker-list"></div>
+            </div>
+
+            <div class="delivery-actions">
+              <button class="media-button" id="delivery-export-manifest" type="button" disabled>Export rebuild manifest</button>
+              <button class="media-button" id="delivery-export-project" type="button" disabled>Export project JSON</button>
+              <button class="media-button empty-primary" id="delivery-build-pack" type="button" disabled>Build delivery pack</button>
+            </div>
+
+            <div class="delivery-boundary">
+              <strong>Deterministic handoff</strong>
+              <p>The rebuild manifest fingerprints source metadata plus edit/transcript/lyrics/render/compiler/delivery state. Project and delivery packs exclude local source media bytes, so relink remains explicit and memory-safe.</p>
+              <p>Batch conform, proxy generation, A/B encoding, EDL/FCPXML/OTIO and codec-specific masters remain unavailable until the underlying timeline/encoder metadata is sufficient to generate them correctly.</p>
+            </div>
+            <p class="delivery-status" id="delivery-status" role="status" aria-live="polite">Session recovery, markers, manifests and metadata-only delivery packs run locally.</p>
+          </section>
+
           <section class="qc-panel hidden" id="qc-panel" aria-labelledby="qc-title">
             <div class="qc-heading">
               <div>

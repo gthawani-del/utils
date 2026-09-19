@@ -1,8 +1,9 @@
 import { ingestLocalMedia, releaseMediaSource, validateMediaUrl } from '/lib/media/ingest.js';
-import { createMediaProject, loadMediaProjectSnapshot, setProjectAudioEdits, setProjectAudioVideo, setProjectCategory, setProjectCompiler, setProjectLyrics, setProjectSource, setProjectTranscript, setProjectVideoEdits } from '/lib/media/project.js';
+import { createMediaProject, loadMediaProjectSnapshot, setProjectAudioEdits, setProjectAudioVideo, setProjectCategory, setProjectCompiler, setProjectDelivery, setProjectLyrics, setProjectSource, setProjectTranscript, setProjectVideoEdits } from '/lib/media/project.js';
 import { initAudioVideoWorkspace } from '/lib/media/audio-video/workspace.js';
 import { initCompilerWorkspace } from '/lib/media/compiler/workspace.js';
 import { initQcWorkspace } from '/lib/media/qc/workspace.js';
+import { initDeliveryWorkspace } from '/lib/media/delivery/workspace.js';
 import { initLyricsWorkspace } from '/lib/media/lyrics/workspace.js';
 import { initTranscriptWorkspace } from '/lib/media/transcript/workspace.js';
 import { createAudioEdits, audioSelectionDuration, normalizeAudioEdits, previewVolumeAt, updateAudioEdits } from '/lib/media/audio/edits.js';
@@ -80,6 +81,7 @@ let lyricsWorkspace = null;
 let audioVideoWorkspace = null;
 let compilerWorkspace = null;
 let qcWorkspace = null;
+let deliveryWorkspace = null;
 
 if (restored) {
   project.id = restored.id || project.id;
@@ -93,6 +95,7 @@ if (restored) {
   project.lyrics = restored.lyrics || null;
   project.audioVideo = restored.audioVideo || null;
   project.compiler = restored.compiler || null;
+  project.delivery = restored.delivery || null;
 }
 
 function makeDesktopButton(category, index) {
@@ -154,6 +157,7 @@ function selectCategory(id) {
   audioVideoWorkspace?.updateVisibility();
   compilerWorkspace?.updateVisibility();
   qcWorkspace?.updateVisibility();
+  deliveryWorkspace?.updateVisibility();
 }
 
 function formatEditorTime(seconds) {
@@ -519,6 +523,7 @@ function renderSource(source) {
   audioVideoWorkspace?.onSourceChanged();
   compilerWorkspace?.onSourceChanged();
   qcWorkspace?.onSourceChanged();
+  deliveryWorkspace?.onSourceChanged();
   if (source.kind === 'local-file' && source.mediaType === 'video') {
     syncVideoControls();
     updatePlayhead(currentPlayer?.currentTime || 0);
@@ -554,18 +559,21 @@ async function handleFile(file) {
       project.lyrics = null;
       project.audioVideo = null;
       project.compiler = null;
+      project.delivery = null;
       setProjectVideoEdits(project, null);
       setProjectAudioEdits(project, null);
       setProjectTranscript(project, null);
       setProjectLyrics(project, null);
       setProjectAudioVideo(project, null);
       setProjectCompiler(project, null);
+      setProjectDelivery(project, null);
       resetVideoHistory();
       resetAudioHistory();
       transcriptWorkspace?.resetForNewSource();
       lyricsWorkspace?.resetForNewSource();
       compilerWorkspace?.resetForNewSource();
       qcWorkspace?.resetForNewSource();
+      deliveryWorkspace?.resetForNewSource();
     }
     setProjectSource(project, result.source);
     renderSource(result.source);
@@ -602,14 +610,17 @@ linkForm.addEventListener('submit', (event) => {
   project.lyrics = null;
   project.audioVideo = null;
   project.compiler = null;
+  project.delivery = null;
   setProjectTranscript(project, null);
   setProjectLyrics(project, null);
   setProjectAudioVideo(project, null);
   setProjectCompiler(project, null);
+  setProjectDelivery(project, null);
   transcriptWorkspace?.resetForNewSource();
   lyricsWorkspace?.resetForNewSource();
   compilerWorkspace?.resetForNewSource();
   qcWorkspace?.resetForNewSource();
+  deliveryWorkspace?.resetForNewSource();
   const source = {
     kind: 'provider-link',
     provider: checked.provider,
@@ -845,6 +856,24 @@ window.addEventListener('pagehide', () => {
   if (project.source?.kind === 'local-file') releaseMediaSource(project.source);
 });
 
+deliveryWorkspace = initDeliveryWorkspace({
+  getProject: () => project,
+  getPlayer: () => currentPlayer,
+  getSource: () => project.source,
+  saveDelivery: (delivery) => {
+    project.delivery = delivery;
+    setProjectDelivery(project, delivery);
+  },
+  saveAudioVideo: (config) => {
+    project.audioVideo = config;
+    setProjectAudioVideo(project, config);
+  },
+  openCategory: (id) => selectCategory(id),
+  setStatus: (message) => {
+    if (sourceNote && !sourceStage.classList.contains('hidden')) sourceNote.textContent = message;
+  }
+});
+
 qcWorkspace = initQcWorkspace({
   getProject: () => project,
   getSource: () => project.source,
@@ -929,6 +958,7 @@ lyricsWorkspace.onSourceChanged();
 audioVideoWorkspace.onSourceChanged();
 compilerWorkspace.onSourceChanged();
 qcWorkspace.onSourceChanged();
+deliveryWorkspace.onSourceChanged();
 
 if (restored?.source?.kind === 'provider-link') {
   renderSource(restored.source);
