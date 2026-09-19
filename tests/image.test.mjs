@@ -6,6 +6,7 @@ import { DEFAULT_EDITS, normalizeEdits, hasPixelEdits } from '../lib/image/edits
 import { createLayer, normalizeLayer, normalizeLayers } from '../lib/image/layers.js';
 import { DEFAULT_WATERMARK, normalizeWatermark, resolveWatermarkPosition } from '../lib/image/watermark.js';
 import { normalizeCleanup, cleanupHasMask } from '../lib/image/cleanup.js';
+import { normalizeTextSelection, selectionFromPoints, replacementsToCleanup, replacementLayerFromSelection } from '../lib/image/text-replace.js';
 
 test('fit resize preserves aspect ratio', () => {
   assert.deepEqual(calculateResize(4000, 2000, { resizeMode: 'fit', width: 1000, height: 1000, preserveAspect: true }), { width: 1000, height: 500 });
@@ -100,4 +101,24 @@ test('cleanup ignores empty masks and caps stroke count', () => {
   assert.equal(cleanupHasMask(normalizeCleanup({ enabled: true, strokes: [] })), false);
   const many = Array.from({ length: 140 }, () => ({ radius: .01, points: [{ x: .5, y: .5 }] }));
   assert.equal(normalizeCleanup({ enabled: true, strokes: many }).strokes.length, 100);
+});
+
+
+test('text replacement selections normalize drag geometry safely', () => {
+  assert.deepEqual(selectionFromPoints({ x: .8, y: .7 }, { x: .2, y: .3 }), { x: .2, y: .3, width: .6000000000000001, height: .39999999999999997 });
+  assert.deepEqual(normalizeTextSelection({ x: -1, y: .95, width: 3, height: 3 }), { x: 0, y: .95, width: 1, height: .050000000000000044 });
+});
+
+test('text replacement builds a bounded cleanup mask and editable layer', () => {
+  const selection = { x: .2, y: .3, width: .4, height: .1 };
+  const cleanup = replacementsToCleanup([{ id: 'r1', selection }]);
+  assert.equal(cleanup.enabled, true);
+  assert.ok(cleanup.strokes.length > 0 && cleanup.strokes.length <= 100);
+  const layer = replacementLayerFromSelection(selection, { text: 'New copy', fontFamily: 'serif', fontSize: 42, fontWeight: 600, color: '#112233', align: 'left' }, 'l1');
+  assert.equal(layer.type, 'text');
+  assert.equal(layer.text, 'New copy');
+  assert.equal(layer.x, 40);
+  assert.equal(layer.y, 35);
+  assert.equal(layer.width, 40);
+  assert.equal(layer.height, 10);
 });

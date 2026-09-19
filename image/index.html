@@ -52,6 +52,7 @@
             <span id="mobile-canvas-empty">Select an image</span>
             <span id="mobile-canvas-status" class="mobile-canvas-status hidden">Rendering…</span>
             <span id="mobile-layer-hint" class="mobile-layer-hint hidden">Drag selected layer to position</span>
+            <div id="mobile-replace-selection" class="replace-selection-box hidden" aria-hidden="true"></div>
           </div>
           <button class="mobile-batch-chip hidden" id="mobile-batch-chip" type="button">1 image</button>
         </section>
@@ -167,6 +168,30 @@
             </div>
           </div>
 
+          <div class="control-section replace-text-section">
+            <div class="section-inline-heading"><div><h3>Replace Text</h3><p class="microcopy">Select the existing text area, erase it locally, then add an editable replacement layer. Font matching is manual—Utility OS does not pretend to identify the original font automatically.</p></div><span id="replace-status" class="microcopy">Select an area</span></div>
+            <div class="replace-selector" id="replace-selector">
+              <img id="replace-selector-image" alt="Image for text replacement selection">
+              <div id="replace-selection-box" class="replace-selection-box hidden" aria-hidden="true"></div>
+              <span id="replace-selector-empty">Select a raster image, then drag over the text to replace.</span>
+            </div>
+            <div class="replace-controls">
+              <label>Replacement text<textarea id="replace-text" rows="2" maxlength="500" placeholder="Type replacement text"></textarea></label>
+              <div class="form-grid">
+                <label>Font<select id="replace-font"><option value="system-ui">System</option><option value="sans-serif">Sans serif</option><option value="serif">Serif</option><option value="monospace">Monospace</option></select></label>
+                <label>Size (px)<input id="replace-font-size" type="number" min="6" max="600" value="48"></label>
+                <label>Weight<select id="replace-font-weight"><option value="400">Regular</option><option value="600">Semibold</option><option value="700" selected>Bold</option><option value="800">Extra bold</option></select></label>
+                <label>Color<input id="replace-color" type="color" value="#111827"></label>
+                <label>Align<select id="replace-align"><option value="left">Left</option><option value="center" selected>Center</option><option value="right">Right</option></select></label>
+              </div>
+              <div class="replace-actions">
+                <button class="secondary-button" id="replace-clear-selection" type="button" disabled>Clear selection</button>
+                <button class="primary-button" id="replace-apply" type="button" disabled>Replace selected text</button>
+                <button class="secondary-button" id="replace-undo" type="button" disabled>Undo replacement</button>
+              </div>
+            </div>
+          </div>
+
           <div class="control-section design-section">
             <div class="section-inline-heading"><div><h3>Text & design layers</h3><p class="microcopy">Layers remain editable until preview/export. Positions use percentages so a recipe can be reused across similarly composed assets.</p></div></div>
             <p class="mobile-design-hint">Select a layer, then drag it directly on the image. Use Precision only when exact values matter.</p>
@@ -273,6 +298,7 @@
           <button class="mobile-tool-button active" type="button" data-mobile-tool="adjust"><span>☼</span><small>Adjust</small></button>
           <button class="mobile-tool-button" type="button" data-mobile-tool="crop"><span>⌗</span><small>Crop</small></button>
           <button class="mobile-tool-button" type="button" data-mobile-tool="cleanup"><span>◇</span><small>Clean</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="replace"><span>↔</span><small>Replace</small></button>
           <button class="mobile-tool-button" type="button" data-mobile-tool="text"><span>T</span><small>Text</small></button>
           <button class="mobile-tool-button" type="button" data-mobile-tool="design"><span>□</span><small>Design</small></button>
           <button class="mobile-tool-button" type="button" data-mobile-tool="watermark"><span>W</span><small>Mark</small></button>

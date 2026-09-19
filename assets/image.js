@@ -7,10 +7,11 @@ import { DEFAULT_EDITS, normalizeEdits, editsEqual } from '/lib/image/edits.js';
 import { createLayer, normalizeLayer } from '/lib/image/layers.js';
 import { DEFAULT_WATERMARK, normalizeWatermark } from '/lib/image/watermark.js';
 import { normalizeCleanup } from '/lib/image/cleanup.js';
+import { normalizeTextSelection, selectionFromPoints, replacementLayerFromSelection } from '/lib/image/text-replace.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
-const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, layerDrag: null, mobilePrecision: false, redoHistory: [], previewTimer: 0, previewAbort: null };
+const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, layerDrag: null, replaceDrag: null, mobilePrecision: false, redoHistory: [], previewTimer: 0, previewAbort: null };
 const $ = (selector) => document.querySelector(selector);
 const els = {
   input: $('#file-input'), choose: $('#choose-files'), add: $('#add-more'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'),
@@ -26,6 +27,7 @@ const els = {
   layerFill: $('#layer-fill'), layerFill2: $('#layer-fill-2'), layerGradient: $('#layer-gradient'), layerGradientAngle: $('#layer-gradient-angle'), shapeStrokeColor: $('#shape-stroke-color'), shapeStrokeWidth: $('#shape-stroke-width'), layerX: $('#layer-x'), layerY: $('#layer-y'), layerWidth: $('#layer-width'), layerHeight: $('#layer-height'), layerRotation: $('#layer-rotation'), layerOpacity: $('#layer-opacity'),
   watermarkEnabled: $('#watermark-enabled'), watermarkControls: $('#watermark-controls'), watermarkType: $('#watermark-type'), watermarkPosition: $('#watermark-position'), watermarkOpacity: $('#watermark-opacity'), watermarkRotation: $('#watermark-rotation'), watermarkMargin: $('#watermark-margin'), watermarkTiled: $('#watermark-tiled'), watermarkTileGap: $('#watermark-tile-gap'), watermarkCustomPosition: $('#watermark-custom-position'), watermarkX: $('#watermark-x'), watermarkY: $('#watermark-y'), watermarkTextFields: $('#watermark-text-fields'), watermarkImageFields: $('#watermark-image-fields'), watermarkText: $('#watermark-text'), watermarkFont: $('#watermark-font'), watermarkFontSize: $('#watermark-font-size'), watermarkColor: $('#watermark-color'), watermarkLogoInput: $('#watermark-logo-input'), chooseWatermarkLogo: $('#choose-watermark-logo'), watermarkLogoName: $('#watermark-logo-name'), watermarkLogoWidth: $('#watermark-logo-width'),
   cleanupCanvas: $('#cleanup-canvas'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo'),
+  replaceSelector: $('#replace-selector'), replaceSelectorImage: $('#replace-selector-image'), replaceSelectorEmpty: $('#replace-selector-empty'), replaceSelectionBox: $('#replace-selection-box'), mobileReplaceSelection: $('#mobile-replace-selection'), replaceStatus: $('#replace-status'), replaceText: $('#replace-text'), replaceFont: $('#replace-font'), replaceFontSize: $('#replace-font-size'), replaceFontWeight: $('#replace-font-weight'), replaceColor: $('#replace-color'), replaceAlign: $('#replace-align'), replaceClearSelection: $('#replace-clear-selection'), replaceApply: $('#replace-apply'), replaceUndo: $('#replace-undo'),
   mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileRevert: $('#mobile-revert'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileLayerHint: $('#mobile-layer-hint'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value'), mobileCropButtons: [...document.querySelectorAll('[data-crop-choice]')], mobilePrecisionToggle: $('#mobile-precision-toggle'), mobileFilesBackdrop: $('#mobile-files-backdrop'), mobileFilesClose: $('#mobile-files-close'), mobileExportSelected: $('#mobile-export-selected'), mobileExportAll: $('#mobile-export-all'), mobileExportStatus: $('#mobile-export-status')
 };
 
@@ -85,6 +87,9 @@ function wireEvents() {
   els.cleanupBrush.addEventListener('input', () => { els.cleanupBrushValue.textContent = els.cleanupBrush.value; });
   els.cleanupCanvas.addEventListener('pointerdown', beginCleanupStroke); els.cleanupCanvas.addEventListener('pointermove', continueCleanupStroke); els.cleanupCanvas.addEventListener('pointerup', endCleanupStroke); els.cleanupCanvas.addEventListener('pointercancel', endCleanupStroke);
   els.cleanupUndoStroke.addEventListener('click', undoCleanupStroke); els.cleanupClearMask.addEventListener('click', clearCleanupMask); els.cleanupApply.addEventListener('click', applyCleanupMask); els.cleanupUndo.addEventListener('click', undoCleanupApplication);
+  for (const target of [els.replaceSelectorImage, els.mobileCanvasImage]) { target.addEventListener('pointerdown', beginReplaceSelection); target.addEventListener('pointermove', continueReplaceSelection); target.addEventListener('pointerup', endReplaceSelection); target.addEventListener('pointercancel', endReplaceSelection); }
+  els.replaceClearSelection.addEventListener('click', clearReplaceSelection); els.replaceApply.addEventListener('click', applyTextReplacement); els.replaceUndo.addEventListener('click', undoTextReplacement);
+  els.replaceText.addEventListener('input', () => updateReplaceButtons(selectedItem()));
   for (const button of els.mobileToolButtons) button.addEventListener('click', () => setMobileMode(button.dataset.mobileTool));
   for (const button of els.mobileAdjustButtons) button.addEventListener('click', () => setMobileAdjust(button.dataset.adjustKey));
   for (const button of els.mobileCropButtons) button.addEventListener('click', () => setMobileCrop(button.dataset.cropChoice));
@@ -114,7 +119,7 @@ async function addFiles(files) {
       state.items.push(makeRejectedItem(file, budget.reason));
       continue;
     }
-    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null };
+    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [] };
     state.items.push(item);
     renderList();
     try {
@@ -142,11 +147,12 @@ async function addFiles(files) {
 }
 
 function makeRejectedItem(file, reason) {
-  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null };
+  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [] };
 }
 
 function selectItem(id, reset = false) {
   state.selectedId = id;
+  if (state.selectedLayerId && !layersForItem().some((layer) => layer.id === state.selectedLayerId)) state.selectedLayerId = null;
   if (reset) resetToOriginal();
   renderList(); renderSelected();
   if (window.matchMedia('(max-width: 700px)').matches) closeMobileFiles();
@@ -192,6 +198,7 @@ function renderSelected() {
   renderComparison(item);
   renderMobileCanvas(item);
   renderCleanupEditor(item);
+  renderReplaceSelector(item);
   updateWarnings(); updateButtons();
 }
 
@@ -219,7 +226,7 @@ function resetToOriginal() {
   els.format.value = item.inspect.kind === 'svg' ? 'png' : item.inspect.kind; els.quality.value = 82; els.qualityValue.textContent = '82'; els.targetSize.value = ''; els.rotate.value = 0; els.flipX.checked = false; els.flipY.checked = false;
   applyEditsToControls(DEFAULT_EDITS); state.editHistory = []; state.redoHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.lastCommittedGeometry = { rotate: 0, flipX: false, flipY: false }; updateUndoButton();
   state.layers = []; state.selectedLayerId = null; renderLayerList(); renderLayerProperties(); resetWatermarkControls();
-  item.cleanupStrokes = []; item.cleanupApplied = false; renderCleanupEditor(item);
+  item.cleanupStrokes = []; item.cleanupApplied = false; item.replaceSelection = null; item.textReplacements = []; item.replaceHistory = []; renderCleanupEditor(item); renderReplaceSelector(item);
   if (item.editPreviewUrl) { revokeObjectUrl(item.editPreviewUrl); item.editPreviewUrl = ''; item.editPreviewBlob = null; }
   els.editComparison.classList.add('hidden');
   updateConditionalControls(); syncMobileCropButtons(); updateWarnings();
@@ -290,7 +297,7 @@ async function processItem(item, settings) {
   item.status = 'processing'; item.error = ''; renderList();
   if (item.outputUrl) { revokeObjectUrl(item.outputUrl); item.outputUrl = ''; item.outputBlob = null; }
   try {
-    const effectiveSettings = { ...settings, cleanup: cleanupForItem(item) };
+    const effectiveSettings = { ...settings, layers: layersForItem(item), cleanup: cleanupForItem(item), textReplacements: item.textReplacements || [] };
     const payload = await createProcessingPayload('process', item, effectiveSettings);
     const result = await runner.run(payload.message, payload.transfers);
     if (result.state !== 'completed') { item.status = result.state; item.error = result.error?.message || 'Processing failed.'; return; }
@@ -338,6 +345,79 @@ async function clearAll() {
 }
 
 function cleanupUrls() { for (const item of state.items) { revokeObjectUrl(item.originalUrl); revokeObjectUrl(item.outputUrl); revokeObjectUrl(item.editPreviewUrl); item.originalUrl = ''; item.outputUrl = ''; item.editPreviewUrl = ''; } }
+function renderReplaceSelector(item) {
+  const src = item?.editPreviewUrl || item?.outputUrl || item?.originalUrl || '';
+  if (src) { els.replaceSelectorImage.src = src; els.replaceSelectorImage.classList.remove('hidden'); els.replaceSelectorEmpty.classList.add('hidden'); }
+  else { els.replaceSelectorImage.removeAttribute('src'); els.replaceSelectorImage.classList.add('hidden'); els.replaceSelectorEmpty.classList.remove('hidden'); }
+  renderReplaceSelectionBox(els.replaceSelectionBox, els.replaceSelectorImage, item?.replaceSelection);
+  renderReplaceSelectionBox(els.mobileReplaceSelection, els.mobileCanvasImage, item?.replaceSelection);
+  updateReplaceButtons(item);
+}
+
+function replacePoint(event, image) {
+  const rect = image.getBoundingClientRect();
+  return { x: Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width))), y: Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(1, rect.height))) };
+}
+
+function beginReplaceSelection(event) {
+  const item = selectedItem(); const image = event.currentTarget;
+  const isMobileCanvas = image === els.mobileCanvasImage;
+  if (!item?.inspect || item.inspect.kind === 'svg' || !image.getAttribute('src')) return;
+  if (isMobileCanvas && state.mobileMode !== 'replace') return;
+  if (!isMobileCanvas && window.matchMedia('(max-width: 700px)').matches) return;
+  event.preventDefault(); image.setPointerCapture?.(event.pointerId);
+  const start = replacePoint(event, image); state.replaceDrag = { pointerId: event.pointerId, image, start };
+  item.replaceSelection = normalizeTextSelection({ x: start.x, y: start.y, width: .005, height: .005 });
+  renderReplaceSelector(item); els.replaceStatus.textContent = 'Selecting…';
+}
+
+function continueReplaceSelection(event) {
+  const drag = state.replaceDrag; if (!drag || drag.pointerId !== event.pointerId || drag.image !== event.currentTarget) return;
+  const item = selectedItem(); if (!item) return;
+  item.replaceSelection = selectionFromPoints(drag.start, replacePoint(event, drag.image)); renderReplaceSelector(item); event.preventDefault();
+}
+
+function endReplaceSelection(event) {
+  const drag = state.replaceDrag; if (!drag || drag.pointerId !== event.pointerId) return;
+  state.replaceDrag = null; const item = selectedItem(); updateReplaceButtons(item);
+  els.replaceStatus.textContent = item?.replaceSelection ? 'Area selected' : 'Select an area';
+}
+
+function renderReplaceSelectionBox(box, image, selection) {
+  if (!box || !image || !selection || !image.getAttribute('src')) { box?.classList.add('hidden'); return; }
+  const imageRect = image.getBoundingClientRect(); const parentRect = box.parentElement.getBoundingClientRect();
+  if (!imageRect.width || !imageRect.height) { box.classList.add('hidden'); return; }
+  box.style.left = (imageRect.left - parentRect.left + selection.x * imageRect.width) + 'px';
+  box.style.top = (imageRect.top - parentRect.top + selection.y * imageRect.height) + 'px';
+  box.style.width = (selection.width * imageRect.width) + 'px'; box.style.height = (selection.height * imageRect.height) + 'px';
+  box.classList.remove('hidden');
+}
+
+function clearReplaceSelection() { const item = selectedItem(); if (!item) return; item.replaceSelection = null; renderReplaceSelector(item); els.replaceStatus.textContent = 'Select an area'; }
+
+function updateReplaceButtons(item) {
+  const hasSelection = Boolean(item?.replaceSelection);
+  els.replaceClearSelection.disabled = !hasSelection; els.replaceApply.disabled = !hasSelection || !els.replaceText.value.trim(); els.replaceUndo.disabled = !(item?.replaceHistory?.length);
+}
+function replacementStyle() { return { text: els.replaceText.value.trim(), fontFamily: els.replaceFont.value, fontSize: Number(els.replaceFontSize.value), fontWeight: Number(els.replaceFontWeight.value), color: els.replaceColor.value, align: els.replaceAlign.value }; }
+
+function applyTextReplacement() {
+  const item = selectedItem(); if (!item?.replaceSelection || !els.replaceText.value.trim()) return;
+  const regionId = crypto.randomUUID(), layerId = crypto.randomUUID(), selection = normalizeTextSelection(item.replaceSelection);
+  item.textReplacements.push({ id: regionId, selection });
+  const layer = replacementLayerFromSelection(selection, replacementStyle(), layerId); layer.scopeItemId = item.id;
+  state.layers.push(layer); state.selectedLayerId = layerId; item.replaceHistory.push({ regionId, layerId }); item.replaceSelection = null;
+  renderLayerList(); renderLayerProperties(); renderReplaceSelector(item); els.replaceStatus.textContent = 'Replacement added · editable under Text'; scheduleEditPreview(20);
+}
+
+function undoTextReplacement() {
+  const item = selectedItem(); const last = item?.replaceHistory?.pop(); if (!item || !last) return;
+  item.textReplacements = item.textReplacements.filter((entry) => entry.id !== last.regionId);
+  state.layers = state.layers.filter((layer) => layer.id !== last.layerId);
+  if (state.selectedLayerId === last.layerId) state.selectedLayerId = null;
+  renderLayerList(); renderLayerProperties(); renderReplaceSelector(item); els.replaceStatus.textContent = 'Replacement undone'; scheduleEditPreview(20);
+}
+
 function cleanupForItem(item) { return normalizeCleanup({ enabled:Boolean(item?.cleanupApplied), strokes:item?.cleanupStrokes || [] }); }
 function cleanupPointFromEvent(event) { const rect=els.cleanupCanvas.getBoundingClientRect(); return { x:Math.max(0,Math.min(1,(event.clientX-rect.left)/Math.max(1,rect.width))), y:Math.max(0,Math.min(1,(event.clientY-rect.top)/Math.max(1,rect.height))) }; }
 function beginCleanupStroke(event) { const item=selectedItem(); if(!item?.originalUrl||item.inspect?.kind==='svg'||!item.cleanupImage?.complete) return; event.preventDefault(); els.cleanupCanvas.setPointerCapture?.(event.pointerId); state.cleanupPointerId=event.pointerId; const rect=els.cleanupCanvas.getBoundingClientRect(); const radius=(Number(els.cleanupBrush.value)/2)/Math.max(1,Math.min(rect.width,rect.height)); item.cleanupStrokes.push({radius,points:[cleanupPointFromEvent(event)]}); item.cleanupApplied=false; paintCleanupCanvas(item); updateCleanupButtons(item); }
@@ -399,12 +479,13 @@ function addDesignLayer(type) {
   state.layers.push(layer); state.selectedLayerId = layer.id; renderLayerList(); renderLayerProperties(); updateMobileLayerHint(); scheduleEditPreview(40);
 }
 
-function selectedDesignLayer() { return state.layers.find((layer) => layer.id === state.selectedLayerId) || null; }
+function layersForItem(item = selectedItem()) { return state.layers.filter((layer) => !layer.scopeItemId || layer.scopeItemId === item?.id); }
+function selectedDesignLayer() { return layersForItem().find((layer) => layer.id === state.selectedLayerId) || null; }
 
 function renderLayerList() {
   els.layerList.replaceChildren();
   if (!state.layers.length) { const empty = document.createElement('p'); empty.className = 'microcopy'; empty.textContent = 'No design layers yet.'; els.layerList.append(empty); return; }
-  [...state.layers].reverse().forEach((layer) => {
+  [...layersForItem()].reverse().forEach((layer) => {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'layer-item' + (layer.id === state.selectedLayerId ? ' selected' : '');
     const name = document.createElement('span'); name.textContent = layer.type === 'text' ? (layer.text.trim().slice(0,28) || 'Text') : layer.name;
     const type = document.createElement('small'); type.textContent = layer.type; button.append(name,type); button.addEventListener('click', () => { state.selectedLayerId = layer.id; renderLayerList(); renderLayerProperties(); updateMobileLayerHint(); }); els.layerList.append(button);
@@ -422,7 +503,7 @@ function renderLayerProperties() {
   } else {
     els.layerFill.value = layer.fill; els.layerFill2.value = layer.fill2; els.layerGradient.checked = layer.gradient; els.layerGradientAngle.value = layer.gradientAngle; els.shapeStrokeColor.value = layer.strokeColor; els.shapeStrokeWidth.value = layer.strokeWidth;
   }
-  const index = state.layers.findIndex((entry) => entry.id === layer.id); els.layerDown.disabled = index <= 0; els.layerUp.disabled = index >= state.layers.length - 1;
+  const visible = layersForItem(); const index = visible.findIndex((entry) => entry.id === layer.id); els.layerDown.disabled = index <= 0; els.layerUp.disabled = index >= visible.length - 1;
 }
 
 function updateSelectedLayerFromControls() {
@@ -521,7 +602,7 @@ async function previewSelectedEdits() {
   const controller = new AbortController(); state.previewAbort = controller;
   els.previewStatus.textContent = 'Rendering preview…'; if (els.mobileCanvasStatus) els.mobileCanvasStatus.classList.remove('hidden');
   try {
-    const settings = collectSettings(); settings.targetBytes = 0; settings.format = 'png'; settings.previewMaxEdge = 1400; settings.cleanup = cleanupForItem(item);
+    const settings = collectSettings(); settings.targetBytes = 0; settings.format = 'png'; settings.previewMaxEdge = 1400; settings.cleanup = cleanupForItem(item); settings.layers = layersForItem(item); settings.textReplacements = item.textReplacements || [];
     const payload = await createProcessingPayload('preview', item, settings);
     const result = await runner.run(payload.message, payload.transfers, 20_000, controller.signal);
     if (controller.signal.aborted || result.state === 'cancelled') return;
@@ -529,7 +610,7 @@ async function previewSelectedEdits() {
     if (item.editPreviewUrl) revokeObjectUrl(item.editPreviewUrl);
     item.editPreviewBlob = new Blob([result.value.buffer], { type: result.value.mime });
     item.editPreviewUrl = trackObjectUrl(item.editPreviewBlob);
-    renderComparison(item); renderMobileCanvas(item); els.previewStatus.textContent = 'Preview ready'; if (els.mobileCanvasStatus) els.mobileCanvasStatus.classList.add('hidden');
+    renderComparison(item); renderMobileCanvas(item); renderReplaceSelector(item); els.previewStatus.textContent = 'Preview ready'; if (els.mobileCanvasStatus) els.mobileCanvasStatus.classList.add('hidden');
   } catch { if (!controller.signal.aborted) els.previewStatus.textContent = 'Preview unavailable'; if (els.mobileCanvasStatus) els.mobileCanvasStatus.classList.add('hidden'); }
 }
 
@@ -603,12 +684,13 @@ async function mobileExportAll() {
 }
 
 function setMobileMode(mode) {
-  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean Up', text:'Text', design:'Design', watermark:'Watermark', export:'Export' };
+  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean Up', replace:'Replace Text', text:'Text', design:'Design', watermark:'Watermark', export:'Export' };
   state.mobileMode = labels[mode] ? mode : 'adjust';
   document.body.dataset.mobileTool = state.mobileMode;
   if (els.mobileSheetTitle) els.mobileSheetTitle.textContent = labels[state.mobileMode];
   for (const button of els.mobileToolButtons || []) button.classList.toggle('active', button.dataset.mobileTool === state.mobileMode);
   if (state.mobileMode === 'cleanup') requestAnimationFrame(() => renderCleanupEditor(selectedItem()));
+  if (state.mobileMode === 'replace') requestAnimationFrame(() => renderReplaceSelector(selectedItem()));
   if (state.mobileMode === 'crop') syncMobileCropButtons();
   if (state.mobileMode === 'text' || state.mobileMode === 'design') { renderLayerList(); renderLayerProperties(); updateMobileLayerHint(); } else if (els.mobileLayerHint) els.mobileLayerHint.classList.add('hidden');
   if (state.mobileMode === 'export' && els.mobileExportStatus) els.mobileExportStatus.textContent = 'Local export · metadata stripped';
@@ -631,7 +713,7 @@ function renderMobileCanvas(item) {
   if (!els.mobileCanvasImage || !els.mobileCanvasEmpty) return;
   const src = state.mobileShowOriginal ? item?.originalUrl : (item?.editPreviewUrl || item?.outputUrl || item?.originalUrl);
   if (!src) { els.mobileCanvasImage.removeAttribute('src'); els.mobileCanvasImage.classList.add('hidden'); els.mobileCanvasEmpty.classList.remove('hidden'); return; }
-  els.mobileCanvasImage.src = src; els.mobileCanvasImage.classList.remove('hidden'); els.mobileCanvasEmpty.classList.add('hidden'); updateMobileLayerHint();
+  els.mobileCanvasImage.src = src; els.mobileCanvasImage.classList.remove('hidden'); els.mobileCanvasEmpty.classList.add('hidden'); updateMobileLayerHint(); if (state.mobileMode === 'replace') requestAnimationFrame(() => renderReplaceSelector(item));
 }
 
 function showCompatibility(message) { els.compatibility.textContent = message; els.compatibility.classList.remove('hidden'); }

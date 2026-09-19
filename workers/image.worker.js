@@ -8,6 +8,7 @@ import { normalizeEdits, hasPixelEdits } from '../lib/image/edits.js';
 import { normalizeLayers } from '../lib/image/layers.js';
 import { normalizeWatermark, resolveWatermarkPosition } from '../lib/image/watermark.js';
 import { normalizeCleanup, cleanupHasMask } from '../lib/image/cleanup.js';
+import { replacementsToCleanup } from '../lib/image/text-replace.js';
 
 try { Object.defineProperty(self, 'fetch', { value: () => Promise.reject(new Error('Network disabled in Utility OS workers.')), writable: false }); } catch {}
 
@@ -117,6 +118,12 @@ async function processImage({ buffer, settings = {}, preview = false, watermarkL
   if ('close' in source) source.close(); else { source.width = 1; source.height = 1; }
   if (hasPixelEdits(edits)) canvas = applyAdjustments(canvas, edits);
   canvas = transformCanvas(canvas, (Number(settings.rotate) || 0) + edits.straighten, Boolean(settings.flipX), Boolean(settings.flipY));
+  const replacementCleanup = normalizeCleanup(replacementsToCleanup(settings.textReplacements));
+  if (cleanupHasMask(replacementCleanup)) {
+    const replaced = applyCleanup(canvas, replacementCleanup);
+    if (replaced.error) return unsupported(replaced.error, 'TEXT_REPLACE_LIMIT');
+    canvas = replaced.canvas;
+  }
   canvas = renderDesignLayers(canvas, settings.layers);
   const watermarkRecipe = normalizeWatermark(settings.watermark);
   if (watermarkRecipe.enabled && watermarkRecipe.type === 'image' && !watermarkLogoBuffer) return unsupported('Select a watermark logo/image before processing.', 'WATERMARK_IMAGE_REQUIRED');
