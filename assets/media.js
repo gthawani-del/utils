@@ -928,7 +928,6 @@ versionWorkspace = initVersionWorkspace({
     project.baseVersionId = versioning.baseVersionId;
     setProjectVersioning(project, versioning);
   },
-  createVersion: async () => versionWorkspace?.createVersion?.() || { ok: false, reason: 'Version workspace is unavailable.' },
   setStatus: (message) => {
     commandMessage.textContent = message;
     if (sourceNote && !sourceStage.classList.contains('hidden')) sourceNote.textContent = message;
@@ -1111,6 +1110,7 @@ commandAssistant = initCommandAssistant({
 
     return { ok: false, reason: `Unsupported command action: ${item.type}` };
   },
+  createVersion: async () => versionWorkspace?.createVersion?.() || { ok: false, reason: 'Version workspace is unavailable.' },
   setStatus: (message) => {
     commandMessage.textContent = message;
     if (sourceNote && !sourceStage.classList.contains('hidden')) sourceNote.textContent = message;
