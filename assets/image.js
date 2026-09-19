@@ -834,8 +834,11 @@ async function runAssetDoctor({ quiet = false } = {}) {
   const item = selectedItem();
   if (!item?.inspect) return null;
   if (!quiet) {
-    els.assetDoctorStatus.textContent = 'Checking…';
+    els.assetDoctorStatus.textContent = 'Checking asset…';
     els.assetDoctorRun.disabled = true;
+    els.assetDoctorRun.textContent = 'Checking…';
+    els.assetDoctorBadge.textContent = 'Checking';
+    els.assetDoctorBadge.dataset.level = 'neutral';
   }
   try {
     if (item.transparencyDetected === null) item.transparencyDetected = await detectTransparency(item);
@@ -856,7 +859,10 @@ async function runAssetDoctor({ quiet = false } = {}) {
     if (!quiet) els.assetDoctorStatus.textContent = 'Check unavailable for this asset.';
     return null;
   } finally {
-    if (!quiet) els.assetDoctorRun.disabled = false;
+    if (!quiet) {
+      els.assetDoctorRun.disabled = false;
+      els.assetDoctorRun.textContent = item?.assetDoctorReport ? 'Check again' : 'Check asset';
+    }
   }
 }
 
@@ -866,7 +872,7 @@ function renderAssetDoctor(item) {
   const report = item?.assetDoctorReport;
   if (!report) {
     const p=document.createElement('p'); p.className='microcopy'; p.textContent='Run Asset Doctor to inspect the selected image against the current export settings.';
-    els.assetDoctorList.append(p); els.assetDoctorBadge.textContent='Not checked'; els.assetDoctorBadge.dataset.level='neutral'; els.assetDoctorStatus.textContent=''; return;
+    els.assetDoctorList.append(p); els.assetDoctorBadge.textContent='Not checked'; els.assetDoctorBadge.dataset.level='neutral'; els.assetDoctorStatus.textContent=''; if (els.assetDoctorRun) els.assetDoctorRun.textContent='Check asset'; return;
   }
   const { errors,warnings,info } = report.counts;
   els.assetDoctorBadge.textContent = errors ? `${errors} error${errors===1?'':'s'}` : warnings ? `${warnings} warning${warnings===1?'':'s'}` : info ? `${info} note${info===1?'':'s'}` : 'Ready';
@@ -1106,7 +1112,6 @@ function setMobileMode(mode) {
     const active = button.dataset.mobileTool === state.mobileMode || (button.dataset.mobileTool === 'more' && advanced.has(state.mobileMode));
     button.classList.toggle('active', active);
   }
-  if (state.mobileMode === 'assetdoctor') runAssetDoctor({ quiet:true });
   if (state.mobileMode === 'cleanup') requestAnimationFrame(() => renderCleanupEditor(selectedItem()));
   if (state.mobileMode === 'replace') requestAnimationFrame(() => renderReplaceSelector(selectedItem()));
   if (state.mobileMode === 'crop') syncMobileCropButtons();
