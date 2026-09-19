@@ -75,6 +75,31 @@
             <p class="phase-note source-note" id="source-note">Source ready.</p>
           </div>
 
+          <section class="compiler-panel hidden" id="compiler-panel" aria-labelledby="compiler-title">
+            <div class="compiler-heading">
+              <div>
+                <p class="workspace-eyebrow">Media Compiler</p>
+                <h3 id="compiler-title">One source → many outputs</h3>
+              </div>
+              <span>Deterministic package</span>
+            </div>
+
+            <div class="compiler-toolbar">
+              <button class="media-button" id="compiler-select-ready" type="button">Select ready</button>
+              <button class="media-button" id="compiler-clear" type="button">Clear</button>
+              <button class="media-button empty-primary" id="compiler-build-package" type="button" disabled>Build compiler package</button>
+              <span id="compiler-summary">Checking available outputs…</span>
+            </div>
+
+            <div class="compiler-output-list" id="compiler-output-list"></div>
+
+            <div class="compiler-boundary">
+              <strong>What “compile” means in this phase</strong>
+              <p>Ready text/data/thumbnail outputs are generated locally into one TAR package. Video presets can be prepared in the existing Audio → Video renderer. MP3 encoding, WhatsApp compression, web transcodes and archive-master duplication stay unavailable until a deterministic local media encoder/delivery engine exists.</p>
+            </div>
+            <p class="compiler-status" id="compiler-status" role="status" aria-live="polite">No fake encodes: unsupported outputs remain visibly unavailable.</p>
+          </section>
+
           <section class="audio-video-panel hidden" id="audio-video-panel" aria-labelledby="audio-video-title">
             <div class="audio-video-heading">
               <div>
