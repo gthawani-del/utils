@@ -10,6 +10,7 @@
 </head>
 <body class="media-body">
   <input id="media-file-input" class="visually-hidden" type="file" accept="video/*,audio/*,.mp4,.mov,.m4a,.webm,.ogg,.wav,.mp3,.flac,.aac,.avi">
+  <input id="transcript-file-input" class="visually-hidden" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip">
   <div class="media-app">
     <aside class="media-sidebar" aria-label="Media Studio sections">
       <a class="media-brand" href="/" aria-label="Utility OS home"><span class="media-brand-mark">U</span><span>Utility OS</span></a>
@@ -72,6 +73,53 @@
             <div class="source-caption"><div><strong id="source-name"></strong><span id="source-summary"></span></div><button class="media-button" type="button" data-media-action="upload">Replace source</button></div>
             <p class="phase-note source-note" id="source-note">Source ready.</p>
           </div>
+
+          <section class="transcript-panel hidden" id="transcript-panel" aria-labelledby="transcript-title">
+            <div class="transcript-heading">
+              <div>
+                <p class="workspace-eyebrow">Transcription & Subtitles</p>
+                <h3 id="transcript-title">Transcript workspace</h3>
+              </div>
+              <span>Local editor</span>
+            </div>
+
+            <div class="transcript-toolbar">
+              <button class="media-button empty-primary" id="transcript-import" type="button">Import SRT / VTT</button>
+              <button class="media-button" id="transcript-add-cue" type="button">+ Add cue</button>
+              <button class="media-button" type="button" disabled title="A local speech-to-text engine has not been loaded yet">Generate transcript</button>
+              <label class="transcript-safe-toggle"><input id="transcript-safe-toggle" type="checkbox"> Safe-area preview</label>
+            </div>
+
+            <div class="transcript-search-row">
+              <label>Search transcript
+                <input id="transcript-search" type="search" autocomplete="off" placeholder="Find subtitle text…">
+              </label>
+            </div>
+
+            <div class="transcript-layout">
+              <div class="transcript-editor-column">
+                <div class="transcript-empty" id="transcript-empty">
+                  <strong>No subtitle cues yet</strong>
+                  <span>Import an SRT/VTT file or add timed cues manually. Local speech-to-text is deliberately not faked.</span>
+                </div>
+                <div class="transcript-list" id="transcript-list"></div>
+              </div>
+
+              <aside class="transcript-qa">
+                <strong>Subtitle QA</strong>
+                <p id="transcript-qa-summary">No cues to check.</p>
+                <ul id="transcript-qa-list"></ul>
+                <p class="transcript-qa-note">Checks overlaps, invalid timing, media bounds, blank cues, two-line guidance and 42-character line guidance.</p>
+              </aside>
+            </div>
+
+            <div class="transcript-export-row">
+              <button class="media-button" id="transcript-export-srt" type="button" disabled>Export SRT</button>
+              <button class="media-button" id="transcript-export-vtt" type="button" disabled>Export VTT</button>
+              <button class="media-button" id="transcript-export-txt" type="button" disabled>Export TXT</button>
+              <span id="transcript-status" role="status" aria-live="polite">No transcription engine loaded. Subtitle editing/export is available locally.</span>
+            </div>
+          </section>
 
           <section class="audio-editor-panel hidden" id="audio-editor-panel" aria-labelledby="audio-editor-title">
             <div class="audio-editor-heading">
