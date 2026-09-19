@@ -13,6 +13,7 @@ import { shouldUseBrowserProcessor } from '../lib/image/browser-processor.js';
 import { buildAssetDoctorReport, plannedOutputDimensions } from '../lib/image/asset-doctor.js';
 import { parseColorProfileSummary } from '../lib/image/preflight.js';
 import { normalizeSmartRegions, chooseSmartFocus, detectInformationRegions } from '../lib/image/smart-crop.js';
+import { RESPONSIVE_WIDTHS, normalizeResponsiveWidths, buildResponsiveVariants, buildSrcset, buildPictureMarkup } from '../lib/image/web-pack.js';
 
 test('fit resize preserves aspect ratio', () => {
   assert.deepEqual(calculateResize(4000, 2000, { resizeMode: 'fit', width: 1000, height: 1000, preserveAspect: true }), { width: 1000, height: 500 });
@@ -265,4 +266,39 @@ test('focus-aware fill cover shifts crop toward protected content', () => {
   const r=coverRect(1600,900,1080,1080,.9,.5);
   assert.equal(Math.round(r.x),700);
   assert.equal(Math.round(r.width),900);
+});
+
+
+test('responsive web pack uses the required default widths', () => {
+  assert.deepEqual(RESPONSIVE_WIDTHS,[320,640,960,1280,1920]);
+});
+
+test('responsive widths skip upscaling by default and deduplicate values', () => {
+  assert.deepEqual(normalizeResponsiveWidths([320,640,640,1920],1000,false),[320,640]);
+  assert.deepEqual(normalizeResponsiveWidths([320,1920],1000,true),[320,1920]);
+});
+
+test('responsive variants preserve aspect ratio across formats', () => {
+  const variants=buildResponsiveVariants({aspect:16/9,widths:[320,640],formats:['webp','jpeg'],sourceWidth:1200});
+  assert.equal(variants.length,4);
+  assert.deepEqual(variants[0],{width:320,height:180,format:'webp'});
+  assert.deepEqual(variants[3],{width:640,height:360,format:'jpeg'});
+});
+
+test('picture markup emits modern sources and JPEG fallback with dimensions', () => {
+  const variants=[
+    {name:'hero-320.avif',width:320,height:180,format:'avif'},
+    {name:'hero-640.avif',width:640,height:360,format:'avif'},
+    {name:'hero-320.webp',width:320,height:180,format:'webp'},
+    {name:'hero-640.webp',width:640,height:360,format:'webp'},
+    {name:'hero-320.jpg',width:320,height:180,format:'jpeg'},
+    {name:'hero-640.jpg',width:640,height:360,format:'jpeg'}
+  ];
+  assert.equal(buildSrcset(variants,'webp'),'hero-320.webp 320w, hero-640.webp 640w');
+  const markup=buildPictureMarkup(variants,{alt:'Hero'});
+  assert.match(markup,/image\/avif/);
+  assert.match(markup,/image\/webp/);
+  assert.match(markup,/hero-640\.jpg/);
+  assert.match(markup,/width="640" height="360"/);
+  assert.match(markup,/alt="Hero"/);
 });

@@ -12,6 +12,8 @@ import { COMPILER_PRESETS, MAX_COMPILER_OUTPUTS, MAX_COMPILER_PACK_BYTES, normal
 import { normalizePerformanceBudget } from '/lib/image/performance.js';
 import { buildAssetDoctorReport } from '/lib/image/asset-doctor.js';
 import { detectInformationRegions, chooseSmartFocus, smartCropSummary } from '/lib/image/smart-crop.js';
+import { calculateCrop } from '/lib/image/math.js';
+import { buildResponsiveVariants, buildPictureMarkup } from '/lib/image/web-pack.js';
 import { shouldUseBrowserProcessor, processBrowserImage, optimizeBrowserImage } from '/lib/image/browser-processor.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
@@ -38,6 +40,7 @@ const els = {
   mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileExportTop: $('#mobile-export-top'), mobileSheetBack: $('#mobile-sheet-back'), mobileMoreButtons: [...document.querySelectorAll('[data-mobile-more-target]')], mobileMoreRevert: $('#mobile-more-revert'), mobileMoreFiles: $('#mobile-more-files'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileLayerHint: $('#mobile-layer-hint'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value'), mobileCropButtons: [...document.querySelectorAll('[data-crop-choice]')], mobilePrecisionToggle: $('#mobile-precision-toggle'), mobileFilesBackdrop: $('#mobile-files-backdrop'), mobileFilesClose: $('#mobile-files-close'), mobileExportSelected: $('#mobile-export-selected'), mobileExportAll: $('#mobile-export-all'), mobileExportStatus: $('#mobile-export-status'),
   compilerPresetGrid: $('#compiler-preset-grid'), compilerCount: $('#compiler-count'), compilerFit: $('#compiler-fit'), compilerCustomName: $('#compiler-custom-name'), compilerCustomWidth: $('#compiler-custom-width'), compilerCustomHeight: $('#compiler-custom-height'), compilerAddCustom: $('#compiler-add-custom'), compilerCustomList: $('#compiler-custom-list'), compilerGenerate: $('#compiler-generate'), compilerStatus: $('#compiler-status'),
   assetDoctorRun: $('#asset-doctor-run'), assetDoctorList: $('#asset-doctor-list'), assetDoctorBadge: $('#asset-doctor-badge'), assetDoctorStatus: $('#asset-doctor-status'),
+  webPackWidths: [...document.querySelectorAll('[data-web-width]')], webPackFormats: [...document.querySelectorAll('[data-web-format]')], webPackNoUpscale: $('#web-pack-no-upscale'), webPackGenerate: $('#web-pack-generate'), webPackCopy: $('#web-pack-copy'), webPackMarkup: $('#web-pack-markup'), webPackResult: $('#web-pack-result'), webPackStatus: $('#web-pack-status'),
   performanceMaxWidth: $('#performance-max-width'), performanceMaxSize: $('#performance-max-size'), performanceMinQuality: $('#performance-min-quality'), performanceMinQualityValue: $('#performance-min-quality-value'), performanceRun: $('#performance-run'), performanceDownload: $('#performance-download'), performanceResult: $('#performance-result'), performanceResultTitle: $('#performance-result-title'), performanceResultDetail: $('#performance-result-detail'), performanceStatus: $('#performance-status')
 };
 
@@ -125,6 +128,8 @@ function wireEvents() {
   els.performanceMinQuality.addEventListener('input', () => { els.performanceMinQualityValue.textContent = els.performanceMinQuality.value; invalidatePerformanceResult(); });
   for (const control of [els.performanceMaxWidth, els.performanceMaxSize]) control.addEventListener('input', invalidatePerformanceResult);
   els.assetDoctorRun.addEventListener('click', () => runAssetDoctor());
+  els.webPackGenerate.addEventListener('click', generateWebPack);
+  els.webPackCopy.addEventListener('click', copyWebPackMarkup);
   els.performanceRun.addEventListener('click', runPerformanceBudget); els.performanceDownload.addEventListener('click', downloadPerformanceResult);
   els.mobilePrecisionToggle.addEventListener('click', toggleMobilePrecision);
   els.mobileCanvasImage.addEventListener('pointerdown', beginLayerDrag); els.mobileCanvasImage.addEventListener('pointermove', continueLayerDrag); els.mobileCanvasImage.addEventListener('pointerup', endLayerDrag); els.mobileCanvasImage.addEventListener('pointercancel', endLayerDrag);
@@ -899,6 +904,65 @@ async function supportsOutputKind(kind) {
   ENCODER_SUPPORT.set(kind,supported); return supported;
 }
 
+async function generateWebPack() {
+  const item=selectedItem(); if(!item?.inspect||state.busy)return;
+  const selectedWidths=els.webPackWidths.filter((input)=>input.checked).map((input)=>Number(input.dataset.webWidth));
+  const requestedFormats=els.webPackFormats.filter((input)=>input.checked).map((input)=>input.dataset.webFormat);
+  if(!selectedWidths.length){els.webPackStatus.textContent='Choose at least one width.';return;}
+  if(!requestedFormats.length){els.webPackStatus.textContent='Choose at least one format.';return;}
+  const base=collectSettings();
+  const crop=calculateCrop(item.inspect.dimensions.width,item.inspect.dimensions.height,base.crop);
+  let aspect=crop.width/Math.max(1,crop.height);
+  const rotation=((Number(base.rotate)||0)%360+360)%360;
+  if(rotation===90||rotation===270) aspect=1/aspect;
+  const sourceWidth=rotation===90||rotation===270?crop.height:crop.width;
+  const supportedFormats=[];
+  for(const format of requestedFormats) if(await supportsOutputKind(format)) supportedFormats.push(format);
+  const skippedFormats=requestedFormats.filter((format)=>!supportedFormats.includes(format));
+  if(!supportedFormats.length){els.webPackStatus.textContent='None of the selected formats can be encoded by this browser.';return;}
+  const plan=buildResponsiveVariants({aspect,widths:selectedWidths,formats:supportedFormats,sourceWidth,allowUpscale:!els.webPackNoUpscale.checked});
+  if(!plan.length){els.webPackStatus.textContent='All selected widths exceed the current source crop. Uncheck “Skip widths larger…” to allow upscaling.';return;}
+  setBusy(true); els.webPackGenerate.disabled=true; els.webPackCopy.disabled=true; els.webPackResult.classList.add('hidden');
+  const files=[],variants=[],failures=[]; let totalBytes=0;
+  try {
+    for(let i=0;i<plan.length;i++){
+      const spec=plan[i]; els.webPackStatus.textContent=`Rendering ${i+1}/${plan.length}: ${spec.width}px ${spec.format.toUpperCase()}…`;
+      const settings={...base,resizeMode:'fit',width:spec.width,height:spec.height,preserveAspect:true,format:spec.format,targetBytes:0};
+      const result=await runImageOperation('process',item,settings);
+      if(result.state!=='completed'){failures.push(`${spec.width}px ${spec.format.toUpperCase()}`);continue;}
+      const ext=spec.format==='jpeg'?'jpg':spec.format;
+      const name=exportFilename(item.file.name,ext,{suffix:`-${spec.width}w`,preserveOriginal:true});
+      totalBytes+=result.value.buffer.byteLength;
+      if(totalBytes>MAX_COMPILER_PACK_BYTES){els.webPackStatus.textContent='Web pack exceeded the 200 MB safe in-memory limit. Choose fewer widths/formats.';return;}
+      variants.push({name,width:result.value.width,height:result.value.height,format:spec.format,size:result.value.buffer.byteLength});
+      files.push({name,buffer:result.value.buffer});
+    }
+    if(!variants.length){els.webPackStatus.textContent='No responsive variants could be generated.';return;}
+    const markup=buildPictureMarkup(variants,{alt:''});
+    const manifest=JSON.stringify({generatedBy:'Utility OS Image Studio',variants:variants.map(({name,width,height,format,size})=>({filename:name,width,height,format,bytes:size}))},null,2);
+    files.push({name:'picture.html',buffer:new TextEncoder().encode(markup).buffer});
+    files.push({name:'manifest.json',buffer:new TextEncoder().encode(manifest).buffer});
+    const transfers=files.map((file)=>file.buffer);
+    els.webPackStatus.textContent='Packing responsive assets…';
+    const zip=await runner.run({op:'zip',files},transfers,45_000);
+    if(zip.state!=='completed'){els.webPackStatus.textContent=zip.error?.message||'Web pack ZIP failed safely.';return;}
+    const blob=new Blob([zip.value.buffer],{type:'application/zip'}),url=trackObjectUrl(blob);
+    triggerDownload(url,'utility-os-web-pack.zip'); setTimeout(()=>revokeObjectUrl(url),2000);
+    els.webPackMarkup.value=markup; els.webPackResult.classList.remove('hidden'); els.webPackCopy.disabled=false;
+    const notes=[]; if(skippedFormats.length)notes.push(`${skippedFormats.map((f)=>f.toUpperCase()).join(', ')} unavailable`); if(failures.length)notes.push(`${failures.length} render${failures.length===1?'':'s'} skipped`);
+    els.webPackStatus.textContent=`${variants.length} image variants exported${notes.length?` · ${notes.join(' · ')}`:''}.`;
+  } finally { setBusy(false); els.webPackGenerate.disabled=false; }
+}
+
+async function copyWebPackMarkup() {
+  const text=els.webPackMarkup.value; if(!text)return;
+  try {
+    if(navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+    else { els.webPackMarkup.focus();els.webPackMarkup.select();document.execCommand('copy'); }
+    els.webPackStatus.textContent='Picture markup copied.';
+  } catch { els.webPackStatus.textContent='Copy was blocked by the browser. Select the markup manually.'; }
+}
+
 function performanceBudgetInput() {
   return normalizePerformanceBudget({ maxWidth:Number(els.performanceMaxWidth.value), maxBytes:Number(els.performanceMaxSize.value)*1024, minQuality:Number(els.performanceMinQuality.value)/100 });
 }
@@ -1032,8 +1096,8 @@ async function mobileExportAll() {
 }
 
 function setMobileMode(mode) {
-  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean', text:'Text', more:'More', replace:'Replace Text', design:'Design', watermark:'Watermark', compiler:'Compiler', assetdoctor:'Asset Doctor', performance:'Performance', export:'Export' };
-  const advanced = new Set(['replace','design','watermark','compiler','assetdoctor','performance','export']);
+  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean', text:'Text', more:'More', replace:'Replace Text', design:'Design', watermark:'Watermark', compiler:'Compiler', assetdoctor:'Asset Doctor', webpack:'Web Pack', performance:'Performance', export:'Export' };
+  const advanced = new Set(['replace','design','watermark','compiler','assetdoctor','webpack','performance','export']);
   state.mobileMode = labels[mode] ? mode : 'adjust';
   document.body.dataset.mobileTool = state.mobileMode;
   if (els.mobileSheetTitle) els.mobileSheetTitle.textContent = labels[state.mobileMode];

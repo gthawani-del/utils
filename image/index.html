@@ -321,6 +321,7 @@
               <button type="button" data-mobile-more-target="watermark"><span>W</span><strong>Watermark</strong></button>
               <button type="button" data-mobile-more-target="compiler"><span>▦</span><strong>Compiler</strong></button>
               <button type="button" data-mobile-more-target="assetdoctor"><span>✓</span><strong>Asset Doctor</strong></button>
+              <button type="button" data-mobile-more-target="webpack"><span>&lt;/&gt;</span><strong>Web Pack</strong></button>
               <button type="button" data-mobile-more-target="performance"><span>⚡</span><strong>Performance</strong></button>
               <button type="button" data-mobile-more-target="export"><span>⇧</span><strong>Export settings</strong></button>
               <button type="button" id="mobile-more-revert"><span>↺</span><strong>Revert image</strong></button>
@@ -332,6 +333,34 @@
             <div class="section-inline-heading"><div><h3>Asset Doctor</h3><p class="microcopy">Measured pre-export checks only. No guessed quality scores.</p></div><span id="asset-doctor-badge" class="asset-doctor-badge">Not checked</span></div>
             <div id="asset-doctor-list" class="asset-doctor-list"><p class="microcopy">Run Asset Doctor to inspect the selected image against the current export settings.</p></div>
             <div class="asset-doctor-actions"><button class="primary-button" id="asset-doctor-run" type="button">Check asset</button><span id="asset-doctor-status" class="microcopy"></span></div>
+          </div>
+
+          <div class="control-section web-pack-section">
+            <div class="section-inline-heading"><div><h3>Responsive Web Pack</h3><p class="microcopy">Generate modern website image variants from the current composition, locally.</p></div><span class="microcopy">Developer export</span></div>
+            <div class="web-pack-group">
+              <strong>Widths</strong>
+              <div class="web-pack-options" id="web-pack-widths">
+                <label><input type="checkbox" data-web-width="320" checked>320</label>
+                <label><input type="checkbox" data-web-width="640" checked>640</label>
+                <label><input type="checkbox" data-web-width="960" checked>960</label>
+                <label><input type="checkbox" data-web-width="1280" checked>1280</label>
+                <label><input type="checkbox" data-web-width="1920" checked>1920</label>
+              </div>
+            </div>
+            <div class="web-pack-group">
+              <strong>Formats</strong>
+              <div class="web-pack-options" id="web-pack-formats">
+                <label><input type="checkbox" data-web-format="avif" checked>AVIF</label>
+                <label><input type="checkbox" data-web-format="webp" checked>WebP</label>
+                <label><input type="checkbox" data-web-format="jpeg" checked>JPEG fallback</label>
+              </div>
+            </div>
+            <label class="check-row"><input id="web-pack-no-upscale" type="checkbox" checked> Skip widths larger than the current source crop</label>
+            <div class="web-pack-actions"><button class="primary-button" id="web-pack-generate" type="button">Generate web pack</button><button class="secondary-button" id="web-pack-copy" type="button" disabled>Copy markup</button></div>
+            <span id="web-pack-status" class="microcopy">The pack includes image files plus picture.html.</span>
+            <div id="web-pack-result" class="web-pack-result hidden">
+              <label>Ready-to-copy &lt;picture&gt; markup<textarea id="web-pack-markup" rows="9" readonly></textarea></label>
+            </div>
           </div>
 
           <div class="control-section performance-section">
