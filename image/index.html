@@ -93,6 +93,27 @@
           </div><div id="free-crop" class="form-grid hidden"><label>X<input id="crop-x" type="number" min="0" value="0"></label><label>Y<input id="crop-y" type="number" min="0" value="0"></label><label>Width<input id="crop-width" type="number" min="1"></label><label>Height<input id="crop-height" type="number" min="1"></label></div></div>
 
           <div class="control-section edit-section">
+            <div class="mobile-adjust-picker" aria-label="Adjust image">
+              <button type="button" class="mobile-adjust-button active" data-adjust-key="brightness"><span>☀</span><small>Bright</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="exposure"><span>◐</span><small>Exposure</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="contrast"><span>◑</span><small>Contrast</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="saturation"><span>●</span><small>Saturation</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="vibrance"><span>◉</span><small>Vibrance</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="highlights"><span>△</span><small>Highlights</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="shadows"><span>▲</span><small>Shadows</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="temperature"><span>♨</span><small>Warmth</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="tint"><span>◒</span><small>Tint</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="gamma"><span>γ</span><small>Gamma</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="sharpen"><span>✦</span><small>Sharpen</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="blur"><span>◌</span><small>Blur</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="grayscale"><span>◍</span><small>B&W</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="sepia"><span>◐</span><small>Sepia</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="straighten"><span>↔</span><small>Straighten</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="rotate"><span>↻</span><small>Rotate</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="flipX"><span>↔</span><small>Flip H</small></button>
+              <button type="button" class="mobile-adjust-button" data-adjust-key="flipY"><span>↕</span><small>Flip V</small></button>
+            </div>
+            <div class="mobile-adjust-context"><strong id="mobile-adjust-name">Brightness</strong><span id="mobile-adjust-value">0</span></div>
             <div class="section-inline-heading"><div><h3>Edit</h3><p class="microcopy">Non-destructive controls. Preview is regenerated from the source image, never from the previous preview.</p></div><div class="mini-actions"><button class="text-button" id="undo-edit" type="button" disabled>Undo edit</button><button class="text-button" id="reset-edits" type="button">Reset edits</button></div></div>
             <div class="edit-groups">
               <div class="edit-group"><h4>Light & tone</h4><div class="edit-grid">

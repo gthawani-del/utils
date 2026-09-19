@@ -10,7 +10,7 @@ import { normalizeCleanup } from '/lib/image/cleanup.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
-const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileShowOriginal: false, redoHistory: [], previewTimer: 0, previewAbort: null };
+const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, redoHistory: [], previewTimer: 0, previewAbort: null };
 const $ = (selector) => document.querySelector(selector);
 const els = {
   input: $('#file-input'), choose: $('#choose-files'), add: $('#add-more'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'),
@@ -26,7 +26,7 @@ const els = {
   layerFill: $('#layer-fill'), layerFill2: $('#layer-fill-2'), layerGradient: $('#layer-gradient'), layerGradientAngle: $('#layer-gradient-angle'), shapeStrokeColor: $('#shape-stroke-color'), shapeStrokeWidth: $('#shape-stroke-width'), layerX: $('#layer-x'), layerY: $('#layer-y'), layerWidth: $('#layer-width'), layerHeight: $('#layer-height'), layerRotation: $('#layer-rotation'), layerOpacity: $('#layer-opacity'),
   watermarkEnabled: $('#watermark-enabled'), watermarkControls: $('#watermark-controls'), watermarkType: $('#watermark-type'), watermarkPosition: $('#watermark-position'), watermarkOpacity: $('#watermark-opacity'), watermarkRotation: $('#watermark-rotation'), watermarkMargin: $('#watermark-margin'), watermarkTiled: $('#watermark-tiled'), watermarkTileGap: $('#watermark-tile-gap'), watermarkCustomPosition: $('#watermark-custom-position'), watermarkX: $('#watermark-x'), watermarkY: $('#watermark-y'), watermarkTextFields: $('#watermark-text-fields'), watermarkImageFields: $('#watermark-image-fields'), watermarkText: $('#watermark-text'), watermarkFont: $('#watermark-font'), watermarkFontSize: $('#watermark-font-size'), watermarkColor: $('#watermark-color'), watermarkLogoInput: $('#watermark-logo-input'), chooseWatermarkLogo: $('#choose-watermark-logo'), watermarkLogoName: $('#watermark-logo-name'), watermarkLogoWidth: $('#watermark-logo-width'),
   cleanupCanvas: $('#cleanup-canvas'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo'),
-  mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileRevert: $('#mobile-revert'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')]
+  mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileRevert: $('#mobile-revert'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value')
 };
 
 initialize();
@@ -44,7 +44,7 @@ function initialize() {
   }
   wireEvents();
   updateConditionalControls();
-  renderLayerList(); renderLayerProperties(); updateWatermarkConditional(); setMobileMode('adjust'); syncMobileEditingState();
+  renderLayerList(); renderLayerProperties(); updateWatermarkConditional(); setMobileMode('adjust'); setMobileAdjust('brightness'); syncMobileEditingState();
 }
 
 function wireEvents() {
@@ -70,7 +70,7 @@ function wireEvents() {
     control.addEventListener('input', () => { updateEditReadouts(); scheduleEditPreview(); });
     control.addEventListener('change', commitEditChange);
   }
-  for (const control of [els.rotate, els.flipX, els.flipY]) control.addEventListener('change', commitEditChange);
+  for (const control of [els.rotate, els.flipX, els.flipY]) control.addEventListener('change', () => { updateMobileAdjustValue(); commitEditChange(); });
   els.undoEdit.addEventListener('click', undoEdit);
   els.resetEdits.addEventListener('click', resetEdits);
   els.comparisonRange.addEventListener('input', updateComparisonPosition);
@@ -85,6 +85,7 @@ function wireEvents() {
   els.cleanupCanvas.addEventListener('pointerdown', beginCleanupStroke); els.cleanupCanvas.addEventListener('pointermove', continueCleanupStroke); els.cleanupCanvas.addEventListener('pointerup', endCleanupStroke); els.cleanupCanvas.addEventListener('pointercancel', endCleanupStroke);
   els.cleanupUndoStroke.addEventListener('click', undoCleanupStroke); els.cleanupClearMask.addEventListener('click', clearCleanupMask); els.cleanupApply.addEventListener('click', applyCleanupMask); els.cleanupUndo.addEventListener('click', undoCleanupApplication);
   for (const button of els.mobileToolButtons) button.addEventListener('click', () => setMobileMode(button.dataset.mobileTool));
+  for (const button of els.mobileAdjustButtons) button.addEventListener('click', () => setMobileAdjust(button.dataset.adjustKey));
   els.mobileExit.addEventListener('click', exitMobileEditor);
   els.mobileUndo.addEventListener('click', undoEdit);
   els.mobileRedo.addEventListener('click', redoEdit);
@@ -418,6 +419,7 @@ function updateEditReadouts() {
     if (!output) continue;
     output.textContent = ['exposure','gamma','straighten'].includes(key) ? edits[key].toFixed(key === 'gamma' ? 2 : 1) : String(Math.round(edits[key]));
   }
+  updateMobileAdjustValue();
 }
 
 function commitEditChange() {
@@ -501,6 +503,29 @@ function updateComparisonPosition() {
   els.comparisonValue.textContent = String(value);
   els.comparisonOverlay.style.clipPath = `inset(0 ${100 - value}% 0 0)`;
   els.comparisonDivider.style.left = value + '%';
+}
+
+const MOBILE_ADJUST_LABELS = { brightness:'Brightness', exposure:'Exposure', contrast:'Contrast', saturation:'Saturation', vibrance:'Vibrance', highlights:'Highlights', shadows:'Shadows', temperature:'Warmth', tint:'Tint', gamma:'Gamma', sharpen:'Sharpen', blur:'Blur', grayscale:'Black & White', sepia:'Sepia', straighten:'Straighten', rotate:'Rotate', flipX:'Flip Horizontal', flipY:'Flip Vertical' };
+
+function setMobileAdjust(key) {
+  if (!MOBILE_ADJUST_LABELS[key]) key = 'brightness';
+  state.mobileAdjustKey = key;
+  document.body.dataset.mobileAdjust = key;
+  for (const button of els.mobileAdjustButtons || []) button.classList.toggle('active', button.dataset.adjustKey === key);
+  for (const control of [...editControls(), els.rotate, els.flipX, els.flipY]) control?.closest('label')?.classList.toggle('mobile-active-adjust', control === mobileAdjustControl(key));
+  if (els.mobileAdjustName) els.mobileAdjustName.textContent = MOBILE_ADJUST_LABELS[key];
+  updateMobileAdjustValue();
+}
+
+function mobileAdjustControl(key) { return key === 'flipX' ? els.flipX : key === 'flipY' ? els.flipY : key === 'rotate' ? els.rotate : els[key]; }
+
+function updateMobileAdjustValue() {
+  if (!els.mobileAdjustValue) return;
+  const key = state.mobileAdjustKey; const control = mobileAdjustControl(key);
+  if (!control) return;
+  if (key === 'flipX' || key === 'flipY') els.mobileAdjustValue.textContent = control.checked ? 'On' : 'Off';
+  else if (key === 'rotate') els.mobileAdjustValue.textContent = control.value + '°';
+  else { const output = document.querySelector('#' + key + '-value'); els.mobileAdjustValue.textContent = output?.textContent ?? control.value; }
 }
 
 function setMobileMode(mode) {
