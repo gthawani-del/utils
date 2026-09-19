@@ -3928,3 +3928,19 @@
   width: 100%;
   margin-top: 8px;
 }
+
+
+.version-result-state[data-status="ready"] {
+  background: #e1f4ed;
+  color: #147257;
+}
+
+.version-result-state[data-status="rendering"] {
+  background: #e8edff;
+  color: #3d58a6;
+}
+
+.version-result-state[data-status="failed"] {
+  background: #fff0e5;
+  color: #9a540d;
+}

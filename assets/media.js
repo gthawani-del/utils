@@ -100,7 +100,9 @@ if (restored) {
   project.audioVideo = restored.audioVideo || null;
   project.compiler = restored.compiler || null;
   project.delivery = restored.delivery || null;
-  project.versions = Array.isArray(restored.versions) ? restored.versions : [];
+  project.versions = Array.isArray(restored.versions)
+    ? restored.versions.map((version) => ({ ...version, sessionAvailable: false }))
+    : [];
   project.activeVersionId = restored.activeVersionId || null;
   project.baseVersionId = restored.baseVersionId || 'original';
 }
@@ -875,6 +877,7 @@ window.addEventListener('pagehide', () => {
 versionWorkspace = initVersionWorkspace({
   getProject: () => project,
   getSource: () => project.source,
+  getPlayer: () => currentPlayer,
   getVideoEdits: () => currentVideoEdits(),
   saveVersioning: (versioning) => {
     project.versions = versioning.versions;
