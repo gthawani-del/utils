@@ -33,7 +33,7 @@ const els = {
   watermarkEnabled: $('#watermark-enabled'), watermarkControls: $('#watermark-controls'), watermarkType: $('#watermark-type'), watermarkPosition: $('#watermark-position'), watermarkOpacity: $('#watermark-opacity'), watermarkRotation: $('#watermark-rotation'), watermarkMargin: $('#watermark-margin'), watermarkTiled: $('#watermark-tiled'), watermarkTileGap: $('#watermark-tile-gap'), watermarkCustomPosition: $('#watermark-custom-position'), watermarkX: $('#watermark-x'), watermarkY: $('#watermark-y'), watermarkTextFields: $('#watermark-text-fields'), watermarkImageFields: $('#watermark-image-fields'), watermarkText: $('#watermark-text'), watermarkFont: $('#watermark-font'), watermarkFontSize: $('#watermark-font-size'), watermarkColor: $('#watermark-color'), watermarkLogoInput: $('#watermark-logo-input'), chooseWatermarkLogo: $('#choose-watermark-logo'), watermarkLogoName: $('#watermark-logo-name'), watermarkLogoWidth: $('#watermark-logo-width'),
   cleanupCanvas: $('#cleanup-canvas'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo'),
   replaceSelector: $('#replace-selector'), replaceSelectorImage: $('#replace-selector-image'), replaceSelectorEmpty: $('#replace-selector-empty'), replaceSelectionBox: $('#replace-selection-box'), mobileReplaceSelection: $('#mobile-replace-selection'), replaceStatus: $('#replace-status'), replaceText: $('#replace-text'), replaceFont: $('#replace-font'), replaceFontSize: $('#replace-font-size'), replaceFontWeight: $('#replace-font-weight'), replaceColor: $('#replace-color'), replaceAlign: $('#replace-align'), replaceClearSelection: $('#replace-clear-selection'), replaceApply: $('#replace-apply'), replaceUndo: $('#replace-undo'),
-  mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileRevert: $('#mobile-revert'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileLayerHint: $('#mobile-layer-hint'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value'), mobileCropButtons: [...document.querySelectorAll('[data-crop-choice]')], mobilePrecisionToggle: $('#mobile-precision-toggle'), mobileFilesBackdrop: $('#mobile-files-backdrop'), mobileFilesClose: $('#mobile-files-close'), mobileExportSelected: $('#mobile-export-selected'), mobileExportAll: $('#mobile-export-all'), mobileExportStatus: $('#mobile-export-status'),
+  mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileExportTop: $('#mobile-export-top'), mobileSheetBack: $('#mobile-sheet-back'), mobileMoreButtons: [...document.querySelectorAll('[data-mobile-more-target]')], mobileMoreRevert: $('#mobile-more-revert'), mobileMoreFiles: $('#mobile-more-files'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileLayerHint: $('#mobile-layer-hint'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value'), mobileCropButtons: [...document.querySelectorAll('[data-crop-choice]')], mobilePrecisionToggle: $('#mobile-precision-toggle'), mobileFilesBackdrop: $('#mobile-files-backdrop'), mobileFilesClose: $('#mobile-files-close'), mobileExportSelected: $('#mobile-export-selected'), mobileExportAll: $('#mobile-export-all'), mobileExportStatus: $('#mobile-export-status'),
   compilerPresetGrid: $('#compiler-preset-grid'), compilerCount: $('#compiler-count'), compilerFit: $('#compiler-fit'), compilerCustomName: $('#compiler-custom-name'), compilerCustomWidth: $('#compiler-custom-width'), compilerCustomHeight: $('#compiler-custom-height'), compilerAddCustom: $('#compiler-add-custom'), compilerCustomList: $('#compiler-custom-list'), compilerGenerate: $('#compiler-generate'), compilerStatus: $('#compiler-status'),
   performanceMaxWidth: $('#performance-max-width'), performanceMaxSize: $('#performance-max-size'), performanceMinQuality: $('#performance-min-quality'), performanceMinQualityValue: $('#performance-min-quality-value'), performanceRun: $('#performance-run'), performanceDownload: $('#performance-download'), performanceResult: $('#performance-result'), performanceResultTitle: $('#performance-result-title'), performanceResultDetail: $('#performance-result-detail'), performanceStatus: $('#performance-status')
 };
@@ -105,7 +105,11 @@ function wireEvents() {
   els.mobileExit.addEventListener('click', exitMobileEditor);
   els.mobileUndo.addEventListener('click', undoEdit);
   els.mobileRedo.addEventListener('click', redoEdit);
-  els.mobileRevert.addEventListener('click', () => { resetToOriginal(); renderSelected(); });
+  els.mobileExportTop.addEventListener('click', () => setMobileMode('export'));
+  els.mobileSheetBack.addEventListener('click', () => setMobileMode('more'));
+  for (const button of els.mobileMoreButtons) button.addEventListener('click', () => setMobileMode(button.dataset.mobileMoreTarget));
+  els.mobileMoreRevert.addEventListener('click', () => { resetToOriginal(); renderSelectedSafely(); setMobileMode('adjust'); });
+  els.mobileMoreFiles.addEventListener('click', toggleMobileFiles);
   for (const type of ['pointerdown','keydown']) els.mobileCompare.addEventListener(type, (event) => { if (type === 'keydown' && ![' ','Enter'].includes(event.key)) return; state.mobileShowOriginal = true; renderMobileCanvas(selectedItem()); });
   for (const type of ['pointerup','pointercancel','pointerleave','keyup']) els.mobileCompare.addEventListener(type, () => { state.mobileShowOriginal = false; renderMobileCanvas(selectedItem()); });
   els.mobileBatchChip.addEventListener('click', toggleMobileFiles);
@@ -859,11 +863,16 @@ async function mobileExportAll() {
 }
 
 function setMobileMode(mode) {
-  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean Up', replace:'Replace Text', text:'Text', design:'Design', watermark:'Watermark', compiler:'Compile', performance:'Performance Budget', export:'Export' };
+  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean', text:'Text', more:'More', replace:'Replace Text', design:'Design', watermark:'Watermark', compiler:'Compiler', performance:'Performance', export:'Export' };
+  const advanced = new Set(['replace','design','watermark','compiler','performance','export']);
   state.mobileMode = labels[mode] ? mode : 'adjust';
   document.body.dataset.mobileTool = state.mobileMode;
   if (els.mobileSheetTitle) els.mobileSheetTitle.textContent = labels[state.mobileMode];
-  for (const button of els.mobileToolButtons || []) button.classList.toggle('active', button.dataset.mobileTool === state.mobileMode);
+  if (els.mobileSheetBack) els.mobileSheetBack.classList.toggle('hidden', !advanced.has(state.mobileMode));
+  for (const button of els.mobileToolButtons || []) {
+    const active = button.dataset.mobileTool === state.mobileMode || (button.dataset.mobileTool === 'more' && advanced.has(state.mobileMode));
+    button.classList.toggle('active', active);
+  }
   if (state.mobileMode === 'cleanup') requestAnimationFrame(() => renderCleanupEditor(selectedItem()));
   if (state.mobileMode === 'replace') requestAnimationFrame(() => renderReplaceSelector(selectedItem()));
   if (state.mobileMode === 'crop') syncMobileCropButtons();
