@@ -182,7 +182,6 @@ async function addFiles(files) {
       item.status = 'failed'; item.error = 'The file could not be inspected safely.';
     }
   }
-  }
   } finally {
     els.input.value = '';
     els.workspace.classList.toggle('hidden', state.items.length === 0);
