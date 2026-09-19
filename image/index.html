@@ -40,6 +40,16 @@
           <article class="preview-card"><div class="preview-label">Output</div><div class="preview-stage" id="output-preview"><span>Process to preview</span></div><dl id="output-stats" class="stats"></dl></article>
         </div>
 
+        <section id="edit-comparison" class="comparison-card hidden" aria-labelledby="comparison-title">
+          <div class="comparison-header"><div><p class="eyebrow">Compare</p><h2 id="comparison-title">Original / Edited</h2></div><span id="preview-status" class="microcopy">Adjust a control to preview</span></div>
+          <div class="comparison-stage" id="comparison-stage">
+            <img id="comparison-original" alt="Original image comparison">
+            <div class="comparison-overlay" id="comparison-overlay"><img id="comparison-edited" alt="Edited image comparison"></div>
+            <div class="comparison-divider" id="comparison-divider" aria-hidden="true"></div>
+          </div>
+          <label class="comparison-range">Comparison position <output id="comparison-value">50</output>%<input id="comparison-range" type="range" min="0" max="100" value="50"></label>
+        </section>
+
         <div id="jpeg-warning" class="notice warning hidden">JPEG cannot preserve transparency. Transparent areas will be filled with white.</div>
         <div id="upscale-warning" class="notice warning hidden">Upscaling increases dimensions but cannot create genuine missing detail.</div>
 
@@ -62,6 +72,36 @@
             <label id="custom-ratio-wrap" class="hidden">Custom ratio<input id="custom-ratio" type="number" min="0.05" max="20" step="0.01" value="1"></label>
           </div><div id="free-crop" class="form-grid hidden"><label>X<input id="crop-x" type="number" min="0" value="0"></label><label>Y<input id="crop-y" type="number" min="0" value="0"></label><label>Width<input id="crop-width" type="number" min="1"></label><label>Height<input id="crop-height" type="number" min="1"></label></div></div>
 
+          <div class="control-section edit-section">
+            <div class="section-inline-heading"><div><h3>Edit</h3><p class="microcopy">Non-destructive controls. Preview is regenerated from the source image, never from the previous preview.</p></div><div class="mini-actions"><button class="text-button" id="undo-edit" type="button" disabled>Undo edit</button><button class="text-button" id="reset-edits" type="button">Reset edits</button></div></div>
+            <div class="edit-groups">
+              <div class="edit-group"><h4>Light & tone</h4><div class="edit-grid">
+                <label>Brightness <output id="brightness-value">0</output><input id="brightness" type="range" min="-100" max="100" value="0"></label>
+                <label>Exposure <output id="exposure-value">0.0</output> EV<input id="exposure" type="range" min="-2" max="2" step="0.1" value="0"></label>
+                <label>Contrast <output id="contrast-value">0</output><input id="contrast" type="range" min="-100" max="100" value="0"></label>
+                <label>Highlights <output id="highlights-value">0</output><input id="highlights" type="range" min="-100" max="100" value="0"></label>
+                <label>Shadows <output id="shadows-value">0</output><input id="shadows" type="range" min="-100" max="100" value="0"></label>
+                <label>Gamma <output id="gamma-value">1.00</output><input id="gamma" type="range" min="0.4" max="2.5" step="0.05" value="1"></label>
+              </div></div>
+              <div class="edit-group"><h4>Color</h4><div class="edit-grid">
+                <label>Saturation <output id="saturation-value">0</output><input id="saturation" type="range" min="-100" max="100" value="0"></label>
+                <label>Vibrance <output id="vibrance-value">0</output><input id="vibrance" type="range" min="-100" max="100" value="0"></label>
+                <label>Temperature <output id="temperature-value">0</output><input id="temperature" type="range" min="-100" max="100" value="0"></label>
+                <label>Tint <output id="tint-value">0</output><input id="tint" type="range" min="-100" max="100" value="0"></label>
+                <label>Grayscale <output id="grayscale-value">0</output>%<input id="grayscale" type="range" min="0" max="100" value="0"></label>
+                <label>Sepia <output id="sepia-value">0</output>%<input id="sepia" type="range" min="0" max="100" value="0"></label>
+              </div></div>
+              <div class="edit-group"><h4>Detail & geometry</h4><div class="edit-grid">
+                <label>Sharpen <output id="sharpen-value">0</output><input id="sharpen" type="range" min="0" max="100" value="0"></label>
+                <label>Blur <output id="blur-value">0</output><input id="blur" type="range" min="0" max="20" step="0.5" value="0"></label>
+                <label>Straighten <output id="straighten-value">0.0</output>°<input id="straighten" type="range" min="-15" max="15" step="0.1" value="0"></label>
+                <label>Rotate<select id="rotate"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
+                <label class="check-row"><input id="flip-x" type="checkbox"> Flip horizontal</label>
+                <label class="check-row"><input id="flip-y" type="checkbox"> Flip vertical</label>
+              </div></div>
+            </div>
+          </div>
+
           <div class="control-section"><h3>Format & compression</h3><div class="form-grid">
             <label>Format<select id="format"><option value="jpeg">JPEG</option><option value="png">PNG</option><option value="webp">WebP</option><option value="avif">AVIF (if supported)</option></select></label>
             <label>Quality <output id="quality-value">82</output>%<input id="quality" type="range" min="5" max="98" value="82"></label>
@@ -69,7 +109,7 @@
             <label>Background<input id="background" type="color" value="#ffffff"></label>
           </div><p class="microcopy">Target-size compression uses iterative encoding; a fixed quality is never treated as a guaranteed file size.</p></div>
 
-          <details class="advanced"><summary>Advanced controls</summary><div class="control-section nested"><h3>Rotate / Flip</h3><div class="form-grid"><label>Rotate<select id="rotate"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label><label class="check-row"><input id="flip-x" type="checkbox"> Flip horizontal</label><label class="check-row"><input id="flip-y" type="checkbox"> Flip vertical</label></div></div><div class="control-section nested"><h3>Privacy & metadata</h3><label class="check-row"><input type="checkbox" checked disabled> Privacy-clean export: metadata and GPS are stripped</label><div id="metadata-box" class="metadata-box"></div></div><div class="control-section nested"><h3>Export naming</h3><div class="form-grid"><label>Prefix<input id="prefix" type="text" maxlength="40"></label><label>Suffix<input id="suffix" type="text" maxlength="40"></label></div><label class="check-row"><input id="preserve-name" type="checkbox" checked> Preserve original filename stem</label></div></details>
+          <details class="advanced"><summary>Advanced controls</summary><div class="control-section nested"><h3>Privacy & metadata</h3><label class="check-row"><input type="checkbox" checked disabled> Privacy-clean export: metadata and GPS are stripped</label><div id="metadata-box" class="metadata-box"></div></div><div class="control-section nested"><h3>Export naming</h3><div class="form-grid"><label>Prefix<input id="prefix" type="text" maxlength="40"></label><label>Suffix<input id="suffix" type="text" maxlength="40"></label></div><label class="check-row"><input id="preserve-name" type="checkbox" checked> Preserve original filename stem</label></div></details>
 
           <div class="action-row"><button class="primary-button" id="process-selected" type="button">Process selected</button><button class="secondary-button" id="process-all" type="button">Process all</button><button class="secondary-button" id="download-selected" type="button" disabled>Download selected</button><button class="secondary-button" id="download-all" type="button" disabled>Download All (ZIP)</button></div>
         </div>

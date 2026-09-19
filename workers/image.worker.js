@@ -4,6 +4,7 @@ import { sanitizeSvgText } from '../lib/security/svg.js';
 import { ok, fail, unsupported } from '../lib/security/result.js';
 import { preflightDimensions, parseExifSummary } from '../lib/image/preflight.js';
 import { calculateResize, calculateCrop, coverRect } from '../lib/image/math.js';
+import { normalizeEdits, hasPixelEdits } from '../lib/image/edits.js';
 
 try { Object.defineProperty(self, 'fetch', { value: () => Promise.reject(new Error('Network disabled in Utility OS workers.')), writable: false }); } catch {}
 
@@ -12,6 +13,7 @@ self.onmessage = async (event) => {
   try {
     if (op === 'inspect') return send(await inspect(event.data));
     if (op === 'process') return send(await processImage(event.data));
+    if (op === 'preview') return send(await processImage({ ...event.data, preview: true }));
     if (op === 'zip') return send(await createZip(event.data));
     return send(unsupported('Unsupported worker operation.'));
   } catch {
@@ -45,7 +47,7 @@ async function inspect({ buffer }) {
   return ok({ kind, mime: mimeFor(kind), dimensions, exif });
 }
 
-async function processImage({ buffer, settings = {} }) {
+async function processImage({ buffer, settings = {}, preview = false }) {
   const bytes = new Uint8Array(buffer);
   const inspected = await inspect({ buffer: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) });
   if (inspected.state !== 'completed') return inspected;
@@ -85,19 +87,31 @@ async function processImage({ buffer, settings = {} }) {
   } else {
     target = calculateResize(crop.width, crop.height, settings);
   }
+  if (preview && Number(settings.previewMaxEdge) > 0) {
+    const edge = Number(settings.previewMaxEdge);
+    const scale = Math.min(1, edge / Math.max(target.width, target.height));
+    target = { width: Math.max(1, Math.round(target.width * scale)), height: Math.max(1, Math.round(target.height * scale)) };
+  }
   const targetCheck = validateDimensions(target.width, target.height);
   if (!targetCheck.ok) return unsupported(targetCheck.reason, 'RESOURCE_LIMIT');
 
+  const edits = normalizeEdits(settings.edits);
+  if (hasPixelEdits(edits) && target.width * target.height > 24_000_000) {
+    if ('close' in source) source.close();
+    return unsupported('Detailed edits are limited to 24 megapixels per operation. Resize first, then apply edits.', 'EDIT_RESOURCE_LIMIT');
+  }
+
   let canvas = render(source, crop, target, settings);
   if ('close' in source) source.close(); else { source.width = 1; source.height = 1; }
-  canvas = transformCanvas(canvas, Number(settings.rotate) || 0, Boolean(settings.flipX), Boolean(settings.flipY));
+  if (hasPixelEdits(edits)) canvas = applyAdjustments(canvas, edits);
+  canvas = transformCanvas(canvas, (Number(settings.rotate) || 0) + edits.straighten, Boolean(settings.flipX), Boolean(settings.flipY));
   const finalCheck = validateDimensions(canvas.width, canvas.height);
   if (!finalCheck.ok) return unsupported(finalCheck.reason, 'RESOURCE_LIMIT');
 
-  const outputKind = settings.format || kind;
+  const outputKind = preview ? 'png' : (settings.format || kind);
   if (!['jpeg', 'png', 'webp', 'avif'].includes(outputKind)) return unsupported('That output format is not available.');
   const mime = mimeFor(outputKind);
-  const targetBytes = Math.max(0, Number(settings.targetBytes) || 0);
+  const targetBytes = preview ? 0 : Math.max(0, Number(settings.targetBytes) || 0);
   let encoded;
   let usedQuality = normalizeQuality(settings.quality);
   if (targetBytes > 0) {
@@ -168,18 +182,106 @@ function render(source, crop, target, settings) {
 }
 
 function transformCanvas(source, rotate, flipX, flipY) {
-  const normalized = ((rotate % 360) + 360) % 360;
-  if (![0, 90, 180, 270].includes(normalized)) rotate = 0; else rotate = normalized;
-  if (rotate === 0 && !flipX && !flipY) return source;
-  const swap = rotate === 90 || rotate === 270;
-  const canvas = new OffscreenCanvas(swap ? source.height : source.width, swap ? source.width : source.height);
+  const normalized = Number.isFinite(Number(rotate)) ? Number(rotate) : 0;
+  if (normalized === 0 && !flipX && !flipY) return source;
+  const radians = normalized * Math.PI / 180;
+  const cos = Math.abs(Math.cos(radians)); const sin = Math.abs(Math.sin(radians));
+  const width = Math.max(1, Math.ceil(source.width * cos + source.height * sin));
+  const height = Math.max(1, Math.ceil(source.width * sin + source.height * cos));
+  const canvas = new OffscreenCanvas(width, height);
   const ctx = canvas.getContext('2d', { alpha: true });
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate(rotate * Math.PI / 180);
+  ctx.translate(width / 2, height / 2);
+  ctx.rotate(radians);
   ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
   ctx.drawImage(source, -source.width / 2, -source.height / 2);
   return canvas;
 }
+
+function applyAdjustments(source, edits) {
+  let canvas = source;
+  if (edits.blur > 0) canvas = blurCanvas(canvas, edits.blur);
+  const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: true });
+  const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = image.data;
+  const exposure = Math.pow(2, edits.exposure);
+  const brightness = 1 + edits.brightness / 100;
+  const contrast = 1 + edits.contrast / 100;
+  const saturation = 1 + edits.saturation / 100;
+  const vibrance = edits.vibrance / 100;
+  const gammaInv = 1 / edits.gamma;
+  const grayMix = edits.grayscale / 100;
+  const sepiaMix = edits.sepia / 100;
+  const temp = edits.temperature * 0.45;
+  const tint = edits.tint * 0.32;
+  const shadowAmount = edits.shadows * 0.8;
+  const highlightAmount = edits.highlights * 0.8;
+
+  for (let i = 0; i < data.length; i += 4) {
+    let r = data[i] * exposure * brightness;
+    let g = data[i + 1] * exposure * brightness;
+    let b = data[i + 2] * exposure * brightness;
+
+    r = (r - 128) * contrast + 128; g = (g - 128) * contrast + 128; b = (b - 128) * contrast + 128;
+    let luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    const shadowWeight = Math.pow(1 - clamp01(luma / 255), 2);
+    const highlightWeight = Math.pow(clamp01(luma / 255), 2);
+    const tone = shadowAmount * shadowWeight + highlightAmount * highlightWeight;
+    r += tone; g += tone; b += tone;
+
+    r += temp + tint * 0.35; g -= tint; b -= temp - tint * 0.35;
+    luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    r = luma + (r - luma) * saturation; g = luma + (g - luma) * saturation; b = luma + (b - luma) * saturation;
+
+    const max = Math.max(r, g, b); const min = Math.min(r, g, b);
+    const chroma = max > 0 ? (max - min) / max : 0;
+    const vibFactor = 1 + vibrance * (1 - clamp01(chroma));
+    r = luma + (r - luma) * vibFactor; g = luma + (g - luma) * vibFactor; b = luma + (b - luma) * vibFactor;
+
+    r = 255 * Math.pow(clamp01(r / 255), gammaInv); g = 255 * Math.pow(clamp01(g / 255), gammaInv); b = 255 * Math.pow(clamp01(b / 255), gammaInv);
+    if (grayMix > 0) {
+      const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      r = mix(r, gray, grayMix); g = mix(g, gray, grayMix); b = mix(b, gray, grayMix);
+    }
+    if (sepiaMix > 0) {
+      const sr = clamp255(r * .393 + g * .769 + b * .189);
+      const sg = clamp255(r * .349 + g * .686 + b * .168);
+      const sb = clamp255(r * .272 + g * .534 + b * .131);
+      r = mix(r, sr, sepiaMix); g = mix(g, sg, sepiaMix); b = mix(b, sb, sepiaMix);
+    }
+    data[i] = clamp255(r); data[i + 1] = clamp255(g); data[i + 2] = clamp255(b);
+  }
+  if (edits.sharpen > 0) sharpenPixels(data, canvas.width, canvas.height, edits.sharpen / 100);
+  ctx.putImageData(image, 0, 0);
+  return canvas;
+}
+
+function blurCanvas(source, amount) {
+  const scale = Math.max(0.18, 1 / (1 + amount * 0.18));
+  const small = new OffscreenCanvas(Math.max(1, Math.round(source.width * scale)), Math.max(1, Math.round(source.height * scale)));
+  const smallCtx = small.getContext('2d', { alpha: true }); smallCtx.imageSmoothingEnabled = true; smallCtx.imageSmoothingQuality = 'high'; smallCtx.drawImage(source, 0, 0, small.width, small.height);
+  const canvas = new OffscreenCanvas(source.width, source.height);
+  const ctx = canvas.getContext('2d', { alpha: true }); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(small, 0, 0, source.width, source.height);
+  return canvas;
+}
+
+function sharpenPixels(data, width, height, strength) {
+  if (width < 3 || height < 3 || strength <= 0) return;
+  const source = new Uint8ClampedArray(data);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const i = (y * width + x) * 4;
+      const up = i - width * 4, down = i + width * 4, left = i - 4, right = i + 4;
+      for (let c = 0; c < 3; c++) {
+        const average = (source[up + c] + source[down + c] + source[left + c] + source[right + c]) / 4;
+        data[i + c] = clamp255(source[i + c] + (source[i + c] - average) * strength * 1.4);
+      }
+    }
+  }
+}
+
+function clamp255(value) { return Math.max(0, Math.min(255, Math.round(value))); }
+function clamp01(value) { return Math.max(0, Math.min(1, value)); }
+function mix(a, b, t) { return a + (b - a) * t; }
 
 async function encode(canvas, mime, quality) {
   try {

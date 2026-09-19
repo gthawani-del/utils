@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateResize, calculateCrop, coverRect } from '../lib/image/math.js';
 import { parsePngDimensions, parseWebpDimensions, parseSvgDimensions } from '../lib/image/preflight.js';
+import { DEFAULT_EDITS, normalizeEdits, hasPixelEdits } from '../lib/image/edits.js';
 
 test('fit resize preserves aspect ratio', () => {
   assert.deepEqual(calculateResize(4000, 2000, { resizeMode: 'fit', width: 1000, height: 1000, preserveAspect: true }), { width: 1000, height: 500 });
@@ -32,4 +33,20 @@ test('PNG dimensions are preflighted without decode', () => {
 test('SVG dimensions use safe numeric attributes or viewBox', () => {
   assert.deepEqual(parseSvgDimensions('<svg width="100" height="50"></svg>'), { width: 100, height: 50 });
   assert.deepEqual(parseSvgDimensions('<svg viewBox="0 0 300 200"></svg>'), { width: 300, height: 200 });
+});
+
+
+test('edit settings are normalized and bounded', () => {
+  const edits = normalizeEdits({ brightness: 400, exposure: -9, gamma: 0, blur: 99, straighten: -50 });
+  assert.equal(edits.brightness, 100);
+  assert.equal(edits.exposure, -2);
+  assert.equal(edits.gamma, 0.4);
+  assert.equal(edits.blur, 20);
+  assert.equal(edits.straighten, -15);
+});
+
+test('default edits remain non-destructive and pixel-edit detection is precise', () => {
+  assert.equal(hasPixelEdits(DEFAULT_EDITS), false);
+  assert.equal(hasPixelEdits({ ...DEFAULT_EDITS, saturation: 1 }), true);
+  assert.equal(hasPixelEdits({ ...DEFAULT_EDITS, straighten: 2 }), false);
 });

@@ -3,10 +3,11 @@ import { exportFilename } from '/lib/security/filename.js';
 import { WorkerRunner } from '/lib/security/worker-runner.js';
 import { trackObjectUrl, revokeObjectUrl, clearWorkspace } from '/lib/security/workspace.js';
 import { IMAGE_PRESETS } from '/lib/image/presets.js';
+import { DEFAULT_EDITS, normalizeEdits, editsEqual } from '/lib/image/edits.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
-const state = { items: [], selectedId: null, busy: false };
+const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, previewTimer: 0, previewAbort: null };
 const $ = (selector) => document.querySelector(selector);
 const els = {
   input: $('#file-input'), choose: $('#choose-files'), add: $('#add-more'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'),
@@ -14,7 +15,9 @@ const els = {
   compatibility: $('#compatibility'), preset: $('#preset'), resizeMode: $('#resize-mode'), width: $('#width'), height: $('#height'), percentage: $('#percentage'), longest: $('#longest-edge'), shortest: $('#shortest-edge'),
   percentageWrap: $('#percentage-wrap'), longestWrap: $('#longest-wrap'), shortestWrap: $('#shortest-wrap'), preserveAspect: $('#preserve-aspect'), cropMode: $('#crop-mode'), customRatio: $('#custom-ratio'), customRatioWrap: $('#custom-ratio-wrap'), freeCrop: $('#free-crop'),
   cropX: $('#crop-x'), cropY: $('#crop-y'), cropWidth: $('#crop-width'), cropHeight: $('#crop-height'), format: $('#format'), quality: $('#quality'), qualityValue: $('#quality-value'), targetSize: $('#target-size'), background: $('#background'), rotate: $('#rotate'), flipX: $('#flip-x'), flipY: $('#flip-y'),
-  prefix: $('#prefix'), suffix: $('#suffix'), preserveName: $('#preserve-name'), reset: $('#reset-settings'), processSelected: $('#process-selected'), processAll: $('#process-all'), downloadSelected: $('#download-selected'), downloadAll: $('#download-all'), clear: $('#clear-workspace'), jpegWarning: $('#jpeg-warning'), upscaleWarning: $('#upscale-warning')
+  prefix: $('#prefix'), suffix: $('#suffix'), preserveName: $('#preserve-name'), reset: $('#reset-settings'), processSelected: $('#process-selected'), processAll: $('#process-all'), downloadSelected: $('#download-selected'), downloadAll: $('#download-all'), clear: $('#clear-workspace'), jpegWarning: $('#jpeg-warning'), upscaleWarning: $('#upscale-warning'),
+  editComparison: $('#edit-comparison'), comparisonOriginal: $('#comparison-original'), comparisonEdited: $('#comparison-edited'), comparisonOverlay: $('#comparison-overlay'), comparisonDivider: $('#comparison-divider'), comparisonRange: $('#comparison-range'), comparisonValue: $('#comparison-value'), previewStatus: $('#preview-status'),
+  undoEdit: $('#undo-edit'), resetEdits: $('#reset-edits'), brightness: $('#brightness'), exposure: $('#exposure'), contrast: $('#contrast'), saturation: $('#saturation'), vibrance: $('#vibrance'), highlights: $('#highlights'), shadows: $('#shadows'), temperature: $('#temperature'), tint: $('#tint'), gamma: $('#gamma'), sharpen: $('#sharpen'), blur: $('#blur'), grayscale: $('#grayscale'), sepia: $('#sepia'), straighten: $('#straighten')
 };
 
 initialize();
@@ -53,7 +56,15 @@ function wireEvents() {
   els.downloadSelected.addEventListener('click', downloadSelected);
   els.downloadAll.addEventListener('click', downloadAll);
   els.clear.addEventListener('click', clearAll);
-  window.addEventListener('pagehide', cleanupUrls);
+  for (const control of editControls()) {
+    control.addEventListener('input', () => { updateEditReadouts(); scheduleEditPreview(); });
+    control.addEventListener('change', commitEditChange);
+  }
+  for (const control of [els.rotate, els.flipX, els.flipY]) control.addEventListener('change', commitEditChange);
+  els.undoEdit.addEventListener('click', undoEdit);
+  els.resetEdits.addEventListener('click', resetEdits);
+  els.comparisonRange.addEventListener('input', updateComparisonPosition);
+  window.addEventListener('pagehide', () => { state.previewAbort?.abort(); cleanupUrls(); });
 }
 
 async function addFiles(files) {
@@ -67,7 +78,7 @@ async function addFiles(files) {
       state.items.push(makeRejectedItem(file, budget.reason));
       continue;
     }
-    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '' };
+    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null };
     state.items.push(item);
     renderList();
     try {
@@ -95,7 +106,7 @@ async function addFiles(files) {
 }
 
 function makeRejectedItem(file, reason) {
-  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '' };
+  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null };
 }
 
 function selectItem(id, reset = false) {
@@ -141,6 +152,7 @@ function renderSelected() {
   } else {
     els.outputPreview.textContent = item.status === 'processing' ? 'Processing…' : (item.error && item.status !== 'ready' ? item.error : 'Process to preview');
   }
+  renderComparison(item);
   updateWarnings(); updateButtons();
 }
 
@@ -166,6 +178,9 @@ function resetToOriginal() {
   els.preset.value = 'custom'; els.resizeMode.value = 'fit'; els.width.value = item.inspect.dimensions.width; els.height.value = item.inspect.dimensions.height; els.percentage.value = 100; els.longest.value = Math.max(item.inspect.dimensions.width, item.inspect.dimensions.height); els.shortest.value = Math.min(item.inspect.dimensions.width, item.inspect.dimensions.height);
   els.preserveAspect.checked = true; els.cropMode.value = 'none'; els.cropX.value = 0; els.cropY.value = 0; els.cropWidth.value = item.inspect.dimensions.width; els.cropHeight.value = item.inspect.dimensions.height;
   els.format.value = item.inspect.kind === 'svg' ? 'png' : item.inspect.kind; els.quality.value = 82; els.qualityValue.textContent = '82'; els.targetSize.value = ''; els.rotate.value = 0; els.flipX.checked = false; els.flipY.checked = false;
+  applyEditsToControls(DEFAULT_EDITS); state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.lastCommittedGeometry = { rotate: 0, flipX: false, flipY: false }; updateUndoButton();
+  if (item.editPreviewUrl) { revokeObjectUrl(item.editPreviewUrl); item.editPreviewUrl = ''; item.editPreviewBlob = null; }
+  els.editComparison.classList.add('hidden');
   updateConditionalControls(); updateWarnings();
 }
 
@@ -210,7 +225,7 @@ function collectSettings() {
   if (cm === 'custom') crop = { mode: 'ratio', ratio: Number(els.customRatio.value) };
   return {
     resizeMode: els.resizeMode.value, width: Number(els.width.value), height: Number(els.height.value), percentage: Number(els.percentage.value), longestEdge: Number(els.longest.value), shortestEdge: Number(els.shortest.value), preserveAspect: els.preserveAspect.checked,
-    crop, format: els.format.value, quality: Number(els.quality.value) / 100, targetBytes: els.targetSize.value ? Number(els.targetSize.value) * 1024 : 0, background: els.background.value, rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked
+    crop, format: els.format.value, quality: Number(els.quality.value) / 100, targetBytes: els.targetSize.value ? Number(els.targetSize.value) * 1024 : 0, background: els.background.value, rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked, edits: collectEdits()
   };
 }
 
@@ -275,10 +290,105 @@ async function downloadAll() {
 function triggerDownload(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.rel = 'noopener'; document.body.append(a); a.click(); a.remove(); }
 
 async function clearAll() {
-  runner.terminateAll(); cleanupUrls(); state.items = []; state.selectedId = null; await clearWorkspace(); els.workspace.classList.add('hidden'); els.list.replaceChildren(); els.input.value = ''; els.clear.textContent = 'Workspace cleared'; setTimeout(() => { els.clear.textContent = 'Clear workspace'; }, 1600);
+  state.previewAbort?.abort(); clearTimeout(state.previewTimer); runner.terminateAll(); cleanupUrls(); state.items = []; state.selectedId = null; state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); await clearWorkspace(); els.workspace.classList.add('hidden'); els.list.replaceChildren(); els.input.value = ''; els.clear.textContent = 'Workspace cleared'; setTimeout(() => { els.clear.textContent = 'Clear workspace'; }, 1600);
 }
 
-function cleanupUrls() { for (const item of state.items) { revokeObjectUrl(item.originalUrl); revokeObjectUrl(item.outputUrl); item.originalUrl = ''; item.outputUrl = ''; } }
+function cleanupUrls() { for (const item of state.items) { revokeObjectUrl(item.originalUrl); revokeObjectUrl(item.outputUrl); revokeObjectUrl(item.editPreviewUrl); item.originalUrl = ''; item.outputUrl = ''; item.editPreviewUrl = ''; } }
+const EDIT_KEYS = ['brightness','exposure','contrast','saturation','vibrance','highlights','shadows','temperature','tint','gamma','sharpen','blur','grayscale','sepia','straighten'];
+
+function editControls() { return EDIT_KEYS.map((key) => els[key]); }
+
+function collectEdits() {
+  return normalizeEdits(Object.fromEntries(EDIT_KEYS.map((key) => [key, Number(els[key].value)])));
+}
+
+function applyEditsToControls(input) {
+  const edits = normalizeEdits(input);
+  for (const key of EDIT_KEYS) els[key].value = edits[key];
+  updateEditReadouts();
+}
+
+function updateEditReadouts() {
+  const edits = collectEdits();
+  for (const key of EDIT_KEYS) {
+    const output = document.querySelector('#' + key + '-value');
+    if (!output) continue;
+    output.textContent = ['exposure','gamma','straighten'].includes(key) ? edits[key].toFixed(key === 'gamma' ? 2 : 1) : String(Math.round(edits[key]));
+  }
+}
+
+function commitEditChange() {
+  const current = collectEdits();
+  const geometry = { rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked };
+  const lastGeometry = state.lastCommittedGeometry || { rotate: 0, flipX: false, flipY: false };
+  if (!editsEqual(current, state.lastCommittedEdits) || JSON.stringify(geometry) !== JSON.stringify(lastGeometry)) {
+    state.editHistory.push({ edits: state.lastCommittedEdits, geometry: lastGeometry });
+    if (state.editHistory.length > 30) state.editHistory.shift();
+    state.lastCommittedEdits = current; state.lastCommittedGeometry = geometry;
+  }
+  updateUndoButton(); scheduleEditPreview(40);
+}
+
+function undoEdit() {
+  const previous = state.editHistory.pop();
+  if (!previous) return;
+  applyEditsToControls(previous.edits);
+  els.rotate.value = previous.geometry.rotate; els.flipX.checked = previous.geometry.flipX; els.flipY.checked = previous.geometry.flipY;
+  state.lastCommittedEdits = normalizeEdits(previous.edits); state.lastCommittedGeometry = { ...previous.geometry };
+  updateUndoButton(); scheduleEditPreview(20);
+}
+
+function resetEdits() {
+  const current = collectEdits();
+  const geometry = { rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked };
+  if (!editsEqual(current, DEFAULT_EDITS) || geometry.rotate || geometry.flipX || geometry.flipY) {
+    state.editHistory.push({ edits: current, geometry });
+    if (state.editHistory.length > 30) state.editHistory.shift();
+  }
+  applyEditsToControls(DEFAULT_EDITS); els.rotate.value = 0; els.flipX.checked = false; els.flipY.checked = false;
+  state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.lastCommittedGeometry = { rotate: 0, flipX: false, flipY: false };
+  updateUndoButton(); scheduleEditPreview(20);
+}
+
+function updateUndoButton() { els.undoEdit.disabled = state.editHistory.length === 0; }
+
+function scheduleEditPreview(delay = 260) {
+  clearTimeout(state.previewTimer);
+  state.previewTimer = setTimeout(previewSelectedEdits, delay);
+}
+
+async function previewSelectedEdits() {
+  const item = selectedItem();
+  if (!item?.inspect || state.busy || !item.originalUrl) { els.editComparison.classList.add('hidden'); return; }
+  state.previewAbort?.abort();
+  const controller = new AbortController(); state.previewAbort = controller;
+  els.previewStatus.textContent = 'Rendering preview…';
+  try {
+    const buffer = await item.file.arrayBuffer();
+    const settings = collectSettings(); settings.targetBytes = 0; settings.format = 'png'; settings.previewMaxEdge = 1400;
+    const result = await runner.run({ op: 'preview', buffer, settings }, [buffer], 20_000, controller.signal);
+    if (controller.signal.aborted || result.state === 'cancelled') return;
+    if (result.state !== 'completed') { els.previewStatus.textContent = result.error?.message || 'Preview unavailable'; return; }
+    if (item.editPreviewUrl) revokeObjectUrl(item.editPreviewUrl);
+    item.editPreviewBlob = new Blob([result.value.buffer], { type: result.value.mime });
+    item.editPreviewUrl = trackObjectUrl(item.editPreviewBlob);
+    renderComparison(item); els.previewStatus.textContent = 'Preview ready';
+  } catch { if (!controller.signal.aborted) els.previewStatus.textContent = 'Preview unavailable'; }
+}
+
+function renderComparison(item) {
+  if (!item?.originalUrl || !item.editPreviewUrl) { els.editComparison.classList.add('hidden'); return; }
+  els.comparisonOriginal.src = item.originalUrl; els.comparisonEdited.src = item.editPreviewUrl;
+  els.editComparison.classList.remove('hidden'); updateComparisonPosition();
+}
+
+function updateComparisonPosition() {
+  const value = Number(els.comparisonRange.value);
+  els.comparisonValue.textContent = String(value);
+  els.comparisonOverlay.style.clipPath = `inset(0 ${100 - value}% 0 0)`;
+  els.comparisonDivider.style.left = value + '%';
+}
+
 function showCompatibility(message) { els.compatibility.textContent = message; els.compatibility.classList.remove('hidden'); }
 function statusLabel(status) { return ({ inspecting: 'Inspecting', ready: 'Ready', processing: 'Processing', completed: 'Done', failed: 'Failed', unsupported: 'Unsupported', timed_out: 'Timed out', cancelled: 'Cancelled' })[status] || status; }
 function formatBytes(bytes) { if (bytes < 1024) return `${bytes} B`; if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`; return `${(bytes / 1024 / 1024).toFixed(2)} MB`; }
