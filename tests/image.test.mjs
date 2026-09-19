@@ -9,6 +9,7 @@ import { normalizeCleanup, cleanupHasMask } from '../lib/image/cleanup.js';
 import { normalizeTextSelection, selectionFromPoints, replacementsToCleanup, replacementLayerFromSelection } from '../lib/image/text-replace.js';
 import { COMPILER_PRESETS, MAX_COMPILER_OUTPUTS, normalizeCompilerOutput, normalizeCompilerOutputs, compilerSettings } from '../lib/image/compiler.js';
 import { PERFORMANCE_FORMATS, normalizePerformanceBudget, performanceCandidateWidths, chooseBudgetCandidate } from '../lib/image/performance.js';
+import { shouldUseBrowserProcessor } from '../lib/image/browser-processor.js';
 
 test('fit resize preserves aspect ratio', () => {
   assert.deepEqual(calculateResize(4000, 2000, { resizeMode: 'fit', width: 1000, height: 1000, preserveAspect: true }), { width: 1000, height: 500 });
@@ -176,4 +177,11 @@ test('performance candidate selection enforces bytes width and quality before ra
   ],budget);
   assert.equal(best.kind,'avif');
   assert.equal(best.width,1632);
+});
+
+
+test('browser processor is selected for iOS WebKit clients and force-test mode', () => {
+  assert.equal(shouldUseBrowserProcessor({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 CriOS/140 Mobile/15E148 Safari/604.1', platform: 'iPhone', maxTouchPoints: 5, search: '' }), true);
+  assert.equal(shouldUseBrowserProcessor({ userAgent: 'Mozilla/5.0 Chrome/140 Safari/537.36', platform: 'Linux x86_64', maxTouchPoints: 0, search: '?browserCanvas=1' }), true);
+  assert.equal(shouldUseBrowserProcessor({ userAgent: 'Mozilla/5.0 Chrome/140 Safari/537.36', platform: 'Linux x86_64', maxTouchPoints: 0, search: '' }), false);
 });

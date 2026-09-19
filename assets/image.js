@@ -10,10 +10,11 @@ import { normalizeCleanup } from '/lib/image/cleanup.js';
 import { normalizeTextSelection, selectionFromPoints, replacementLayerFromSelection } from '/lib/image/text-replace.js';
 import { COMPILER_PRESETS, MAX_COMPILER_OUTPUTS, MAX_COMPILER_PACK_BYTES, normalizeCompilerOutput, normalizeCompilerOutputs, compilerSettings } from '/lib/image/compiler.js';
 import { normalizePerformanceBudget } from '/lib/image/performance.js';
+import { shouldUseBrowserProcessor, processBrowserImage, optimizeBrowserImage } from '/lib/image/browser-processor.js';
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
-const state = { items: [], selectedId: null, busy: false, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, layerDrag: null, replaceDrag: null, mobilePrecision: false, compilerCustomOutputs: [], compilerSelectedIds: new Set(), redoHistory: [], previewTimer: 0, previewAbort: null };
+const state = { items: [], selectedId: null, busy: false, useBrowserProcessor: shouldUseBrowserProcessor(), editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, layerDrag: null, replaceDrag: null, mobilePrecision: false, compilerCustomOutputs: [], compilerSelectedIds: new Set(), redoHistory: [], previewTimer: 0, previewAbort: null };
 const $ = (selector) => document.querySelector(selector);
 const EDIT_KEYS = ['brightness','exposure','contrast','saturation','vibrance','highlights','shadows','temperature','tint','gamma','sharpen','blur','grayscale','sepia','straighten'];
 const MOBILE_ADJUST_LABELS = { brightness:'Brightness', exposure:'Exposure', contrast:'Contrast', saturation:'Saturation', vibrance:'Vibrance', highlights:'Highlights', shadows:'Shadows', temperature:'Warmth', tint:'Tint', gamma:'Gamma', sharpen:'Sharpen', blur:'Blur', grayscale:'Black & White', sepia:'Sepia', straighten:'Straighten', rotate:'Rotate', flipX:'Flip Horizontal', flipY:'Flip Vertical' };
@@ -53,6 +54,7 @@ function initialize() {
   wireEvents();
   updateConditionalControls();
   renderLayerList(); renderLayerProperties(); updateWatermarkConditional(); renderCompiler(); setMobileMode('adjust'); setMobileAdjust('brightness'); syncMobileEditingState();
+  if (state.useBrowserProcessor) showCompatibility('iPhone/iPad compatibility renderer active. Processing remains local in this browser.');
 }
 
 function wireEvents() {
@@ -356,8 +358,7 @@ async function processItem(item, settings) {
   if (item.outputUrl) { revokeObjectUrl(item.outputUrl); item.outputUrl = ''; item.outputBlob = null; }
   try {
     const effectiveSettings = { ...settings, layers: layersForItem(item), cleanup: cleanupForItem(item), textReplacements: item.textReplacements || [] };
-    const payload = await createProcessingPayload('process', item, effectiveSettings);
-    const result = await runner.run(payload.message, payload.transfers);
+    const result = await runImageOperation('process', item, effectiveSettings);
     if (result.state !== 'completed') { item.status = result.state; item.error = result.error?.message || 'Processing failed.'; return; }
     const value = result.value; const blob = new Blob([value.buffer], { type: value.mime });
     item.outputBlob = blob; item.outputUrl = trackObjectUrl(blob); item.outputWidth = value.width; item.outputHeight = value.height; item.status = 'completed';
@@ -496,6 +497,17 @@ function collectWatermark() { return normalizeWatermark({ enabled:els.watermarkE
 function updateWatermarkConditional() { const enabled=els.watermarkEnabled.checked; els.watermarkControls.classList.toggle('hidden',!enabled); const image=els.watermarkType.value==='image'; els.watermarkTextFields.classList.toggle('hidden',image); els.watermarkImageFields.classList.toggle('hidden',!image); els.watermarkCustomPosition.classList.toggle('hidden',els.watermarkPosition.value!=='custom'||!enabled); }
 function resetWatermarkControls() { const r=DEFAULT_WATERMARK; els.watermarkEnabled.checked=false; els.watermarkType.value=r.type; els.watermarkPosition.value=r.position; els.watermarkOpacity.value=Math.round(r.opacity*100); els.watermarkRotation.value=r.rotation; els.watermarkMargin.value=r.margin; els.watermarkTiled.checked=r.tiled; els.watermarkTileGap.value=r.tileGap; els.watermarkX.value=r.x; els.watermarkY.value=r.y; els.watermarkText.value=r.text; els.watermarkFont.value=r.fontFamily; els.watermarkFontSize.value=r.fontSize; els.watermarkColor.value=r.color; els.watermarkLogoWidth.value=r.logoWidth; els.watermarkLogoInput.value=''; els.watermarkLogoName.textContent='No logo selected'; state.watermarkLogoFile=null; updateWatermarkConditional(); }
 async function setWatermarkLogo(file) { if(!file) return; const budget=validateFileBudget(file); if(!budget.ok){ showCompatibility(budget.reason); return; } try { const buffer=await file.arrayBuffer(); const result=await runner.run({op:'inspect',buffer},[buffer],15_000); if(result.state!=='completed'||!['jpeg','png','webp','avif'].includes(result.value.kind)){ showCompatibility('Watermark logos must be a valid JPEG, PNG, WebP, or AVIF image.'); els.watermarkLogoInput.value=''; return; } state.watermarkLogoFile=file; els.watermarkLogoName.textContent=file.name; els.watermarkEnabled.checked=true; els.watermarkType.value='image'; updateWatermarkConditional(); scheduleEditPreview(40); } catch { showCompatibility('The watermark image could not be inspected safely.'); } }
+async function runImageOperation(op, item, settings, timeoutMs = 30_000, signal) {
+  if (state.useBrowserProcessor && ['preview','process','performance-budget'].includes(op)) {
+    const options = { preview: op === 'preview', watermarkLogoFile: state.watermarkLogoFile, signal };
+    return op === 'performance-budget'
+      ? optimizeBrowserImage(item.file, settings, options)
+      : processBrowserImage(item.file, settings, options);
+  }
+  const payload = await createProcessingPayload(op, item, settings);
+  return runner.run(payload.message, payload.transfers, timeoutMs, signal);
+}
+
 async function createProcessingPayload(op,item,settings) { const buffer=await item.file.arrayBuffer(); const message={op,buffer,settings}; const transfers=[buffer]; if(settings.watermark?.enabled&&settings.watermark.type==='image'&&state.watermarkLogoFile){ const watermarkLogoBuffer=await state.watermarkLogoFile.arrayBuffer(); message.watermarkLogoBuffer=watermarkLogoBuffer; transfers.push(watermarkLogoBuffer); } return {message,transfers}; }
 
 function toggleMobilePrecision() {
@@ -662,8 +674,7 @@ async function previewSelectedEdits() {
   els.previewStatus.textContent = 'Rendering preview…'; if (els.mobileCanvasStatus) els.mobileCanvasStatus.classList.remove('hidden');
   try {
     const settings = collectSettings(); settings.targetBytes = 0; settings.format = 'png'; settings.previewMaxEdge = 1400; settings.cleanup = cleanupForItem(item); settings.layers = layersForItem(item); settings.textReplacements = item.textReplacements || [];
-    const payload = await createProcessingPayload('preview', item, settings);
-    const result = await runner.run(payload.message, payload.transfers, 20_000, controller.signal);
+    const result = await runImageOperation('preview', item, settings, 20_000, controller.signal);
     if (controller.signal.aborted || result.state === 'cancelled') return;
     if (result.state !== 'completed') { els.previewStatus.textContent = result.error?.message || 'Preview unavailable'; return; }
     if (item.editPreviewUrl) revokeObjectUrl(item.editPreviewUrl);
@@ -743,8 +754,7 @@ async function runPerformanceBudget() {
   const budget=performanceBudgetInput(); els.performanceStatus.textContent='Testing formats and compression levels…';
   try {
     const settings=collectSettings(); settings.layers=layersForItem(item); settings.cleanup=cleanupForItem(item); settings.textReplacements=item.textReplacements||[]; settings.performanceBudget=budget;
-    const payload=await createProcessingPayload('performance-budget',item,settings);
-    const result=await runner.run(payload.message,payload.transfers,45_000);
+    const result=await runImageOperation('performance-budget',item,settings,45_000);
     if(result.state!=='completed'){els.performanceStatus.textContent=result.error?.message||'No valid output met the performance budget.';return;}
     const value=result.value, blob=new Blob([value.buffer],{type:value.mime}); item.performanceResult={...value,blob:null};
     item.performanceResultUrl=trackObjectUrl(blob); item.performanceResult.blob=blob;
@@ -804,8 +814,7 @@ async function generateCompilerPack() {
     for(let index=0;index<outputs.length;index++){
       const spec=outputs[index]; els.compilerStatus.textContent=`Rendering ${index+1}/${outputs.length}: ${spec.label}…`;
       const settings=compilerSettings(base,spec,els.compilerFit.value);
-      const payload=await createProcessingPayload('process',item,settings);
-      const result=await runner.run(payload.message,payload.transfers);
+      const result=await runImageOperation('process',item,settings);
       if(result.state!=='completed'){failures.push(`${spec.label}: ${result.error?.message||result.state}`);continue;}
       totalBytes+=result.value.buffer.byteLength;
       if(totalBytes>MAX_COMPILER_PACK_BYTES){showCompatibility('Compiler pack exceeded the 200 MB safe in-memory output limit. Choose fewer or smaller outputs.');return;}
