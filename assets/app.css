@@ -780,3 +780,107 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
     min-height: 76px;
   }
 }
+
+@media (max-width: 700px) {
+  /* Pass 3: advanced tools are secondary action sheets, not documentation pages. */
+  body[data-mobile-tool="replace"].mobile-editing .replace-text-section > .section-inline-heading p,
+  body[data-mobile-tool="compiler"].mobile-editing .compiler-section > .section-inline-heading p,
+  body[data-mobile-tool="performance"].mobile-editing .performance-section > .section-inline-heading p,
+  body[data-mobile-tool="watermark"].mobile-editing .watermark-section > .section-inline-heading p,
+  body[data-mobile-tool="design"].mobile-editing .design-section > .section-inline-heading p {
+    display: none !important;
+  }
+
+  body[data-mobile-tool="replace"].mobile-editing .replace-text-section > .section-inline-heading,
+  body[data-mobile-tool="compiler"].mobile-editing .compiler-section > .section-inline-heading,
+  body[data-mobile-tool="performance"].mobile-editing .performance-section > .section-inline-heading,
+  body[data-mobile-tool="watermark"].mobile-editing .watermark-section > .section-inline-heading,
+  body[data-mobile-tool="design"].mobile-editing .design-section > .section-inline-heading {
+    min-height: 34px;
+    margin: 0 0 8px;
+    align-items: center;
+  }
+
+  body[data-mobile-tool="replace"].mobile-editing .replace-text-section > .section-inline-heading h3,
+  body[data-mobile-tool="compiler"].mobile-editing .compiler-section > .section-inline-heading h3,
+  body[data-mobile-tool="performance"].mobile-editing .performance-section > .section-inline-heading h3,
+  body[data-mobile-tool="watermark"].mobile-editing .watermark-section > .section-inline-heading h3,
+  body[data-mobile-tool="design"].mobile-editing .design-section > .section-inline-heading h3 {
+    font-size: 22px;
+    line-height: 1.05;
+    margin: 0;
+  }
+
+  body[data-mobile-tool="compiler"].mobile-editing .compiler-options .microcopy,
+  body[data-mobile-tool="performance"].mobile-editing .performance-formats > span,
+  body[data-mobile-tool="performance"].mobile-editing .performance-advanced .microcopy,
+  body[data-mobile-tool="replace"].mobile-editing #replace-status {
+    font-size: 13px;
+  }
+
+  body[data-mobile-tool="compiler"].mobile-editing .compiler-preset-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 7px;
+  }
+  body[data-mobile-tool="compiler"].mobile-editing .compiler-preset-card {
+    min-height: 64px;
+    padding: 9px 10px;
+  }
+  body[data-mobile-tool="compiler"].mobile-editing .compiler-preset-card strong {
+    font-size: 14px;
+  }
+  body[data-mobile-tool="compiler"].mobile-editing .compiler-preset-card small {
+    font-size: 12px;
+  }
+  body[data-mobile-tool="compiler"].mobile-editing .compiler-actions {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding: 8px 0 2px;
+  }
+  body[data-mobile-tool="compiler"].mobile-editing #compiler-generate {
+    min-height: 46px;
+    width: 100%;
+    font-size: 16px;
+  }
+
+  body[data-mobile-tool="performance"].mobile-editing .performance-section > .form-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  body[data-mobile-tool="performance"].mobile-editing .performance-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  body[data-mobile-tool="performance"].mobile-editing .performance-actions button {
+    min-height: 44px;
+  }
+
+  body[data-mobile-tool="replace"].mobile-editing .replace-controls {
+    gap: 8px;
+  }
+  body[data-mobile-tool="replace"].mobile-editing .replace-controls textarea {
+    min-height: 58px;
+  }
+
+  body[data-mobile-tool="watermark"].mobile-editing .watermark-section .form-grid,
+  body[data-mobile-tool="design"].mobile-editing .text-layer-fields .form-grid,
+  body[data-mobile-tool="design"].mobile-editing .shape-layer-fields .form-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 8px;
+  }
+
+  body[data-mobile-tool="export"].mobile-editing .preset-section > h3,
+  body[data-mobile-tool="export"].mobile-editing .resize-section > h3,
+  body[data-mobile-tool="export"].mobile-editing .format-section > h3 {
+    font-size: 17px;
+    margin: 0 0 7px;
+  }
+  body[data-mobile-tool="export"].mobile-editing .mobile-export-actions {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding-top: 8px;
+  }
+}
