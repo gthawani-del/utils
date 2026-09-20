@@ -361,46 +361,12 @@
 
 
 /* Pass 3: contextual desktop inspector. Mobile keeps its existing tool-sheet logic. */
-.desktop-inspector-tabs { display: none; }
 
 @media (min-width: 1120px) {
   .image-studio-body .control-card {
     --inspector-tab-border: #dfe5ee;
   }
 
-  .image-studio-body .desktop-inspector-tabs {
-    position: sticky;
-    top: 0;
-    z-index: 6;
-    display: grid;
-    grid-template-columns: repeat(3,minmax(0,1fr));
-    gap: 4px;
-    padding: 10px;
-    border-bottom: 1px solid var(--inspector-tab-border);
-    background: #fff;
-  }
-
-  .image-studio-body .desktop-inspector-tab {
-    min-height: 34px;
-    border: 0;
-    border-radius: 7px;
-    background: transparent;
-    color: #687386;
-    padding: 0 5px;
-    font-size: 9px;
-    font-weight: 760;
-    cursor: pointer;
-  }
-
-  .image-studio-body .desktop-inspector-tab:hover {
-    background: #f4f7fb;
-    color: #111827;
-  }
-
-  .image-studio-body .desktop-inspector-tab.active {
-    background: #111827;
-    color: #fff;
-  }
 
   .image-studio-body .control-card > .control-header {
     display: none;
