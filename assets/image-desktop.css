@@ -396,20 +396,20 @@
     display: block;
   }
 
-  .image-studio-body .control-card[data-inspector-tool="more"] > .preset-section,
-  .image-studio-body .control-card[data-inspector-tool="more"] > .resize-section,
-  .image-studio-body .control-card[data-inspector-tool="more"] > .replace-text-section,
-  .image-studio-body .control-card[data-inspector-tool="more"] > .compiler-section,
-  .image-studio-body .control-card[data-inspector-tool="more"] > .asset-doctor-section,
-  .image-studio-body .control-card[data-inspector-tool="more"] > .web-pack-section,
-  .image-studio-body .control-card[data-inspector-tool="more"] > .performance-section,
-  .image-studio-body .control-card[data-inspector-tool="more"] > .format-section,
-  .image-studio-body .control-card[data-inspector-tool="more"] > .advanced,
-  .image-studio-body .control-card[data-inspector-tool="more"] > .action-row {
+  .image-studio-body .control-card[data-inspector-tool="resize"] > .resize-section,
+  .image-studio-body .control-card[data-inspector-tool="replace"] > .replace-text-section,
+  .image-studio-body .control-card[data-inspector-tool="optimize"] > .compiler-section,
+  .image-studio-body .control-card[data-inspector-tool="optimize"] > .asset-doctor-section,
+  .image-studio-body .control-card[data-inspector-tool="optimize"] > .web-pack-section,
+  .image-studio-body .control-card[data-inspector-tool="optimize"] > .performance-section,
+  .image-studio-body .control-card[data-inspector-tool="export"] > .preset-section,
+  .image-studio-body .control-card[data-inspector-tool="export"] > .format-section,
+  .image-studio-body .control-card[data-inspector-tool="export"] > .advanced,
+  .image-studio-body .control-card[data-inspector-tool="export"] > .action-row {
     display: block;
   }
 
-  .image-studio-body .control-card[data-inspector-tool="more"] > .mobile-more-section {
+  .image-studio-body .control-card[data-inspector-tool] > .mobile-more-section {
     display: none;
   }
 }
@@ -1272,5 +1272,31 @@
     color: #566174;
     font-size: 11px;
     line-height: 1.4;
+  }
+}
+
+
+/* Pass 5: explicit secondary-tool navigation; More is no longer a desktop dumping ground. */
+@media (min-width: 1120px) {
+  .image-studio-body .image-sidebar-nav {
+    gap: 3px;
+  }
+
+  .image-studio-body .image-sidebar-nav-divider {
+    height: 1px;
+    margin: 7px 8px;
+    background: rgba(255,255,255,.09);
+  }
+
+  .image-studio-body .image-sidebar-nav-button {
+    min-height: 42px;
+  }
+
+  .image-studio-body .image-sidebar-nav-button strong {
+    font-size: 11px;
+  }
+
+  .image-studio-body .image-sidebar-nav-button small {
+    font-size: 8px;
   }
 }

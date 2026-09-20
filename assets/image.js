@@ -794,7 +794,7 @@ function renderComparison(item) {
 
 function setDesktopInspectorTool(tool) {
   const card = document.querySelector('.control-card');
-  if (!card || !['adjust','crop','cleanup','text','watermark','more'].includes(tool)) return;
+  if (!card || !['adjust','crop','cleanup','text','watermark','resize','replace','optimize','export'].includes(tool)) return;
   card.dataset.inspectorTool = tool;
   document.querySelectorAll('.image-sidebar-nav-button').forEach((button) => button.classList.toggle('active', button.dataset.sidebarTool === tool));
 }
