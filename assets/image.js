@@ -78,7 +78,7 @@ function wireEvents() {
   els.resizeMode.addEventListener('change', () => { updateConditionalControls(); updateWarnings(); });
   els.cropMode.addEventListener('change', () => { updateConditionalControls(); syncMobileCropButtons(); syncSmartCropFocus(); scheduleEditPreview(80); });
   els.smartCropEnabled.addEventListener('change', async () => { if (els.smartCropEnabled.checked && !selectedItem()?.smartCrop?.analyzed) await runSmartCropAnalysis(); else { syncSmartCropFocus(); scheduleEditPreview(40); } });
-  els.smartCropAnalyze.addEventListener('click', () => runSmartCropAnalysis());
+  els.smartCropAnalyze.addEventListener('click', async () => { await runSmartCropAnalysis(); if (selectedItem()?.smartCrop?.analyzed) { els.smartCropEnabled.checked = true; syncSmartCropFocus(); scheduleEditPreview(20); } });
   for (const control of [els.smartCropX, els.smartCropY]) control.addEventListener('input', () => { const item=selectedItem(); if(!item)return; item.smartCrop.manual=true; item.smartCrop.focusX=Number(els.smartCropX.value)/100; item.smartCrop.focusY=Number(els.smartCropY.value)/100; updateSmartCropUi(item); scheduleEditPreview(40); });
   els.format.addEventListener('change', () => { updateWarnings(); els.targetSize.disabled = els.format.value === 'png'; });
   els.quality.addEventListener('input', () => { els.qualityValue.textContent = els.quality.value; });
@@ -832,7 +832,6 @@ async function runSmartCropAnalysis(item = selectedItem(), { quiet = false } = {
       } catch { faceDetectorAvailable=false; }
     }
     item.smartCrop={...item.smartCrop,analyzed:true,regions,manual:false,summary:smartCropSummary(regions,{faceDetectorAvailable})};
-    els.smartCropEnabled.checked=true;
     syncSmartCropFocus();
     updateSmartCropUi(item);
     scheduleEditPreview(20);
@@ -874,12 +873,12 @@ function updateSmartCropUi(item) {
   els.smartCropX.disabled=!enabled;els.smartCropY.disabled=!enabled;
   const fx=Math.round((smart?.focusX??.5)*100),fy=Math.round((smart?.focusY??.5)*100);
   els.smartCropX.value=String(fx);els.smartCropY.value=String(fy);els.smartCropXValue.textContent=String(fx);els.smartCropYValue.textContent=String(fy);
-  if(!enabled){els.smartCropStatus.textContent='Center crop';return;}
-  if(!smart?.analyzed){els.smartCropStatus.textContent='Analyze to protect content';return;}
+  if(!enabled){els.smartCropStatus.textContent='Centered crop';return;}
+  if(!smart?.analyzed){els.smartCropStatus.textContent='Analyze to find a safer focus';return;}
   if(smart.manual){els.smartCropStatus.textContent='Manual focus';return;}
   const s=smart.summary||{};
   const parts=[];if(s.faces)parts.push(`${s.faces} face${s.faces===1?'':'s'}`);if(s.textLike)parts.push(`${s.textLike} text-like`);if(s.detail)parts.push(`${s.detail} detail`);
-  els.smartCropStatus.textContent=parts.length?`Protected: ${parts.join(' · ')}`:(s.faceDetectorAvailable?'No strong regions found':'Local detail focus');
+  els.smartCropStatus.textContent=parts.length?`Focus found: ${parts.join(' · ')}`:(s.faceDetectorAvailable?'No strong focus found':'Local detail focus');
 }
 
 function setMobileCrop(mode) {
