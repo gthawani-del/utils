@@ -24,7 +24,7 @@ const $ = (selector) => document.querySelector(selector);
 const EDIT_KEYS = ['brightness','exposure','contrast','saturation','vibrance','highlights','shadows','temperature','tint','gamma','sharpen','blur','grayscale','sepia','straighten'];
 const MOBILE_ADJUST_LABELS = { brightness:'Brightness', exposure:'Exposure', contrast:'Contrast', saturation:'Saturation', vibrance:'Vibrance', highlights:'Highlights', shadows:'Shadows', temperature:'Warmth', tint:'Tint', gamma:'Gamma', sharpen:'Sharpen', blur:'Blur', grayscale:'Black & White', sepia:'Sepia', straighten:'Straighten', rotate:'Rotate', flipX:'Flip Horizontal', flipY:'Flip Vertical' };
 const els = {
-  input: $('#file-input'), choose: $('#choose-files'), add: $('#add-more'), desktopAdd: $('#desktop-add-image'), desktopCurrentFile: $('#desktop-current-file'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'), mobileContinue: $('#mobile-continue'), mobileStartCount: $('#mobile-start-count'),
+  input: $('#file-input'), choose: $('#choose-files'), uploadIcon: $('#upload-icon-button'), add: $('#add-more'), desktopAdd: $('#desktop-add-image'), desktopCurrentFile: $('#desktop-current-file'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'), mobileContinue: $('#mobile-continue'), mobileStartCount: $('#mobile-start-count'),
   originalPreview: $('#original-preview'), outputPreview: $('#output-preview'), originalStats: $('#original-stats'), outputStats: $('#output-stats'), metadata: $('#metadata-box'),
   compatibility: $('#compatibility'), preset: $('#preset'), resizeMode: $('#resize-mode'), width: $('#width'), height: $('#height'), percentage: $('#percentage'), longest: $('#longest-edge'), shortest: $('#shortest-edge'),
   percentageWrap: $('#percentage-wrap'), longestWrap: $('#longest-wrap'), shortestWrap: $('#shortest-wrap'), preserveAspect: $('#preserve-aspect'), cropMode: $('#crop-mode'), customRatio: $('#custom-ratio'), customRatioWrap: $('#custom-ratio-wrap'), freeCrop: $('#free-crop'),
@@ -66,6 +66,7 @@ function initialize() {
 
 function wireEvents() {
   els.choose.addEventListener('click', openImagePicker);
+  els.uploadIcon?.addEventListener('click', openImagePicker);
   els.desktopAdd?.addEventListener('click', () => els.input.click());
   els.add.addEventListener('click', openImagePicker);
   els.mobileContinue.addEventListener('click', enterMobileEditor);
@@ -97,7 +98,6 @@ function wireEvents() {
   els.undoEdit.addEventListener('click', undoEdit);
   els.resetEdits.addEventListener('click', resetEdits);
   els.comparisonRange.addEventListener('input', updateComparisonPosition);
-  for (const button of document.querySelectorAll('.desktop-view-button')) button.addEventListener('click', () => setDesktopCanvasView(button.dataset.desktopView));
   for (const button of document.querySelectorAll('.desktop-inspector-tab')) button.addEventListener('click', () => setDesktopInspectorTool(button.dataset.inspectorTool));
   for (const button of document.querySelectorAll('.image-sidebar-nav-button')) button.addEventListener('click', () => setDesktopInspectorTool(button.dataset.sidebarTool));
   const addLayerButtons = [[els.addTextLayer,'text'],[els.addRectLayer,'rectangle'],[els.addCircleLayer,'circle'],[els.addLineLayer,'line'],[els.addArrowLayer,'arrow'],[els.addBackgroundLayer,'background']];
@@ -275,12 +275,16 @@ function renderSelected() {
   } else {
     els.originalPreview.textContent = item.error || 'Unable to inspect file.';
   }
-  if (item.outputUrl && item.outputBlob) {
+  if (item.editPreviewUrl) {
+    addPreviewImage(els.outputPreview, item.editPreviewUrl, `Edit preview ${item.file.name}`);
+  } else if (item.outputUrl && item.outputBlob) {
     addPreviewImage(els.outputPreview, item.outputUrl, `Processed ${item.file.name}`);
     const reduction = item.file.size ? Math.round((1 - item.outputBlob.size / item.file.size) * 100) : 0;
     fillStats(els.outputStats, [['Format', item.outputBlob.type.replace('image/', '').toUpperCase()], ['Dimensions', `${item.outputWidth} × ${item.outputHeight}`], ['Size', formatBytes(item.outputBlob.size)], ['Change', `${reduction >= 0 ? reduction + '% smaller' : Math.abs(reduction) + '% larger'}`]]);
+  } else if (item.originalUrl) {
+    addPreviewImage(els.outputPreview, item.originalUrl, `Edit preview ${item.file.name}`);
   } else {
-    els.outputPreview.textContent = item.status === 'processing' ? 'Processing…' : (item.error && item.status !== 'ready' ? item.error : 'Process to preview');
+    els.outputPreview.textContent = item.status === 'processing' ? 'Processing…' : (item.error && item.status !== 'ready' ? item.error : 'Preview unavailable');
   }
   safeUiCall(() => renderComparison(item));
   safeUiCall(() => renderCleanupEditor(item));
@@ -779,7 +783,7 @@ async function previewSelectedEdits() {
     if (item.editPreviewUrl) revokeObjectUrl(item.editPreviewUrl);
     item.editPreviewBlob = new Blob([result.value.buffer], { type: result.value.mime });
     item.editPreviewUrl = trackObjectUrl(item.editPreviewBlob);
-    renderComparison(item); renderMobileCanvas(item); renderReplaceSelector(item); els.previewStatus.textContent = 'Preview ready'; if (els.mobileCanvasStatus) els.mobileCanvasStatus.classList.add('hidden');
+    renderSelectedSafely(); renderMobileCanvas(item); renderReplaceSelector(item); els.previewStatus.textContent = 'Preview ready'; if (els.mobileCanvasStatus) els.mobileCanvasStatus.classList.add('hidden');
   } catch { if (!controller.signal.aborted) els.previewStatus.textContent = 'Preview unavailable'; if (els.mobileCanvasStatus) els.mobileCanvasStatus.classList.add('hidden'); }
 }
 
@@ -795,22 +799,6 @@ function setDesktopInspectorTool(tool) {
   card.dataset.inspectorTool = tool;
   document.querySelectorAll('.desktop-inspector-tab').forEach((button) => button.classList.toggle('active', button.dataset.inspectorTool === tool));
   document.querySelectorAll('.image-sidebar-nav-button').forEach((button) => button.classList.toggle('active', button.dataset.sidebarTool === tool));
-}
-
-function setDesktopCanvasView(view) {
-  const grid = document.querySelector('.preview-grid');
-  const compare = els.editComparison;
-  if (!grid || !['original','edited','compare'].includes(view)) return;
-  grid.dataset.desktopView = view;
-  document.querySelectorAll('.desktop-view-button').forEach((button) => button.classList.toggle('active', button.dataset.desktopView === view));
-  if (view === 'compare') {
-    grid.classList.add('desktop-compare-active');
-    if (compare) compare.classList.add('desktop-compare-requested');
-    scheduleEditPreview(0);
-  } else {
-    grid.classList.remove('desktop-compare-active');
-    if (compare) compare.classList.remove('desktop-compare-requested');
-  }
 }
 
 function updateComparisonPosition() {
