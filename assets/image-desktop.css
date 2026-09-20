@@ -833,3 +833,127 @@
     display: none !important;
   }
 }
+
+
+/* Pass 1 architecture consolidation — viewport ownership only. */
+@media (min-width: 1120px) {
+  /* Active editor is an application viewport, not a scrolling document. */
+  .image-studio-body.has-image-workspace {
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .image-studio-body.has-image-workspace .studio-shell {
+    height: 100vh;
+    min-height: 0;
+    padding: 12px 22px;
+    overflow: hidden;
+  }
+
+  .image-studio-body.has-image-workspace .desktop-workspace-header {
+    height: 52px;
+    min-height: 52px;
+    margin: 0 0 8px;
+    padding: 0 2px 8px;
+  }
+
+  .image-studio-body.has-image-workspace .workspace {
+    height: calc(100vh - 72px);
+    min-height: 0;
+    margin: 0;
+    grid-template-columns: minmax(0,1fr);
+    grid-template-rows: 58px minmax(0,1fr);
+    gap: 8px;
+    overflow: hidden;
+    align-items: stretch;
+  }
+
+  .image-studio-body.has-image-workspace .file-panel {
+    grid-column: 1;
+    grid-row: 1;
+    height: 58px;
+    min-height: 58px;
+    max-height: 58px;
+  }
+
+  .image-studio-body.has-image-workspace .file-panel .panel-title {
+    min-height: 56px;
+    height: 56px;
+  }
+
+  .image-studio-body.has-image-workspace .file-list {
+    max-height: 56px;
+  }
+
+  .image-studio-body.has-image-workspace .editor-panel {
+    grid-column: 1;
+    grid-row: 2;
+    height: 100%;
+    min-height: 0;
+    grid-template-columns: minmax(0,1fr) 340px;
+    grid-template-rows: minmax(0,1fr);
+    gap: 16px;
+    overflow: hidden;
+    align-items: stretch;
+  }
+
+  .image-studio-body.has-image-workspace .preview-grid {
+    grid-column: 1;
+    grid-row: 1;
+    height: 100%;
+    min-height: 0;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 12px;
+    overflow: hidden;
+    align-items: stretch;
+  }
+
+  .image-studio-body.has-image-workspace .preview-card {
+    height: 100%;
+    min-height: 0;
+    display: grid !important;
+    grid-template-rows: auto minmax(0,1fr) auto;
+    overflow: hidden;
+  }
+
+  .image-studio-body.has-image-workspace .preview-stage {
+    min-height: 0;
+    max-height: none;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .image-studio-body.has-image-workspace .preview-stage img {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: contain;
+  }
+
+  .image-studio-body.has-image-workspace .stats {
+    max-height: 72px;
+    overflow: hidden;
+  }
+
+  /* The contextual inspector is the sole vertical scrolling owner on short screens. */
+  .image-studio-body.has-image-workspace .control-card {
+    grid-column: 2;
+    grid-row: 1;
+    position: static;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .image-studio-body.has-image-workspace #edit-comparison,
+  .image-studio-body.has-image-workspace #jpeg-warning,
+  .image-studio-body.has-image-workspace #upscale-warning {
+    display: none !important;
+  }
+}
