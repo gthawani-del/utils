@@ -24,7 +24,7 @@ const $ = (selector) => document.querySelector(selector);
 const EDIT_KEYS = ['brightness','exposure','contrast','saturation','vibrance','highlights','shadows','temperature','tint','gamma','sharpen','blur','grayscale','sepia','straighten'];
 const MOBILE_ADJUST_LABELS = { brightness:'Brightness', exposure:'Exposure', contrast:'Contrast', saturation:'Saturation', vibrance:'Vibrance', highlights:'Highlights', shadows:'Shadows', temperature:'Warmth', tint:'Tint', gamma:'Gamma', sharpen:'Sharpen', blur:'Blur', grayscale:'Black & White', sepia:'Sepia', straighten:'Straighten', rotate:'Rotate', flipX:'Flip Horizontal', flipY:'Flip Vertical' };
 const els = {
-  input: $('#file-input'), choose: $('#choose-files'), add: $('#add-more'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'), mobileContinue: $('#mobile-continue'), mobileStartCount: $('#mobile-start-count'),
+  input: $('#file-input'), choose: $('#choose-files'), add: $('#add-more'), desktopAdd: $('#desktop-add-image'), desktopCurrentFile: $('#desktop-current-file'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'), mobileContinue: $('#mobile-continue'), mobileStartCount: $('#mobile-start-count'),
   originalPreview: $('#original-preview'), outputPreview: $('#output-preview'), originalStats: $('#original-stats'), outputStats: $('#output-stats'), metadata: $('#metadata-box'),
   compatibility: $('#compatibility'), preset: $('#preset'), resizeMode: $('#resize-mode'), width: $('#width'), height: $('#height'), percentage: $('#percentage'), longest: $('#longest-edge'), shortest: $('#shortest-edge'),
   percentageWrap: $('#percentage-wrap'), longestWrap: $('#longest-wrap'), shortestWrap: $('#shortest-wrap'), preserveAspect: $('#preserve-aspect'), cropMode: $('#crop-mode'), customRatio: $('#custom-ratio'), customRatioWrap: $('#custom-ratio-wrap'), freeCrop: $('#free-crop'),
@@ -66,6 +66,7 @@ function initialize() {
 
 function wireEvents() {
   els.choose.addEventListener('click', openImagePicker);
+  els.desktopAdd?.addEventListener('click', () => els.input.click());
   els.add.addEventListener('click', openImagePicker);
   els.mobileContinue.addEventListener('click', enterMobileEditor);
   els.input.addEventListener('change', () => addFiles([...els.input.files]));
@@ -209,6 +210,7 @@ async function addFiles(files) {
   } finally {
     els.input.value = '';
     els.workspace.classList.toggle('hidden', state.items.length === 0);
+    document.body.classList.toggle('has-image-workspace', state.items.length > 0);
     if (!state.selectedId) {
       const firstReady = state.items.find((item) => item.status === 'ready');
       if (firstReady) {
@@ -430,7 +432,7 @@ async function downloadAll() {
 function triggerDownload(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.rel = 'noopener'; document.body.append(a); a.click(); a.remove(); }
 
 async function clearAll() {
-  closeMobileFiles(); state.mobileStartOpen = true; state.previewAbort?.abort(); clearTimeout(state.previewTimer); runner.terminateAll(); cleanupUrls(); state.items = []; state.selectedId = null; state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.layers = []; state.selectedLayerId = null; state.watermarkLogoFile = null; state.compilerCustomOutputs = []; state.compilerSelectedIds = new Set(); state.redoHistory = []; renderCompiler(); renderLayerList(); renderLayerProperties(); resetWatermarkControls(); await clearWorkspace(); els.workspace.classList.add('hidden'); els.list.replaceChildren(); els.input.value = ''; syncMobileEditingState(); els.clear.textContent = 'Workspace cleared'; setTimeout(() => { els.clear.textContent = 'Clear workspace'; }, 1600);
+  closeMobileFiles(); state.mobileStartOpen = true; state.previewAbort?.abort(); clearTimeout(state.previewTimer); runner.terminateAll(); cleanupUrls(); state.items = []; state.selectedId = null; state.editHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.layers = []; state.selectedLayerId = null; state.watermarkLogoFile = null; state.compilerCustomOutputs = []; state.compilerSelectedIds = new Set(); state.redoHistory = []; renderCompiler(); renderLayerList(); renderLayerProperties(); resetWatermarkControls(); await clearWorkspace(); els.workspace.classList.add('hidden'); document.body.classList.remove('has-image-workspace'); els.list.replaceChildren(); els.input.value = ''; syncMobileEditingState(); els.clear.textContent = 'Workspace cleared'; setTimeout(() => { els.clear.textContent = 'Clear workspace'; }, 1600);
 }
 
 function cleanupUrls() { for (const item of state.items) { revokeObjectUrl(item.originalUrl); revokeObjectUrl(item.outputUrl); revokeObjectUrl(item.editPreviewUrl); revokeObjectUrl(item.performanceResultUrl); item.originalUrl = ''; item.outputUrl = ''; item.editPreviewUrl = ''; item.performanceResultUrl = ''; } }
