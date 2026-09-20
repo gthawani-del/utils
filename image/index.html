@@ -12,6 +12,7 @@
   <header class="site-header">
     <a class="brand" href="/" aria-label="Utility OS home"><span class="brand-mark">U</span><span>Utility OS</span></a>
     <div class="image-sidebar-product"><span class="image-sidebar-product-icon">▧</span><div><strong>Image Studio</strong><small>Private image tools</small></div></div>
+    <div class="image-sidebar-intro"><strong>Edit images privately</strong><p>Resize, crop, adjust, clean up, add text and export — processed in your browser.</p><small>Choose an image to open the editing tools.</small></div>
     <nav class="image-sidebar-nav" aria-label="Image Studio tools">
       <button class="image-sidebar-nav-button active" type="button" data-sidebar-tool="adjust"><span>☼</span><div><strong>Adjust</strong><small>Light, colour & transform</small></div></button>
       <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="crop"><span>⌗</span><div><strong>Crop</strong><small>Frame & aspect ratio</small></div></button>
@@ -36,7 +37,7 @@
     <div id="compatibility" class="notice danger hidden" role="alert"></div>
     <section class="upload-panel desktop-onboarding" id="drop-zone" aria-labelledby="upload-title">
       <input id="file-input" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/svg+xml" multiple>
-      <div class="upload-icon" aria-hidden="true">＋</div>
+      <button class="upload-icon upload-icon-button" id="upload-icon-button" type="button" aria-label="Choose images">＋</button>
       <h2 id="upload-title">Drop images here</h2>
       <p>JPEG, PNG, WebP, AVIF where supported, and conservatively sanitized SVG.</p>
       <button class="primary-button" id="choose-files" type="button">Choose images</button>
@@ -74,10 +75,9 @@
           <button class="mobile-batch-chip hidden" id="mobile-batch-chip" type="button">1 image</button>
         </section>
 
-        <div class="desktop-canvas-toolbar" role="group" aria-label="Canvas view"><strong>Canvas</strong><div class="desktop-view-switch"><button class="desktop-view-button" type="button" data-desktop-view="original">Original</button><button class="desktop-view-button active" type="button" data-desktop-view="edited">Edited</button><button class="desktop-view-button" type="button" data-desktop-view="compare">Compare</button></div></div>
-        <div class="preview-grid" data-desktop-view="edited">
+        <div class="preview-grid">
           <article class="preview-card original-preview-card"><div class="preview-label">Original</div><div class="preview-stage" id="original-preview"><span>Select an image</span></div><dl id="original-stats" class="stats"></dl></article>
-          <article class="preview-card output-preview-card"><div class="preview-label">Edited</div><div class="preview-stage" id="output-preview"><span>Process to preview</span></div><dl id="output-stats" class="stats"></dl></article>
+          <article class="preview-card output-preview-card"><div class="preview-label">Edit preview</div><div class="preview-stage" id="output-preview"><span>Process to preview</span></div><dl id="output-stats" class="stats"></dl></article>
         </div>
 
         <section id="edit-comparison" class="comparison-card hidden" aria-labelledby="comparison-title">
