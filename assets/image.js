@@ -99,6 +99,7 @@ function wireEvents() {
   els.comparisonRange.addEventListener('input', updateComparisonPosition);
   for (const button of document.querySelectorAll('.desktop-view-button')) button.addEventListener('click', () => setDesktopCanvasView(button.dataset.desktopView));
   for (const button of document.querySelectorAll('.desktop-inspector-tab')) button.addEventListener('click', () => setDesktopInspectorTool(button.dataset.inspectorTool));
+  for (const button of document.querySelectorAll('.image-sidebar-nav-button')) button.addEventListener('click', () => setDesktopInspectorTool(button.dataset.sidebarTool));
   const addLayerButtons = [[els.addTextLayer,'text'],[els.addRectLayer,'rectangle'],[els.addCircleLayer,'circle'],[els.addLineLayer,'line'],[els.addArrowLayer,'arrow'],[els.addBackgroundLayer,'background']];
   for (const [button,type] of addLayerButtons) button.addEventListener('click', () => addDesignLayer(type));
   els.duplicateLayer.addEventListener('click', duplicateSelectedLayer); els.deleteLayer.addEventListener('click', deleteSelectedLayer); els.layerUp.addEventListener('click', () => moveSelectedLayer(1)); els.layerDown.addEventListener('click', () => moveSelectedLayer(-1));
@@ -793,6 +794,7 @@ function setDesktopInspectorTool(tool) {
   if (!card || !['adjust','crop','cleanup','text','watermark','more'].includes(tool)) return;
   card.dataset.inspectorTool = tool;
   document.querySelectorAll('.desktop-inspector-tab').forEach((button) => button.classList.toggle('active', button.dataset.inspectorTool === tool));
+  document.querySelectorAll('.image-sidebar-nav-button').forEach((button) => button.classList.toggle('active', button.dataset.sidebarTool === tool));
 }
 
 function setDesktopCanvasView(view) {
