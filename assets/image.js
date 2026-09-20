@@ -98,6 +98,7 @@ function wireEvents() {
   els.resetEdits.addEventListener('click', resetEdits);
   els.comparisonRange.addEventListener('input', updateComparisonPosition);
   for (const button of document.querySelectorAll('.desktop-view-button')) button.addEventListener('click', () => setDesktopCanvasView(button.dataset.desktopView));
+  for (const button of document.querySelectorAll('.desktop-inspector-tab')) button.addEventListener('click', () => setDesktopInspectorTool(button.dataset.inspectorTool));
   const addLayerButtons = [[els.addTextLayer,'text'],[els.addRectLayer,'rectangle'],[els.addCircleLayer,'circle'],[els.addLineLayer,'line'],[els.addArrowLayer,'arrow'],[els.addBackgroundLayer,'background']];
   for (const [button,type] of addLayerButtons) button.addEventListener('click', () => addDesignLayer(type));
   els.duplicateLayer.addEventListener('click', duplicateSelectedLayer); els.deleteLayer.addEventListener('click', deleteSelectedLayer); els.layerUp.addEventListener('click', () => moveSelectedLayer(1)); els.layerDown.addEventListener('click', () => moveSelectedLayer(-1));
@@ -785,6 +786,13 @@ function renderComparison(item) {
   if (!item?.originalUrl || !item.editPreviewUrl) { els.editComparison.classList.add('hidden'); return; }
   els.comparisonOriginal.src = item.originalUrl; els.comparisonEdited.src = item.editPreviewUrl;
   els.editComparison.classList.remove('hidden'); updateComparisonPosition();
+}
+
+function setDesktopInspectorTool(tool) {
+  const card = document.querySelector('.control-card');
+  if (!card || !['adjust','crop','cleanup','text','watermark','more'].includes(tool)) return;
+  card.dataset.inspectorTool = tool;
+  document.querySelectorAll('.desktop-inspector-tab').forEach((button) => button.classList.toggle('active', button.dataset.inspectorTool === tool));
 }
 
 function setDesktopCanvasView(view) {
