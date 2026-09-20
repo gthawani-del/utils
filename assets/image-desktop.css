@@ -1712,3 +1712,24 @@
 .image-studio-body .compiler-result-meta>div{display:grid;gap:2px;min-width:0}.image-studio-body .compiler-result-meta strong{font-size:12px}.image-studio-body .compiler-result-meta span{font-size:10px;color:#697386}
 .image-studio-body .compiler-download-actions{display:flex;justify-content:flex-end;max-width:1180px;margin:14px auto 4px}.image-studio-body .compiler-download-actions .primary-button{min-width:220px}
 }
+
+/* Pass 7.8: Social Asset Pack setup/results are separate workspace states. */
+@media (min-width:1120px){
+  .image-studio-body .compiler-selection-toolbar{display:flex;justify-content:flex-end;gap:8px;margin:-4px 0 12px}
+  .image-studio-body .compiler-selection-toolbar .text-button{min-height:32px;padding:5px 10px;border:1px solid #dfe5ed;border-radius:7px;background:#fff}
+  .image-studio-body .compiler-section[data-compiler-view="results"]>.compiler-setup-heading,
+  .image-studio-body .compiler-section[data-compiler-view="results"]>.compiler-selection-toolbar,
+  .image-studio-body .compiler-section[data-compiler-view="results"]>#compiler-preset-grid,
+  .image-studio-body .compiler-section[data-compiler-view="results"]>.compiler-options,
+  .image-studio-body .compiler-section[data-compiler-view="results"]>.compiler-custom,
+  .image-studio-body .compiler-section[data-compiler-view="results"]>.compiler-actions{display:none!important}
+  .image-studio-body .compiler-results-view.hidden{display:none}
+  .image-studio-body .compiler-results-view{max-width:1180px;margin:0 auto}
+  .image-studio-body .compiler-results-heading{position:sticky;top:-20px;z-index:5;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:8px 0 16px;background:#fff;border-bottom:1px solid #e3e8ef}
+  .image-studio-body .compiler-results-heading h3{margin:8px 0 3px;font-size:18px}
+  .image-studio-body .compiler-results-heading .primary-button{min-width:190px}
+  .image-studio-body .compiler-results{grid-template-columns:repeat(auto-fit,minmax(250px,1fr));align-items:start;margin:18px 0 0;padding-top:0;border-top:0}
+  .image-studio-body .compiler-result-frame{min-height:220px;max-height:520px}
+  .image-studio-body[data-desktop-workspace="output"] .action-row.export-section{display:none!important}
+  .image-studio-body[data-desktop-workspace="output"] .desktop-edit-commit{display:none!important}
+}

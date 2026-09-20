@@ -39,7 +39,7 @@ const els = {
   cleanupCanvas: $('#cleanup-canvas'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo'), cleanupModeHint: $('#cleanup-mode-hint'), watermarkDetectBar: $('#watermark-detect-bar'), watermarkDetect: $('#watermark-detect'), watermarkDetectStatus: $('#watermark-detect-status'),
   replaceSelector: $('#replace-selector'), replaceSelectorImage: $('#replace-selector-image'), replaceSelectorEmpty: $('#replace-selector-empty'), replaceSelectionBox: $('#replace-selection-box'), mobileReplaceSelection: $('#mobile-replace-selection'), replaceStatus: $('#replace-status'), replaceText: $('#replace-text'), replaceFont: $('#replace-font'), replaceFontSize: $('#replace-font-size'), replaceFontWeight: $('#replace-font-weight'), replaceColor: $('#replace-color'), replaceAlign: $('#replace-align'), replaceClearSelection: $('#replace-clear-selection'), replaceRemove: $('#replace-remove'), replaceApply: $('#replace-apply'), replaceUndo: $('#replace-undo'),
   mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileExportTop: $('#mobile-export-top'), mobileSheetBack: $('#mobile-sheet-back'), mobileMoreButtons: [...document.querySelectorAll('[data-mobile-more-target]')], mobileMoreRevert: $('#mobile-more-revert'), mobileMoreFiles: $('#mobile-more-files'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileLayerHint: $('#mobile-layer-hint'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value'), mobileCropButtons: [...document.querySelectorAll('[data-crop-choice]')], mobilePrecisionToggle: $('#mobile-precision-toggle'), mobileFilesBackdrop: $('#mobile-files-backdrop'), mobileFilesClose: $('#mobile-files-close'), mobileExportSelected: $('#mobile-export-selected'), mobileExportAll: $('#mobile-export-all'), mobileExportStatus: $('#mobile-export-status'),
-  compilerPresetGrid: $('#compiler-preset-grid'), compilerCount: $('#compiler-count'), compilerFit: $('#compiler-fit'), compilerCustomName: $('#compiler-custom-name'), compilerCustomWidth: $('#compiler-custom-width'), compilerCustomHeight: $('#compiler-custom-height'), compilerAddCustom: $('#compiler-add-custom'), compilerCustomList: $('#compiler-custom-list'), compilerGenerate: $('#compiler-generate'), compilerStatus: $('#compiler-status'), compilerResults: $('#compiler-results'), compilerDownloadActions: $('#compiler-download-actions'), compilerDownloadAll: $('#compiler-download-all'),
+  compilerPresetGrid: $('#compiler-preset-grid'), compilerCount: $('#compiler-count'), compilerFit: $('#compiler-fit'), compilerCustomName: $('#compiler-custom-name'), compilerCustomWidth: $('#compiler-custom-width'), compilerCustomHeight: $('#compiler-custom-height'), compilerAddCustom: $('#compiler-add-custom'), compilerCustomList: $('#compiler-custom-list'), compilerGenerate: $('#compiler-generate'), compilerStatus: $('#compiler-status'), compilerResults: $('#compiler-results'), compilerResultsView: $('#compiler-results-view'), compilerResultsTitle: $('#compiler-results-title'), compilerDownloadAll: $('#compiler-download-all'), compilerSelectAll: $('#compiler-select-all'), compilerClearAll: $('#compiler-clear-all'), compilerBackSetup: $('#compiler-back-setup'),
   assetDoctorRun: $('#asset-doctor-run'), assetDoctorList: $('#asset-doctor-list'), assetDoctorBadge: $('#asset-doctor-badge'), assetDoctorStatus: $('#asset-doctor-status'),
   webPackWidths: [...document.querySelectorAll('[data-web-width]')], webPackFormats: [...document.querySelectorAll('[data-web-format]')], webPackNoUpscale: $('#web-pack-no-upscale'), webPackGenerate: $('#web-pack-generate'), webPackCopy: $('#web-pack-copy'), webPackMarkup: $('#web-pack-markup'), webPackResult: $('#web-pack-result'), webPackStatus: $('#web-pack-status'),
   performanceMaxWidth: $('#performance-max-width'), performanceMaxSize: $('#performance-max-size'), performanceMinQuality: $('#performance-min-quality'), performanceMinQualityValue: $('#performance-min-quality-value'), performanceRun: $('#performance-run'), performanceDownload: $('#performance-download'), performanceResult: $('#performance-result'), performanceResultTitle: $('#performance-result-title'), performanceResultDetail: $('#performance-result-detail'), performanceStatus: $('#performance-status')
@@ -132,6 +132,9 @@ function wireEvents() {
   els.mobileFilesBackdrop.addEventListener('click', closeMobileFiles); els.mobileFilesClose.addEventListener('click', closeMobileFiles);
   els.mobileExportSelected.addEventListener('click', mobileExportSelected); els.mobileExportAll.addEventListener('click', mobileExportAll);
   els.compilerAddCustom.addEventListener('click', addCompilerCustomOutput); els.compilerGenerate.addEventListener('click', generateCompilerPack); els.compilerDownloadAll?.addEventListener('click', downloadCompilerPack);
+  els.compilerSelectAll?.addEventListener('click', () => { for (const spec of COMPILER_PRESETS) state.compilerSelectedIds.add(spec.id); clearCompilerGenerated(); renderCompiler(); });
+  els.compilerClearAll?.addEventListener('click', () => { for (const spec of COMPILER_PRESETS) state.compilerSelectedIds.delete(spec.id); clearCompilerGenerated(); renderCompiler(); });
+  els.compilerBackSetup?.addEventListener('click', () => setCompilerView('setup'));
   els.performanceMinQuality.addEventListener('input', () => { els.performanceMinQualityValue.textContent = els.performanceMinQuality.value; invalidatePerformanceResult(); });
   for (const control of [els.performanceMaxWidth, els.performanceMaxSize]) control.addEventListener('input', invalidatePerformanceResult);
   els.assetDoctorRun.addEventListener('click', () => runAssetDoctor());
@@ -1147,14 +1150,14 @@ function renderCompiler() {
   for (const spec of COMPILER_PRESETS) {
     const label = document.createElement('label'); label.className = 'compiler-preset-card';
     const input = document.createElement('input'); input.type = 'checkbox'; input.checked = state.compilerSelectedIds.has(spec.id);
-    input.addEventListener('change', () => { if (input.checked) state.compilerSelectedIds.add(spec.id); else state.compilerSelectedIds.delete(spec.id); updateCompilerState(); });
+    input.addEventListener('change', () => { if (input.checked) state.compilerSelectedIds.add(spec.id); else state.compilerSelectedIds.delete(spec.id); clearCompilerGenerated(); updateCompilerState(); });
     const copy = document.createElement('span'); const name = document.createElement('strong'); name.textContent = spec.label; const dims = document.createElement('small'); dims.textContent = `${spec.width}×${spec.height}`; copy.append(name,dims); label.append(input,copy); els.compilerPresetGrid.append(label);
   }
   els.compilerCustomList.replaceChildren();
   for (const spec of state.compilerCustomOutputs) {
     const row = document.createElement('div'); row.className = 'compiler-custom-row';
     const check = document.createElement('input'); check.type='checkbox'; check.checked=state.compilerSelectedIds.has(spec.id); check.setAttribute('aria-label', `Include ${spec.label}`);
-    check.addEventListener('change',()=>{if(check.checked)state.compilerSelectedIds.add(spec.id);else state.compilerSelectedIds.delete(spec.id);updateCompilerState();});
+    check.addEventListener('change',()=>{if(check.checked)state.compilerSelectedIds.add(spec.id);else state.compilerSelectedIds.delete(spec.id);clearCompilerGenerated();updateCompilerState();});
     const copy=document.createElement('span'); copy.textContent=`${spec.label} · ${spec.width}×${spec.height}`;
     const remove=document.createElement('button'); remove.type='button'; remove.className='text-button danger-text'; remove.textContent='Remove'; remove.addEventListener('click',()=>removeCompilerCustomOutput(spec.id));
     row.append(check,copy,remove); els.compilerCustomList.append(row);
@@ -1202,14 +1205,22 @@ async function generateCompilerPack() {
     els.compilerStatus.textContent=generated.length?generated.length+' previews ready. Review before downloading.':(failures.length?'No previews completed.':'No previews completed.');
   } finally { setBusy(false); updateCompilerState(); }
 }
+function setCompilerView(view) {
+  const section=document.querySelector('.compiler-section'); if(!section)return;
+  section.dataset.compilerView=view;
+  els.compilerResultsView?.classList.toggle('hidden',view!=='results');
+  if(view==='results') els.compilerResultsView?.scrollIntoView({block:'start'});
+}
 function clearCompilerGenerated(){
   for(const asset of state.compilerGenerated||[]) if(asset.url) revokeObjectUrl(asset.url);
-  state.compilerGenerated=[]; if(els.compilerResults){els.compilerResults.replaceChildren();els.compilerResults.classList.add('hidden');}
-  els.compilerDownloadActions?.classList.add('hidden');
+  state.compilerGenerated=[]; if(els.compilerResults) els.compilerResults.replaceChildren();
+  setCompilerView('setup');
 }
 function renderCompilerResults(){
   if(!els.compilerResults)return; els.compilerResults.replaceChildren(); const assets=state.compilerGenerated||[];
-  els.compilerResults.classList.toggle('hidden',!assets.length); els.compilerDownloadActions?.classList.toggle('hidden',!assets.length);
+  if(!assets.length){setCompilerView('setup');return;}
+  if(els.compilerResultsTitle) els.compilerResultsTitle.textContent='Social Asset Pack · '+assets.length+' asset'+(assets.length===1?'':'s')+' generated';
+  setCompilerView('results');
   for(const asset of assets){
     const card=document.createElement('article'); card.className='compiler-result-card';
     const frame=document.createElement('div'); frame.className='compiler-result-frame'; frame.style.aspectRatio=asset.spec.width+'/'+asset.spec.height;

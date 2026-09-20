@@ -317,7 +317,8 @@
           </div>
 
           <div class="control-section compiler-section">
-            <div class="section-inline-heading"><div><h3>Social Asset Pack</h3><p class="microcopy">One master image → platform-ready sizes. Every output is freshly recomposed from the source at its exact target ratio; images are never stretched.</p></div><span id="compiler-count" class="microcopy">0 selected</span></div>
+            <div class="section-inline-heading compiler-setup-heading"><div><h3>Social Asset Pack</h3><p class="microcopy">One master image → platform-ready sizes. Every output is freshly recomposed from the source at its exact target ratio; images are never stretched.</p></div><span id="compiler-count" class="microcopy">0 selected</span></div>
+            <div class="compiler-selection-toolbar"><button class="text-button" id="compiler-select-all" type="button">Select all</button><button class="text-button" id="compiler-clear-all" type="button">Clear all</button></div>
             <div id="compiler-preset-grid" class="compiler-preset-grid" aria-label="Compiler output sizes"></div>
             <div class="compiler-options">
               <label>Composition<select id="compiler-fit"><option value="contain" selected>Safe fit · keep whole image</option><option value="smart">Smart fill · may crop edges</option><option value="fill">Center fill · crops to frame</option></select></label>
@@ -337,8 +338,10 @@
               <button class="primary-button" id="compiler-generate" type="button" disabled>Generate previews</button>
               <span id="compiler-status" class="microcopy">Choose at least one output.</span>
             </div>
-            <div id="compiler-results" class="compiler-results hidden" aria-live="polite"></div>
-            <div id="compiler-download-actions" class="compiler-download-actions hidden"><button class="primary-button" id="compiler-download-all" type="button">Download all ZIP</button></div>
+            <div id="compiler-results-view" class="compiler-results-view hidden" aria-live="polite">
+              <div class="compiler-results-heading"><div><button class="text-button" id="compiler-back-setup" type="button">← Back to setup</button><h3 id="compiler-results-title">Social Asset Pack</h3><p class="microcopy">Review every generated composition before downloading.</p></div><button class="primary-button" id="compiler-download-all" type="button">Download all ZIP</button></div>
+              <div id="compiler-results" class="compiler-results"></div>
+            </div>
           </div>
 
           <div class="control-section mobile-more-section">
