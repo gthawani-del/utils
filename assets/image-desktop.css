@@ -651,3 +651,112 @@
     font-size: 7px;
   }
 }
+
+
+/* Pass 6: unify the active desktop workspace and reduce vertical chrome. */
+@media (min-width: 1120px) {
+  .image-studio-body.has-image-workspace .studio-shell {
+    padding-top: 12px;
+  }
+
+  .image-studio-body.has-image-workspace .desktop-workspace-header {
+    min-height: 50px;
+    margin-bottom: 8px;
+    padding: 0 2px 8px;
+  }
+
+  .image-studio-body.has-image-workspace .desktop-workspace-header .eyebrow {
+    display: none;
+  }
+
+  .image-studio-body.has-image-workspace .desktop-workspace-header h1 {
+    margin: 0 0 3px;
+    font-size: 19px;
+  }
+
+  .image-studio-body.has-image-workspace .desktop-current-file {
+    font-size: 9px;
+  }
+
+  .image-studio-body.has-image-workspace .desktop-workspace-actions .secondary-button {
+    min-height: 34px;
+    padding: 0 12px;
+  }
+
+  .image-studio-body.has-image-workspace .workspace {
+    gap: 8px 16px;
+  }
+
+  .image-studio-body.has-image-workspace .file-panel {
+    min-height: 56px;
+    max-height: 64px;
+    border-color: #e2e7ee;
+    background: #fbfcfe;
+  }
+
+  .image-studio-body.has-image-workspace .file-panel .panel-title {
+    min-height: 54px;
+  }
+
+  .image-studio-body.has-image-workspace .file-list {
+    max-height: 62px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  .image-studio-body.has-image-workspace .editor-panel {
+    gap: 10px 16px;
+  }
+
+  .image-studio-body.has-image-workspace .desktop-canvas-toolbar {
+    min-height: 34px;
+    padding: 0;
+  }
+
+  .image-studio-body.has-image-workspace .desktop-view-switch {
+    padding: 2px;
+    border-radius: 8px;
+  }
+
+  .image-studio-body.has-image-workspace .desktop-view-button {
+    min-height: 27px;
+    padding: 0 9px;
+  }
+
+  .image-studio-body.has-image-workspace .preview-card,
+  .image-studio-body.has-image-workspace .control-card {
+    box-shadow: none;
+  }
+
+  .image-studio-body.has-image-workspace .preview-card {
+    border-color: #dfe5ec;
+    border-radius: 11px;
+  }
+
+  .image-studio-body.has-image-workspace .preview-label {
+    min-height: 34px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .image-studio-body.has-image-workspace .preview-stage {
+    min-height: calc(100vh - 205px);
+    max-height: calc(100vh - 205px);
+  }
+
+  .image-studio-body.has-image-workspace .preview-stage img {
+    max-height: calc(100vh - 250px);
+  }
+
+  .image-studio-body.has-image-workspace .control-card {
+    top: 12px;
+    max-height: calc(100vh - 24px);
+    border-color: #dfe5ec;
+    border-radius: 11px;
+  }
+
+  .image-studio-body.has-image-workspace .comparison-stage {
+    min-height: calc(100vh - 205px);
+    max-height: calc(100vh - 205px);
+  }
+}
