@@ -1300,3 +1300,193 @@
     font-size: 8px;
   }
 }
+
+
+/* Pass 6: normalize remaining desktop inspectors. Functionality and crop are unchanged. */
+@media (min-width: 1120px) {
+  .image-studio-body.has-image-workspace .design-section .mobile-design-hint,
+  .image-studio-body.has-image-workspace .design-section .mobile-precision-toggle {
+    display: none;
+  }
+
+  .image-studio-body.has-image-workspace .layer-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 7px;
+    margin-bottom: 14px;
+  }
+
+  .image-studio-body.has-image-workspace .layer-toolbar .secondary-button {
+    min-width: 0;
+  }
+
+  .image-studio-body.has-image-workspace .layer-workspace,
+  .image-studio-body.has-image-workspace .layer-properties,
+  .image-studio-body.has-image-workspace .watermark-controls,
+  .image-studio-body.has-image-workspace .replace-controls,
+  .image-studio-body.has-image-workspace .compiler-options,
+  .image-studio-body.has-image-workspace .web-pack-group {
+    display: grid;
+    gap: 12px;
+  }
+
+  .image-studio-body.has-image-workspace .layer-list {
+    display: grid;
+    gap: 6px;
+    margin-top: 7px;
+  }
+
+  .image-studio-body.has-image-workspace .layer-properties {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #edf0f4;
+  }
+
+  .image-studio-body.has-image-workspace .layer-properties-header,
+  .image-studio-body.has-image-workspace .replace-actions,
+  .image-studio-body.has-image-workspace .web-pack-actions,
+  .image-studio-body.has-image-workspace .performance-actions,
+  .image-studio-body.has-image-workspace .compiler-actions,
+  .image-studio-body.has-image-workspace .asset-doctor-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .image-studio-body.has-image-workspace .watermark-section > .section-inline-heading {
+    grid-template-columns: minmax(0,1fr);
+  }
+
+  .image-studio-body.has-image-workspace .watermark-section .compact-check {
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #f5f7fa;
+  }
+
+  .image-studio-body.has-image-workspace .watermark-subsection,
+  .image-studio-body.has-image-workspace #watermark-custom-position {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #edf0f4;
+  }
+
+  .image-studio-body.has-image-workspace .resize-section > .form-grid {
+    gap: 11px;
+  }
+
+  .image-studio-body.has-image-workspace .replace-selector {
+    min-height: 150px;
+    max-height: 240px;
+    margin-bottom: 14px;
+    overflow: hidden;
+    border: 1px solid #dfe5ed;
+    border-radius: 9px;
+    background: #f6f8fb;
+  }
+
+  .image-studio-body.has-image-workspace .replace-selector img {
+    width: 100%;
+    height: 100%;
+    max-height: 240px;
+    object-fit: contain;
+  }
+
+  .image-studio-body.has-image-workspace .replace-actions {
+    margin-top: 12px;
+  }
+
+  .image-studio-body.has-image-workspace .replace-actions .primary-button {
+    flex: 1 1 100%;
+    order: -1;
+  }
+
+  .image-studio-body.has-image-workspace .compiler-preset-grid,
+  .image-studio-body.has-image-workspace .web-pack-options {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 7px;
+  }
+
+  .image-studio-body.has-image-workspace .compiler-options,
+  .image-studio-body.has-image-workspace .web-pack-group,
+  .image-studio-body.has-image-workspace .performance-formats {
+    margin-top: 12px;
+  }
+
+  .image-studio-body.has-image-workspace .compiler-custom,
+  .image-studio-body.has-image-workspace .performance-advanced {
+    margin-top: 12px;
+    border-top: 1px solid #edf0f4;
+  }
+
+  .image-studio-body.has-image-workspace .compiler-actions,
+  .image-studio-body.has-image-workspace .web-pack-actions,
+  .image-studio-body.has-image-workspace .performance-actions,
+  .image-studio-body.has-image-workspace .asset-doctor-actions {
+    margin-top: 12px;
+  }
+
+  .image-studio-body.has-image-workspace .compiler-actions .primary-button,
+  .image-studio-body.has-image-workspace .web-pack-actions .primary-button,
+  .image-studio-body.has-image-workspace .performance-actions .primary-button,
+  .image-studio-body.has-image-workspace .asset-doctor-actions .primary-button {
+    flex: 1 1 auto;
+  }
+
+  .image-studio-body.has-image-workspace .performance-formats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    color: #697386;
+    font-size: 11px;
+  }
+
+  .image-studio-body.has-image-workspace .performance-formats strong {
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #f2f4f7;
+    color: #475467;
+    font-size: 10px;
+  }
+
+  .image-studio-body.has-image-workspace .format-section label:has(input[type="range"]) {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) auto;
+    grid-template-areas: "label value" "range range";
+    gap: 5px 10px;
+  }
+
+  .image-studio-body.has-image-workspace .format-section label:has(input[type="range"]) output {
+    grid-area: value;
+  }
+
+  .image-studio-body.has-image-workspace .format-section label:has(input[type="range"]) input {
+    grid-area: range;
+  }
+
+  .image-studio-body.has-image-workspace .advanced.export-section {
+    padding: 0 var(--inspector-pad);
+  }
+
+  .image-studio-body.has-image-workspace .action-row.export-section {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 7px;
+    padding: 14px var(--inspector-pad) 16px;
+  }
+
+  .image-studio-body.has-image-workspace .action-row.export-section .mobile-export-actions {
+    display: none;
+  }
+
+  .image-studio-body.has-image-workspace .action-row.export-section .primary-button {
+    grid-column: 1 / -1;
+  }
+
+  .image-studio-body.has-image-workspace .action-row.export-section .desktop-export-action {
+    min-width: 0;
+  }
+}
