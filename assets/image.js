@@ -794,7 +794,7 @@ function renderComparison(item) {
 
 function setDesktopInspectorTool(tool) {
   const card = document.querySelector('.control-card');
-  if (!card || !['adjust','crop','cleanup','text','watermark','resize','replace','optimize','export'].includes(tool)) return;
+  if (!card || !['adjust','crop','cleanup','text','watermark','social','webpack','resize','replace','optimize','export'].includes(tool)) return;
   card.dataset.inspectorTool = tool;
   document.querySelectorAll('.image-sidebar-nav-button').forEach((button) => button.classList.toggle('active', button.dataset.sidebarTool === tool));
 }
@@ -1018,6 +1018,7 @@ async function generateWebPack() {
       const settings={...base,resizeMode:'fit',width:spec.width,height:spec.height,preserveAspect:true,format:spec.format,targetBytes:0};
       const result=await runImageOperation('process',item,settings);
       if(result.state!=='completed'){failures.push(`${spec.width}px ${spec.format.toUpperCase()}`);continue;}
+      if(result.value.width!==spec.width||result.value.height!==spec.height){failures.push(`${spec.width}px ${spec.format.toUpperCase()} dimension mismatch`);continue;}
       const ext=spec.format==='jpeg'?'jpg':spec.format;
       const name=exportFilename(item.file.name,ext,{suffix:`-${spec.width}w`,preserveOriginal:true});
       totalBytes+=result.value.buffer.byteLength;
@@ -1144,6 +1145,7 @@ async function generateCompilerPack() {
       } else settings.smartCrop={enabled:false,focusX:.5,focusY:.5};
       const result=await runImageOperation('process',item,settings);
       if(result.state!=='completed'){failures.push(`${spec.label}: ${result.error?.message||result.state}`);continue;}
+      if(result.value.width!==spec.width||result.value.height!==spec.height){failures.push(`${spec.label}: renderer returned ${result.value.width}×${result.value.height}, expected ${spec.width}×${spec.height}`);continue;}
       totalBytes+=result.value.buffer.byteLength;
       if(totalBytes>MAX_COMPILER_PACK_BYTES){showCompatibility('Compiler pack exceeded the 200 MB safe in-memory output limit. Choose fewer or smaller outputs.');return;}
       const ext=result.value.kind==='jpeg'?'jpg':result.value.kind;

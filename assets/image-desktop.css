@@ -398,9 +398,9 @@
 
   .image-studio-body .control-card[data-inspector-tool="resize"] > .resize-section,
   .image-studio-body .control-card[data-inspector-tool="replace"] > .replace-text-section,
-  .image-studio-body .control-card[data-inspector-tool="optimize"] > .compiler-section,
+  .image-studio-body .control-card[data-inspector-tool="social"] > .compiler-section,
+  .image-studio-body .control-card[data-inspector-tool="webpack"] > .web-pack-section,
   .image-studio-body .control-card[data-inspector-tool="optimize"] > .asset-doctor-section,
-  .image-studio-body .control-card[data-inspector-tool="optimize"] > .web-pack-section,
   .image-studio-body .control-card[data-inspector-tool="optimize"] > .performance-section,
   .image-studio-body .control-card[data-inspector-tool="export"] > .preset-section,
   .image-studio-body .control-card[data-inspector-tool="export"] > .format-section,
@@ -1623,5 +1623,23 @@
     transition-duration: .01ms !important;
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+
+/* Pass 7.5: first-class Social Asset Pack + Web Pack. */
+@media (min-width: 1120px) {
+  .image-studio-body .control-card[data-inspector-tool="social"] > .compiler-section,
+  .image-studio-body .control-card[data-inspector-tool="webpack"] > .web-pack-section {
+    display: block;
+  }
+
+  .image-studio-body .compiler-section > .section-inline-heading,
+  .image-studio-body .web-pack-section > .section-inline-heading {
+    padding-bottom: 14px;
+  }
+
+  .image-studio-body .compiler-preset-card {
+    min-height: 48px;
   }
 }

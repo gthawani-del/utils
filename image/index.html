@@ -20,9 +20,11 @@
       <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="text"><span>T</span><div><strong>Text & Design</strong><small>Layers & graphics</small></div></button>
       <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="watermark"><span>◈</span><div><strong>Watermark</strong><small>Brand & ownership</small></div></button>
       <div class="image-sidebar-nav-divider" aria-hidden="true"></div>
-      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="resize"><span>↔</span><div><strong>Resize</strong><small>Dimensions & fit</small></div></button>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="social"><span>▦</span><div><strong>Social Asset Pack</strong><small>Multi-size social outputs</small></div></button>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="webpack"><span>⌘</span><div><strong>Web Pack</strong><small>Responsive web images</small></div></button>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="resize"><span>↔</span><div><strong>Resize</strong><small>Single image dimensions</small></div></button>
       <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="replace"><span>⌁</span><div><strong>Replace Text</strong><small>Erase & rewrite</small></div></button>
-      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="optimize"><span>⚡</span><div><strong>Optimize</strong><small>Web, format & size</small></div></button>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="optimize"><span>⚡</span><div><strong>Optimize</strong><small>Performance & diagnostics</small></div></button>
       <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="export"><span>⇧</span><div><strong>Export</strong><small>Output & download</small></div></button>
     </nav>
     <div class="header-actions"><span class="local-badge">Processed locally</span><button class="ghost-button" id="clear-workspace" type="button">Clear workspace</button></div>
@@ -314,7 +316,7 @@
           </div>
 
           <div class="control-section compiler-section">
-            <div class="section-inline-heading"><div><h3>Image Compiler</h3><p class="microcopy">One master image → multiple finished assets. Every output is rendered independently from the source using the current edits, design layers and watermark.</p></div><span id="compiler-count" class="microcopy">0 selected</span></div>
+            <div class="section-inline-heading"><div><h3>Social Asset Pack</h3><p class="microcopy">One master image → platform-ready sizes. Every output is freshly recomposed from the source at its exact target ratio; images are never stretched.</p></div><span id="compiler-count" class="microcopy">0 selected</span></div>
             <div id="compiler-preset-grid" class="compiler-preset-grid" aria-label="Compiler output sizes"></div>
             <div class="compiler-options">
               <label>Fit behavior<select id="compiler-fit"><option value="smart" selected>Smart fill (protect content)</option><option value="fill">Center fill</option><option value="contain">Contain whole image</option></select></label>
@@ -359,7 +361,7 @@
           </div>
 
           <div class="control-section web-pack-section">
-            <div class="section-inline-heading"><div><h3>Responsive Web Pack</h3><p class="microcopy">Generate modern website image variants from the current composition, locally.</p></div><span class="microcopy">Developer export</span></div>
+            <div class="section-inline-heading"><div><h3>Responsive Web Pack</h3><p class="microcopy">Generate responsive variants from the current composition. Aspect ratio is preserved at every width; no output is stretched.</p></div><span class="microcopy">Developer export</span></div>
             <div class="web-pack-group">
               <strong>Widths</strong>
               <div class="web-pack-options" id="web-pack-widths">
