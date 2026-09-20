@@ -65,9 +65,10 @@
           <button class="mobile-batch-chip hidden" id="mobile-batch-chip" type="button">1 image</button>
         </section>
 
-        <div class="preview-grid">
-          <article class="preview-card"><div class="preview-label">Original</div><div class="preview-stage" id="original-preview"><span>Select an image</span></div><dl id="original-stats" class="stats"></dl></article>
-          <article class="preview-card"><div class="preview-label">Output</div><div class="preview-stage" id="output-preview"><span>Process to preview</span></div><dl id="output-stats" class="stats"></dl></article>
+        <div class="desktop-canvas-toolbar" role="group" aria-label="Canvas view"><strong>Canvas</strong><div class="desktop-view-switch"><button class="desktop-view-button" type="button" data-desktop-view="original">Original</button><button class="desktop-view-button active" type="button" data-desktop-view="edited">Edited</button><button class="desktop-view-button" type="button" data-desktop-view="compare">Compare</button></div></div>
+        <div class="preview-grid" data-desktop-view="edited">
+          <article class="preview-card original-preview-card"><div class="preview-label">Original</div><div class="preview-stage" id="original-preview"><span>Select an image</span></div><dl id="original-stats" class="stats"></dl></article>
+          <article class="preview-card output-preview-card"><div class="preview-label">Edited</div><div class="preview-stage" id="output-preview"><span>Process to preview</span></div><dl id="output-stats" class="stats"></dl></article>
         </div>
 
         <section id="edit-comparison" class="comparison-card hidden" aria-labelledby="comparison-title">
