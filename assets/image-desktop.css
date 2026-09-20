@@ -923,3 +923,164 @@
     display: none !important;
   }
 }
+
+
+/* Pass 3: desktop inspector design system. Structural styling only; tool behavior is unchanged. */
+@media (min-width: 1120px) {
+  .image-studio-body.has-image-workspace .control-card {
+    --inspector-pad: 16px;
+    background: #fff;
+    color: #172033;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .image-studio-body.has-image-workspace .control-card > .control-section,
+  .image-studio-body.has-image-workspace .control-card > .advanced,
+  .image-studio-body.has-image-workspace .control-card > .action-row {
+    border-bottom: 1px solid #e7ebf1;
+  }
+
+  .image-studio-body.has-image-workspace .control-card .control-section {
+    padding: var(--inspector-pad);
+  }
+
+  .image-studio-body.has-image-workspace .control-card .control-section.nested {
+    padding: 14px 0;
+  }
+
+  .image-studio-body.has-image-workspace .control-card h3 {
+    margin: 0 0 12px;
+    color: #172033;
+    font-size: 14px;
+    line-height: 1.25;
+    font-weight: 750;
+    letter-spacing: -.01em;
+  }
+
+  .image-studio-body.has-image-workspace .control-card .section-inline-heading {
+    align-items: flex-start;
+    gap: 10px;
+    padding: 0 0 12px;
+  }
+
+  .image-studio-body.has-image-workspace .control-card .section-inline-heading h3 {
+    margin-bottom: 4px;
+  }
+
+  .image-studio-body.has-image-workspace .control-card .microcopy,
+  .image-studio-body.has-image-workspace .control-card small {
+    color: #697386;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .image-studio-body.has-image-workspace .control-card label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #455064;
+    font-size: 12px;
+    line-height: 1.3;
+    font-weight: 650;
+  }
+
+  .image-studio-body.has-image-workspace .control-card .form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .image-studio-body.has-image-workspace .control-card .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .image-studio-body.has-image-workspace .control-card input[type="text"],
+  .image-studio-body.has-image-workspace .control-card input[type="number"],
+  .image-studio-body.has-image-workspace .control-card input[type="color"],
+  .image-studio-body.has-image-workspace .control-card select,
+  .image-studio-body.has-image-workspace .control-card textarea {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #d7dee8;
+    border-radius: 8px;
+    background: #fff;
+    color: #172033;
+    font-size: 13px;
+  }
+
+  .image-studio-body.has-image-workspace .control-card input[type="text"]:focus,
+  .image-studio-body.has-image-workspace .control-card input[type="number"]:focus,
+  .image-studio-body.has-image-workspace .control-card select:focus,
+  .image-studio-body.has-image-workspace .control-card textarea:focus {
+    border-color: #668cf0;
+    outline: 2px solid rgba(74,122,245,.16);
+    outline-offset: 1px;
+  }
+
+  .image-studio-body.has-image-workspace .control-card input[type="range"] {
+    width: 100%;
+    min-height: 28px;
+    margin: 0;
+  }
+
+  .image-studio-body.has-image-workspace .control-card output {
+    color: #172033;
+    font-size: 12px;
+    font-weight: 750;
+  }
+
+  .image-studio-body.has-image-workspace .control-card .check-row {
+    flex-direction: row;
+    align-items: center;
+    gap: 9px;
+    min-height: 32px;
+    margin-top: 8px;
+    color: #354052;
+    font-size: 12px;
+  }
+
+  .image-studio-body.has-image-workspace .control-card .check-row input {
+    flex: 0 0 auto;
+  }
+
+  .image-studio-body.has-image-workspace .control-card .primary-button,
+  .image-studio-body.has-image-workspace .control-card .secondary-button {
+    min-height: 38px;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .image-studio-body.has-image-workspace .control-card button:disabled {
+    cursor: not-allowed;
+    opacity: .42;
+  }
+
+  .image-studio-body.has-image-workspace .control-card details {
+    border-bottom-color: #e7ebf1;
+  }
+
+  .image-studio-body.has-image-workspace .control-card summary {
+    min-height: 40px;
+    color: #354052;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .image-studio-body.has-image-workspace .control-card::-webkit-scrollbar {
+    width: 9px;
+  }
+
+  .image-studio-body.has-image-workspace .control-card::-webkit-scrollbar-thumb {
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: #c9d1dc;
+  }
+
+  .image-studio-body.has-image-workspace .control-card::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
