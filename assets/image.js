@@ -19,7 +19,7 @@ import { shouldUseBrowserProcessor, processBrowserImage, optimizeBrowserImage } 
 
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
-const state = { items: [], selectedId: null, busy: false, useBrowserProcessor: shouldUseBrowserProcessor(), mobileStartOpen: true, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, layerDrag: null, replaceDrag: null, mobilePrecision: false, compilerCustomOutputs: [], compilerSelectedIds: new Set(), redoHistory: [], previewTimer: 0, previewAbort: null };
+const state = { items: [], selectedId: null, busy: false, useBrowserProcessor: shouldUseBrowserProcessor(), mobileStartOpen: true, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, layerDrag: null, replaceDrag: null, mobilePrecision: false, compilerCustomOutputs: [], compilerSelectedIds: new Set(), compilerGenerated: [], redoHistory: [], previewTimer: 0, previewAbort: null };
 const $ = (selector) => document.querySelector(selector);
 const EDIT_KEYS = ['brightness','exposure','contrast','saturation','vibrance','highlights','shadows','temperature','tint','gamma','sharpen','blur','grayscale','sepia','straighten'];
 const MOBILE_ADJUST_LABELS = { brightness:'Brightness', exposure:'Exposure', contrast:'Contrast', saturation:'Saturation', vibrance:'Vibrance', highlights:'Highlights', shadows:'Shadows', temperature:'Warmth', tint:'Tint', gamma:'Gamma', sharpen:'Sharpen', blur:'Blur', grayscale:'Black & White', sepia:'Sepia', straighten:'Straighten', rotate:'Rotate', flipX:'Flip Horizontal', flipY:'Flip Vertical' };
@@ -39,7 +39,7 @@ const els = {
   cleanupCanvas: $('#cleanup-canvas'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo'), cleanupModeHint: $('#cleanup-mode-hint'), watermarkDetectBar: $('#watermark-detect-bar'), watermarkDetect: $('#watermark-detect'), watermarkDetectStatus: $('#watermark-detect-status'),
   replaceSelector: $('#replace-selector'), replaceSelectorImage: $('#replace-selector-image'), replaceSelectorEmpty: $('#replace-selector-empty'), replaceSelectionBox: $('#replace-selection-box'), mobileReplaceSelection: $('#mobile-replace-selection'), replaceStatus: $('#replace-status'), replaceText: $('#replace-text'), replaceFont: $('#replace-font'), replaceFontSize: $('#replace-font-size'), replaceFontWeight: $('#replace-font-weight'), replaceColor: $('#replace-color'), replaceAlign: $('#replace-align'), replaceClearSelection: $('#replace-clear-selection'), replaceRemove: $('#replace-remove'), replaceApply: $('#replace-apply'), replaceUndo: $('#replace-undo'),
   mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileExportTop: $('#mobile-export-top'), mobileSheetBack: $('#mobile-sheet-back'), mobileMoreButtons: [...document.querySelectorAll('[data-mobile-more-target]')], mobileMoreRevert: $('#mobile-more-revert'), mobileMoreFiles: $('#mobile-more-files'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileLayerHint: $('#mobile-layer-hint'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value'), mobileCropButtons: [...document.querySelectorAll('[data-crop-choice]')], mobilePrecisionToggle: $('#mobile-precision-toggle'), mobileFilesBackdrop: $('#mobile-files-backdrop'), mobileFilesClose: $('#mobile-files-close'), mobileExportSelected: $('#mobile-export-selected'), mobileExportAll: $('#mobile-export-all'), mobileExportStatus: $('#mobile-export-status'),
-  compilerPresetGrid: $('#compiler-preset-grid'), compilerCount: $('#compiler-count'), compilerFit: $('#compiler-fit'), compilerCustomName: $('#compiler-custom-name'), compilerCustomWidth: $('#compiler-custom-width'), compilerCustomHeight: $('#compiler-custom-height'), compilerAddCustom: $('#compiler-add-custom'), compilerCustomList: $('#compiler-custom-list'), compilerGenerate: $('#compiler-generate'), compilerStatus: $('#compiler-status'),
+  compilerPresetGrid: $('#compiler-preset-grid'), compilerCount: $('#compiler-count'), compilerFit: $('#compiler-fit'), compilerCustomName: $('#compiler-custom-name'), compilerCustomWidth: $('#compiler-custom-width'), compilerCustomHeight: $('#compiler-custom-height'), compilerAddCustom: $('#compiler-add-custom'), compilerCustomList: $('#compiler-custom-list'), compilerGenerate: $('#compiler-generate'), compilerStatus: $('#compiler-status'), compilerResults: $('#compiler-results'), compilerDownloadActions: $('#compiler-download-actions'), compilerDownloadAll: $('#compiler-download-all'),
   assetDoctorRun: $('#asset-doctor-run'), assetDoctorList: $('#asset-doctor-list'), assetDoctorBadge: $('#asset-doctor-badge'), assetDoctorStatus: $('#asset-doctor-status'),
   webPackWidths: [...document.querySelectorAll('[data-web-width]')], webPackFormats: [...document.querySelectorAll('[data-web-format]')], webPackNoUpscale: $('#web-pack-no-upscale'), webPackGenerate: $('#web-pack-generate'), webPackCopy: $('#web-pack-copy'), webPackMarkup: $('#web-pack-markup'), webPackResult: $('#web-pack-result'), webPackStatus: $('#web-pack-status'),
   performanceMaxWidth: $('#performance-max-width'), performanceMaxSize: $('#performance-max-size'), performanceMinQuality: $('#performance-min-quality'), performanceMinQualityValue: $('#performance-min-quality-value'), performanceRun: $('#performance-run'), performanceDownload: $('#performance-download'), performanceResult: $('#performance-result'), performanceResultTitle: $('#performance-result-title'), performanceResultDetail: $('#performance-result-detail'), performanceStatus: $('#performance-status')
@@ -131,7 +131,7 @@ function wireEvents() {
   els.mobileBatchChip.addEventListener('click', toggleMobileFiles);
   els.mobileFilesBackdrop.addEventListener('click', closeMobileFiles); els.mobileFilesClose.addEventListener('click', closeMobileFiles);
   els.mobileExportSelected.addEventListener('click', mobileExportSelected); els.mobileExportAll.addEventListener('click', mobileExportAll);
-  els.compilerAddCustom.addEventListener('click', addCompilerCustomOutput); els.compilerGenerate.addEventListener('click', generateCompilerPack);
+  els.compilerAddCustom.addEventListener('click', addCompilerCustomOutput); els.compilerGenerate.addEventListener('click', generateCompilerPack); els.compilerDownloadAll?.addEventListener('click', downloadCompilerPack);
   els.performanceMinQuality.addEventListener('input', () => { els.performanceMinQualityValue.textContent = els.performanceMinQuality.value; invalidatePerformanceResult(); });
   for (const control of [els.performanceMaxWidth, els.performanceMaxSize]) control.addEventListener('input', invalidatePerformanceResult);
   els.assetDoctorRun.addEventListener('click', () => runAssetDoctor());
@@ -1179,32 +1179,55 @@ function removeCompilerCustomOutput(id) { state.compilerCustomOutputs=state.comp
 async function generateCompilerPack() {
   const item=selectedItem(), outputs=selectedCompilerOutputs(); if(!item?.inspect||!outputs.length||state.busy)return;
   if(els.compilerFit.value==='smart'&&!item.smartCrop?.analyzed) await runSmartCropAnalysis(item,{quiet:true});
-  setBusy(true); updateCompilerState(); let totalBytes=0;
-  const files=[]; const failures=[]; const base=collectSettings(); base.layers=layersForItem(item); base.cleanup=cleanupForItem(item); base.textReplacements=item.textReplacements||[];
+  clearCompilerGenerated(); setBusy(true); updateCompilerState(); let totalBytes=0; const failures=[], generated=[];
+  const base=collectSettings(); base.layers=layersForItem(item); base.cleanup=cleanupForItem(item); base.textReplacements=item.textReplacements||[];
   try {
     for(let index=0;index<outputs.length;index++){
-      const spec=outputs[index]; els.compilerStatus.textContent=`Rendering ${index+1}/${outputs.length}: ${spec.label}…`;
+      const spec=outputs[index]; els.compilerStatus.textContent='Rendering preview '+(index+1)+'/'+outputs.length+': '+spec.label+'…';
       const settings=compilerSettings(base,spec,els.compilerFit.value);
       if(els.compilerFit.value==='smart'&&item.smartCrop?.analyzed){
         const focus=item.smartCrop.manual?{focusX:item.smartCrop.focusX,focusY:item.smartCrop.focusY}:chooseSmartFocus(item.inspect.dimensions.width,item.inspect.dimensions.height,spec.width/spec.height,item.smartCrop.regions);
         settings.smartCrop={enabled:true,focusX:focus.focusX,focusY:focus.focusY};
       } else settings.smartCrop={enabled:false,focusX:.5,focusY:.5};
       const result=await runImageOperation('process',item,settings);
-      if(result.state!=='completed'){failures.push(`${spec.label}: ${result.error?.message||result.state}`);continue;}
-      if(result.value.width!==spec.width||result.value.height!==spec.height){failures.push(`${spec.label}: renderer returned ${result.value.width}×${result.value.height}, expected ${spec.width}×${spec.height}`);continue;}
-      totalBytes+=result.value.buffer.byteLength;
-      if(totalBytes>MAX_COMPILER_PACK_BYTES){showCompatibility('Compiler pack exceeded the 200 MB safe in-memory output limit. Choose fewer or smaller outputs.');return;}
-      const ext=result.value.kind==='jpeg'?'jpg':result.value.kind;
-      const name=exportFilename(item.file.name,ext,{suffix:`-${spec.id}`,preserveOriginal:true});
-      files.push({name,buffer:result.value.buffer});
+      if(result.state!=='completed'){failures.push(spec.label);continue;}
+      if(result.value.width!==spec.width||result.value.height!==spec.height){failures.push(spec.label);continue;}
+      totalBytes+=result.value.buffer.byteLength; if(totalBytes>MAX_COMPILER_PACK_BYTES)break;
+      const ext=result.value.kind==='jpeg'?'jpg':result.value.kind, baseName=item.displayName||item.file.name.replace(/\.[^.]+$/,'');
+      const name=exportFilename(baseName+'.'+ext,ext,{suffix:'-'+spec.id,preserveOriginal:true});
+      const blob=new Blob([result.value.buffer],{type:'image/'+result.value.kind}), url=trackObjectUrl(blob);
+      generated.push({spec,name,buffer:result.value.buffer,blob,url});
     }
-    if(!files.length){els.compilerStatus.textContent=failures[0]||'No compiler outputs completed.';return;}
-    els.compilerStatus.textContent=`Packing ${files.length} asset${files.length===1?'':'s'}…`;
-    const transfers=files.map((file)=>file.buffer); const zip=await runner.run({op:'zip',files},transfers,45_000);
-    if(zip.state!=='completed'){els.compilerStatus.textContent=zip.error?.message||'Asset pack ZIP failed safely.';return;}
-    const blob=new Blob([zip.value.buffer],{type:'application/zip'}); const url=trackObjectUrl(blob); triggerDownload(url,'utility-os-asset-pack.zip'); setTimeout(()=>revokeObjectUrl(url),2000);
-    els.compilerStatus.textContent=`${files.length} asset${files.length===1?'':'s'} exported${failures.length?` · ${failures.length} skipped`:''}.`;
+    state.compilerGenerated=generated; renderCompilerResults();
+    els.compilerStatus.textContent=generated.length?generated.length+' previews ready. Review before downloading.':(failures.length?'No previews completed.':'No previews completed.');
   } finally { setBusy(false); updateCompilerState(); }
+}
+function clearCompilerGenerated(){
+  for(const asset of state.compilerGenerated||[]) if(asset.url) revokeObjectUrl(asset.url);
+  state.compilerGenerated=[]; if(els.compilerResults){els.compilerResults.replaceChildren();els.compilerResults.classList.add('hidden');}
+  els.compilerDownloadActions?.classList.add('hidden');
+}
+function renderCompilerResults(){
+  if(!els.compilerResults)return; els.compilerResults.replaceChildren(); const assets=state.compilerGenerated||[];
+  els.compilerResults.classList.toggle('hidden',!assets.length); els.compilerDownloadActions?.classList.toggle('hidden',!assets.length);
+  for(const asset of assets){
+    const card=document.createElement('article'); card.className='compiler-result-card';
+    const frame=document.createElement('div'); frame.className='compiler-result-frame'; frame.style.aspectRatio=asset.spec.width+'/'+asset.spec.height;
+    const img=document.createElement('img'); img.src=asset.url; img.alt=asset.spec.label+' preview'; frame.append(img);
+    const meta=document.createElement('div'); meta.className='compiler-result-meta'; const copy=document.createElement('div');
+    const title=document.createElement('strong'); title.textContent=asset.spec.label; const detail=document.createElement('span'); detail.textContent=asset.spec.width+'×'+asset.spec.height+' · '+formatBytes(asset.blob.size); copy.append(title,detail);
+    const dl=document.createElement('button'); dl.type='button'; dl.className='secondary-button'; dl.textContent='Download'; dl.addEventListener('click',()=>triggerDownload(asset.url,asset.name));
+    meta.append(copy,dl); card.append(frame,meta); els.compilerResults.append(card);
+  }
+}
+async function downloadCompilerPack(){
+  const assets=state.compilerGenerated||[]; if(!assets.length||state.busy)return; setBusy(true); els.compilerStatus.textContent='Packing '+assets.length+' assets…';
+  try{
+    const files=assets.map(a=>({name:a.name,buffer:a.buffer.slice(0)})), transfers=files.map(f=>f.buffer);
+    const zip=await runner.run({op:'zip',files},transfers,45000); if(zip.state!=='completed'){els.compilerStatus.textContent='Asset pack ZIP failed safely.';return;}
+    const blob=new Blob([zip.value.buffer],{type:'application/zip'}),url=trackObjectUrl(blob); triggerDownload(url,'utility-os-asset-pack.zip'); setTimeout(()=>revokeObjectUrl(url),2000);
+    els.compilerStatus.textContent=assets.length+' assets downloaded.';
+  } finally {setBusy(false);updateCompilerState();}
 }
 
 function toggleMobileFiles() { document.body.classList.toggle('mobile-files-open'); }

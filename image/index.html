@@ -320,8 +320,8 @@
             <div class="section-inline-heading"><div><h3>Social Asset Pack</h3><p class="microcopy">One master image → platform-ready sizes. Every output is freshly recomposed from the source at its exact target ratio; images are never stretched.</p></div><span id="compiler-count" class="microcopy">0 selected</span></div>
             <div id="compiler-preset-grid" class="compiler-preset-grid" aria-label="Compiler output sizes"></div>
             <div class="compiler-options">
-              <label>Fit behavior<select id="compiler-fit"><option value="smart" selected>Smart fill (protect content)</option><option value="fill">Center fill</option><option value="contain">Contain whole image</option></select></label>
-              <p class="microcopy">Smart fill analyzes the source locally once, then chooses a protected focus independently for each output ratio. Manual crop remains available in Crop.</p>
+              <label>Composition<select id="compiler-fit"><option value="contain" selected>Safe fit · keep whole image</option><option value="smart">Smart fill · may crop edges</option><option value="fill">Center fill · crops to frame</option></select></label>
+              <p class="microcopy">Safe fit is the default and never crops faces or text. Fill modes deliberately crop to occupy the entire frame.</p>
             </div>
             <details class="compiler-custom">
               <summary>Add custom output</summary>
@@ -334,9 +334,11 @@
               <div id="compiler-custom-list" class="compiler-custom-list"></div>
             </details>
             <div class="compiler-actions">
-              <button class="primary-button" id="compiler-generate" type="button" disabled>Generate asset pack</button>
+              <button class="primary-button" id="compiler-generate" type="button" disabled>Generate previews</button>
               <span id="compiler-status" class="microcopy">Choose at least one output.</span>
             </div>
+            <div id="compiler-results" class="compiler-results hidden" aria-live="polite"></div>
+            <div id="compiler-download-actions" class="compiler-download-actions hidden"><button class="primary-button" id="compiler-download-all" type="button">Download all ZIP</button></div>
           </div>
 
           <div class="control-section mobile-more-section">
