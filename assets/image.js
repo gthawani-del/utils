@@ -97,6 +97,7 @@ function wireEvents() {
   els.undoEdit.addEventListener('click', undoEdit);
   els.resetEdits.addEventListener('click', resetEdits);
   els.comparisonRange.addEventListener('input', updateComparisonPosition);
+  for (const button of document.querySelectorAll('.desktop-view-button')) button.addEventListener('click', () => setDesktopCanvasView(button.dataset.desktopView));
   const addLayerButtons = [[els.addTextLayer,'text'],[els.addRectLayer,'rectangle'],[els.addCircleLayer,'circle'],[els.addLineLayer,'line'],[els.addArrowLayer,'arrow'],[els.addBackgroundLayer,'background']];
   for (const [button,type] of addLayerButtons) button.addEventListener('click', () => addDesignLayer(type));
   els.duplicateLayer.addEventListener('click', duplicateSelectedLayer); els.deleteLayer.addEventListener('click', deleteSelectedLayer); els.layerUp.addEventListener('click', () => moveSelectedLayer(1)); els.layerDown.addEventListener('click', () => moveSelectedLayer(-1));
@@ -784,6 +785,22 @@ function renderComparison(item) {
   if (!item?.originalUrl || !item.editPreviewUrl) { els.editComparison.classList.add('hidden'); return; }
   els.comparisonOriginal.src = item.originalUrl; els.comparisonEdited.src = item.editPreviewUrl;
   els.editComparison.classList.remove('hidden'); updateComparisonPosition();
+}
+
+function setDesktopCanvasView(view) {
+  const grid = document.querySelector('.preview-grid');
+  const compare = els.editComparison;
+  if (!grid || !['original','edited','compare'].includes(view)) return;
+  grid.dataset.desktopView = view;
+  document.querySelectorAll('.desktop-view-button').forEach((button) => button.classList.toggle('active', button.dataset.desktopView === view));
+  if (view === 'compare') {
+    grid.classList.add('desktop-compare-active');
+    if (compare) compare.classList.add('desktop-compare-requested');
+    scheduleEditPreview(0);
+  } else {
+    grid.classList.remove('desktop-compare-active');
+    if (compare) compare.classList.remove('desktop-compare-requested');
+  }
 }
 
 function updateComparisonPosition() {
