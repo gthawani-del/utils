@@ -24,7 +24,7 @@ const $ = (selector) => document.querySelector(selector);
 const EDIT_KEYS = ['brightness','exposure','contrast','saturation','vibrance','highlights','shadows','temperature','tint','gamma','sharpen','blur','grayscale','sepia','straighten'];
 const MOBILE_ADJUST_LABELS = { brightness:'Brightness', exposure:'Exposure', contrast:'Contrast', saturation:'Saturation', vibrance:'Vibrance', highlights:'Highlights', shadows:'Shadows', temperature:'Warmth', tint:'Tint', gamma:'Gamma', sharpen:'Sharpen', blur:'Blur', grayscale:'Black & White', sepia:'Sepia', straighten:'Straighten', rotate:'Rotate', flipX:'Flip Horizontal', flipY:'Flip Vertical' };
 const els = {
-  input: $('#file-input'), choose: $('#choose-files'), uploadIcon: $('#upload-icon-button'), add: $('#add-more'), desktopAdd: $('#desktop-add-image'), desktopCurrentFile: $('#desktop-current-file'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'), mobileContinue: $('#mobile-continue'), mobileStartCount: $('#mobile-start-count'),
+  input: $('#file-input'), choose: $('#choose-files'), uploadIcon: $('#upload-icon-button'), add: $('#add-more'), desktopAdd: $('#desktop-add-image'), desktopCurrentFile: $('#desktop-current-file'), desktopImageName: $('#desktop-image-name'), desktopOriginalInfo: $('#desktop-original-info'), desktopEditedInfo: $('#desktop-edited-info'), desktopApplyEdit: $('#desktop-apply-edit'), desktopCancelEdit: $('#desktop-cancel-edit'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'), mobileContinue: $('#mobile-continue'), mobileStartCount: $('#mobile-start-count'),
   originalPreview: $('#original-preview'), outputPreview: $('#output-preview'), originalStats: $('#original-stats'), outputStats: $('#output-stats'), metadata: $('#metadata-box'),
   compatibility: $('#compatibility'), preset: $('#preset'), resizeMode: $('#resize-mode'), width: $('#width'), height: $('#height'), percentage: $('#percentage'), longest: $('#longest-edge'), shortest: $('#shortest-edge'),
   percentageWrap: $('#percentage-wrap'), longestWrap: $('#longest-wrap'), shortestWrap: $('#shortest-wrap'), preserveAspect: $('#preserve-aspect'), cropMode: $('#crop-mode'), customRatio: $('#custom-ratio'), customRatioWrap: $('#custom-ratio-wrap'), freeCrop: $('#free-crop'),
@@ -37,7 +37,7 @@ const els = {
   layerFill: $('#layer-fill'), layerFill2: $('#layer-fill-2'), layerGradient: $('#layer-gradient'), layerGradientAngle: $('#layer-gradient-angle'), shapeStrokeColor: $('#shape-stroke-color'), shapeStrokeWidth: $('#shape-stroke-width'), layerX: $('#layer-x'), layerY: $('#layer-y'), layerWidth: $('#layer-width'), layerHeight: $('#layer-height'), layerRotation: $('#layer-rotation'), layerOpacity: $('#layer-opacity'),
   watermarkEnabled: $('#watermark-enabled'), watermarkControls: $('#watermark-controls'), watermarkType: $('#watermark-type'), watermarkPosition: $('#watermark-position'), watermarkOpacity: $('#watermark-opacity'), watermarkRotation: $('#watermark-rotation'), watermarkMargin: $('#watermark-margin'), watermarkTiled: $('#watermark-tiled'), watermarkTileGap: $('#watermark-tile-gap'), watermarkCustomPosition: $('#watermark-custom-position'), watermarkX: $('#watermark-x'), watermarkY: $('#watermark-y'), watermarkTextFields: $('#watermark-text-fields'), watermarkImageFields: $('#watermark-image-fields'), watermarkText: $('#watermark-text'), watermarkFont: $('#watermark-font'), watermarkFontSize: $('#watermark-font-size'), watermarkColor: $('#watermark-color'), watermarkLogoInput: $('#watermark-logo-input'), chooseWatermarkLogo: $('#choose-watermark-logo'), watermarkLogoName: $('#watermark-logo-name'), watermarkLogoWidth: $('#watermark-logo-width'),
   cleanupCanvas: $('#cleanup-canvas'), cleanupEmpty: $('#cleanup-empty'), cleanupState: $('#cleanup-state'), cleanupBrush: $('#cleanup-brush'), cleanupBrushValue: $('#cleanup-brush-value'), cleanupUndoStroke: $('#cleanup-undo-stroke'), cleanupClearMask: $('#cleanup-clear-mask'), cleanupApply: $('#cleanup-apply'), cleanupUndo: $('#cleanup-undo'), cleanupModeHint: $('#cleanup-mode-hint'), watermarkDetectBar: $('#watermark-detect-bar'), watermarkDetect: $('#watermark-detect'), watermarkDetectStatus: $('#watermark-detect-status'),
-  replaceSelector: $('#replace-selector'), replaceSelectorImage: $('#replace-selector-image'), replaceSelectorEmpty: $('#replace-selector-empty'), replaceSelectionBox: $('#replace-selection-box'), mobileReplaceSelection: $('#mobile-replace-selection'), replaceStatus: $('#replace-status'), replaceText: $('#replace-text'), replaceFont: $('#replace-font'), replaceFontSize: $('#replace-font-size'), replaceFontWeight: $('#replace-font-weight'), replaceColor: $('#replace-color'), replaceAlign: $('#replace-align'), replaceClearSelection: $('#replace-clear-selection'), replaceApply: $('#replace-apply'), replaceUndo: $('#replace-undo'),
+  replaceSelector: $('#replace-selector'), replaceSelectorImage: $('#replace-selector-image'), replaceSelectorEmpty: $('#replace-selector-empty'), replaceSelectionBox: $('#replace-selection-box'), mobileReplaceSelection: $('#mobile-replace-selection'), replaceStatus: $('#replace-status'), replaceText: $('#replace-text'), replaceFont: $('#replace-font'), replaceFontSize: $('#replace-font-size'), replaceFontWeight: $('#replace-font-weight'), replaceColor: $('#replace-color'), replaceAlign: $('#replace-align'), replaceClearSelection: $('#replace-clear-selection'), replaceRemove: $('#replace-remove'), replaceApply: $('#replace-apply'), replaceUndo: $('#replace-undo'),
   mobileExit: $('#mobile-exit-editor'), mobileUndo: $('#mobile-undo-edit'), mobileRedo: $('#mobile-redo-edit'), mobileCompare: $('#mobile-compare'), mobileExportTop: $('#mobile-export-top'), mobileSheetBack: $('#mobile-sheet-back'), mobileMoreButtons: [...document.querySelectorAll('[data-mobile-more-target]')], mobileMoreRevert: $('#mobile-more-revert'), mobileMoreFiles: $('#mobile-more-files'), mobileCanvasImage: $('#mobile-canvas-image'), mobileCanvasEmpty: $('#mobile-canvas-empty'), mobileCanvasStatus: $('#mobile-canvas-status'), mobileLayerHint: $('#mobile-layer-hint'), mobileBatchChip: $('#mobile-batch-chip'), mobileSheetTitle: $('#mobile-sheet-title'), mobileToolButtons: [...document.querySelectorAll('[data-mobile-tool]')], mobileAdjustButtons: [...document.querySelectorAll('[data-adjust-key]')], mobileAdjustName: $('#mobile-adjust-name'), mobileAdjustValue: $('#mobile-adjust-value'), mobileCropButtons: [...document.querySelectorAll('[data-crop-choice]')], mobilePrecisionToggle: $('#mobile-precision-toggle'), mobileFilesBackdrop: $('#mobile-files-backdrop'), mobileFilesClose: $('#mobile-files-close'), mobileExportSelected: $('#mobile-export-selected'), mobileExportAll: $('#mobile-export-all'), mobileExportStatus: $('#mobile-export-status'),
   compilerPresetGrid: $('#compiler-preset-grid'), compilerCount: $('#compiler-count'), compilerFit: $('#compiler-fit'), compilerCustomName: $('#compiler-custom-name'), compilerCustomWidth: $('#compiler-custom-width'), compilerCustomHeight: $('#compiler-custom-height'), compilerAddCustom: $('#compiler-add-custom'), compilerCustomList: $('#compiler-custom-list'), compilerGenerate: $('#compiler-generate'), compilerStatus: $('#compiler-status'),
   assetDoctorRun: $('#asset-doctor-run'), assetDoctorList: $('#asset-doctor-list'), assetDoctorBadge: $('#asset-doctor-badge'), assetDoctorStatus: $('#asset-doctor-status'),
@@ -67,7 +67,6 @@ function initialize() {
 function wireEvents() {
   els.choose.addEventListener('click', openImagePicker);
   els.uploadIcon?.addEventListener('click', openImagePicker);
-  els.desktopAdd?.addEventListener('click', () => els.input.click());
   els.add.addEventListener('click', openImagePicker);
   els.mobileContinue.addEventListener('click', enterMobileEditor);
   els.input.addEventListener('change', () => addFiles([...els.input.files]));
@@ -111,7 +110,10 @@ function wireEvents() {
     els.cleanupCanvas.addEventListener('pointerdown', beginCleanupStroke); els.cleanupCanvas.addEventListener('pointermove', continueCleanupStroke); els.cleanupCanvas.addEventListener('pointerup', endCleanupStroke); els.cleanupCanvas.addEventListener('pointercancel', endCleanupStroke);
   els.cleanupUndoStroke.addEventListener('click', undoCleanupStroke); els.cleanupClearMask.addEventListener('click', clearCleanupMask); els.cleanupApply.addEventListener('click', applyCleanupMask); els.cleanupUndo.addEventListener('click', undoCleanupApplication);
   for (const target of [els.replaceSelectorImage, els.mobileCanvasImage]) { target.addEventListener('pointerdown', beginReplaceSelection); target.addEventListener('pointermove', continueReplaceSelection); target.addEventListener('pointerup', endReplaceSelection); target.addEventListener('pointercancel', endReplaceSelection); }
-  els.replaceClearSelection.addEventListener('click', clearReplaceSelection); els.replaceApply.addEventListener('click', applyTextReplacement); els.replaceUndo.addEventListener('click', undoTextReplacement);
+  els.replaceClearSelection.addEventListener('click', clearReplaceSelection); els.replaceRemove?.addEventListener('click', removeSelectedText); els.replaceApply.addEventListener('click', applyTextReplacement); els.replaceUndo.addEventListener('click', undoTextReplacement);
+  els.desktopImageName?.addEventListener('change', renameSelectedImage);
+  els.desktopApplyEdit?.addEventListener('click', applyDesktopEdit);
+  els.desktopCancelEdit?.addEventListener('click', cancelDesktopEdit);
   els.replaceText.addEventListener('input', () => updateReplaceButtons(selectedItem()));
   for (const button of els.mobileToolButtons) button.addEventListener('click', () => setMobileMode(button.dataset.mobileTool));
   for (const button of els.mobileAdjustButtons) button.addEventListener('click', () => setMobileAdjust(button.dataset.adjustKey));
@@ -182,7 +184,7 @@ async function addFiles(files) {
       state.items.push(makeRejectedItem(file, budget.reason));
       continue;
     }
-    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], performanceResult: null, performanceResultUrl: '', transparencyDetected: null, assetDoctorReport: null, smartCrop: { analyzed:false, regions:[], manual:false, focusX:.5, focusY:.5, summary:null } };
+    const item = { id: crypto.randomUUID(), file, status: 'inspecting', inspect: null, error: '', originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], pendingTextRemoval:null, displayName:file.name.replace(/\.[^.]+$/,''), performanceResult: null, performanceResultUrl: '', transparencyDetected: null, assetDoctorReport: null, smartCrop: { analyzed:false, regions:[], manual:false, focusX:.5, focusY:.5, summary:null } };
     state.items.push(item);
     renderList();
     try {
@@ -227,7 +229,7 @@ async function addFiles(files) {
 }
 
 function makeRejectedItem(file, reason) {
-  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], performanceResult: null, performanceResultUrl: '', transparencyDetected: null, assetDoctorReport: null, smartCrop: { analyzed:false, regions:[], manual:false, focusX:.5, focusY:.5, summary:null } };
+  return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], pendingTextRemoval:null, displayName:file.name.replace(/\.[^.]+$/,''), performanceResult: null, performanceResultUrl: '', transparencyDetected: null, assetDoctorReport: null, smartCrop: { analyzed:false, regions:[], manual:false, focusX:.5, focusY:.5, summary:null } };
 }
 
 function selectItem(id, reset = false) {
@@ -252,7 +254,7 @@ function renderList() {
     const button = document.createElement('button');
     button.type = 'button'; button.className = `file-row${item.id === state.selectedId ? ' selected' : ''}`; button.addEventListener('click', () => selectItem(item.id));
     const copy = document.createElement('span'); copy.className = 'file-copy';
-    const name = document.createElement('strong'); name.textContent = item.file.name || 'Unnamed file';
+    const name = document.createElement('strong'); name.textContent = item.displayName || item.file.name || 'Unnamed file';
     const detail = document.createElement('span'); detail.textContent = item.inspect ? `${item.inspect.kind.toUpperCase()} · ${item.inspect.dimensions.width}×${item.inspect.dimensions.height} · ${formatBytes(item.file.size)}` : (item.error || formatBytes(item.file.size));
     const status = document.createElement('span'); status.className = `status status-${item.status}`; status.textContent = statusLabel(item.status);
     copy.append(name, detail); button.append(copy, status); els.list.append(button);
@@ -263,6 +265,9 @@ function renderSelected() {
   const item = selectedItem();
   els.originalPreview.replaceChildren(); els.outputPreview.replaceChildren(); els.originalStats.replaceChildren(); els.outputStats.replaceChildren(); els.metadata.replaceChildren();
   renderMobileCanvas(item);
+  if (els.desktopImageName) { els.desktopImageName.value=item?.displayName||item?.file?.name?.replace(/\.[^.]+$/,'')||'Untitled image'; els.desktopImageName.disabled=!item; }
+  if (els.desktopOriginalInfo) els.desktopOriginalInfo.textContent=item?.inspect?`Original · ${item.inspect.dimensions.width}×${item.inspect.dimensions.height} · ${formatBytes(item.file.size)} · ${item.inspect.kind.toUpperCase()}`:'Original —';
+  if (els.desktopEditedInfo) { const ew=item?.outputWidth||item?.inspect?.dimensions?.width, eh=item?.outputHeight||item?.inspect?.dimensions?.height, es=item?.outputBlob?.size; els.desktopEditedInfo.textContent=item?.inspect?`Edited · ${ew}×${eh}${es?` · ${formatBytes(es)}`:''}`:'Edited —'; }
   if (!item) { els.originalPreview.textContent = 'Select an image'; els.outputPreview.textContent = 'Process to preview'; updateButtons(); return; }
   if (item.inspect) {
     if (item.originalUrl) addPreviewImage(els.originalPreview, item.originalUrl, `Original ${item.file.name}`);
@@ -399,7 +404,7 @@ async function processItem(item, settings) {
     const value = result.value; const blob = new Blob([value.buffer], { type: value.mime });
     item.outputBlob = blob; item.outputUrl = trackObjectUrl(blob); item.outputWidth = value.width; item.outputHeight = value.height; item.status = 'completed';
     const ext = value.kind === 'jpeg' ? 'jpg' : value.kind;
-    item.outputName = exportFilename(item.file.name, ext, { prefix: els.prefix.value, suffix: els.suffix.value, preserveOriginal: els.preserveName.checked });
+    item.outputName = exportFilename((item.displayName||item.file.name.replace(/\.[^.]+$/,''))+'.'+ext, ext, { prefix: els.prefix.value, suffix: els.suffix.value, preserveOriginal: els.preserveName.checked });
   } catch { item.status = 'failed'; item.error = 'Processing failed safely.'; }
 }
 
@@ -490,21 +495,33 @@ function renderReplaceSelectionBox(box, image, selection) {
   box.classList.remove('hidden');
 }
 
-function clearReplaceSelection() { const item = selectedItem(); if (!item) return; item.replaceSelection = null; renderReplaceSelector(item); els.replaceStatus.textContent = 'Select an area'; }
+function clearReplaceSelection() { const item = selectedItem(); if (!item) return; item.replaceSelection = null; if(item.pendingTextRemoval){item.textReplacements=item.textReplacements.filter((r)=>r.id!==item.pendingTextRemoval.regionId);item.pendingTextRemoval=null;scheduleEditPreview(20);} renderReplaceSelector(item); els.replaceStatus.textContent = 'Select an area'; }
 
 function updateReplaceButtons(item) {
   const hasSelection = Boolean(item?.replaceSelection);
-  els.replaceClearSelection.disabled = !hasSelection; els.replaceApply.disabled = !hasSelection || !els.replaceText.value.trim(); els.replaceUndo.disabled = !(item?.replaceHistory?.length);
+  const removalReady = Boolean(item?.pendingTextRemoval);
+  els.replaceClearSelection.disabled = !hasSelection && !removalReady;
+  if (els.replaceRemove) els.replaceRemove.disabled = !hasSelection;
+  els.replaceApply.disabled = !removalReady || !els.replaceText.value.trim();
+  els.replaceUndo.disabled = !(item?.replaceHistory?.length) && !removalReady;
 }
 function replacementStyle() { return { text: els.replaceText.value.trim(), fontFamily: els.replaceFont.value, fontSize: Number(els.replaceFontSize.value), fontWeight: Number(els.replaceFontWeight.value), color: els.replaceColor.value, align: els.replaceAlign.value }; }
 
+function removeSelectedText() {
+  const item=selectedItem(); if(!item?.replaceSelection)return;
+  const selection=normalizeTextSelection(item.replaceSelection), regionId=crypto.randomUUID();
+  item.textReplacements.push({id:regionId,selection});
+  item.pendingTextRemoval={regionId,selection};
+  item.replaceSelection=null;
+  renderReplaceSelector(item); els.replaceStatus.textContent='Original text removal preview · inspect before adding text';
+  scheduleEditPreview(20);
+}
 function applyTextReplacement() {
-  const item = selectedItem(); if (!item?.replaceSelection || !els.replaceText.value.trim()) return;
-  const regionId = crypto.randomUUID(), layerId = crypto.randomUUID(), selection = normalizeTextSelection(item.replaceSelection);
-  item.textReplacements.push({ id: regionId, selection });
+  const item = selectedItem(); const pending=item?.pendingTextRemoval; if (!pending || !els.replaceText.value.trim()) return;
+  const layerId = crypto.randomUUID(), selection=pending.selection;
   const layer = replacementLayerFromSelection(selection, replacementStyle(), layerId); layer.scopeItemId = item.id;
-  state.layers.push(layer); state.selectedLayerId = layerId; item.replaceHistory.push({ regionId, layerId }); item.replaceSelection = null;
-  renderLayerList(); renderLayerProperties(); renderReplaceSelector(item); els.replaceStatus.textContent = 'Replacement added · editable under Text'; scheduleEditPreview(20);
+  state.layers.push(layer); state.selectedLayerId = layerId; item.replaceHistory.push({ regionId:pending.regionId, layerId }); item.pendingTextRemoval=null;
+  renderLayerList(); renderLayerProperties(); renderReplaceSelector(item); els.replaceStatus.textContent = 'Replacement preview ready · Apply edit to keep it'; scheduleEditPreview(20);
 }
 
 function undoTextReplacement() {
@@ -795,8 +812,37 @@ function renderComparison(item) {
 function setDesktopInspectorTool(tool) {
   const card = document.querySelector('.control-card');
   if (!card || !['adjust','crop','cleanup','text','watermark','social','webpack','resize','replace','optimize','export'].includes(tool)) return;
+  const previous = card.dataset.inspectorTool;
+  if (previous && previous !== tool) discardUncommittedToolPreview(previous);
   card.dataset.inspectorTool = tool;
+  document.body.dataset.desktopWorkspace = (tool === 'social' || tool === 'webpack') ? 'output' : 'edit';
   document.querySelectorAll('.image-sidebar-nav-button').forEach((button) => button.classList.toggle('active', button.dataset.sidebarTool === tool));
+}
+function discardPreviewUrl(item) {
+  if (!item?.editPreviewUrl) return;
+  revokeObjectUrl(item.editPreviewUrl); item.editPreviewUrl=''; item.editPreviewBlob=null;
+}
+function discardUncommittedToolPreview(tool) {
+  const item=selectedItem(); if(!item)return;
+  discardPreviewUrl(item);
+  if(tool==='crop'){ els.cropMode.value='none'; els.smartCropEnabled.checked=false; updateConditionalControls(); syncMobileCropButtons(); }
+  if(tool==='replace'){ item.replaceSelection=null; renderReplaceSelector(item); }
+  renderSelectedSafely();
+}
+async function applyDesktopEdit() {
+  const item=selectedItem(); if(!item?.inspect||state.busy)return;
+  els.desktopApplyEdit.textContent='Applying…';
+  try { await processSelected(); discardPreviewUrl(item); renderSelectedSafely(); }
+  finally { els.desktopApplyEdit.textContent='Apply edit'; }
+}
+function cancelDesktopEdit() {
+  const tool=document.querySelector('.control-card')?.dataset.inspectorTool||'adjust';
+  discardUncommittedToolPreview(tool);
+}
+function renameSelectedImage() {
+  const item=selectedItem(); if(!item||!els.desktopImageName)return;
+  const value=els.desktopImageName.value.trim().replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').slice(0,120);
+  item.displayName=value||'Untitled image'; els.desktopImageName.value=item.displayName; renderList();
 }
 
 function updateComparisonPosition() {

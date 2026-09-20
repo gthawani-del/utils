@@ -36,8 +36,8 @@
     </section>
 
     <section class="desktop-workspace-header" aria-label="Image Studio workspace header">
-      <div><p class="eyebrow">Image Studio</p><h1>Image Studio</h1><span id="desktop-current-file" class="desktop-current-file">Ready to edit</span></div>
-      <div class="desktop-workspace-actions"><span class="desktop-local-status">● Local processing</span><button class="secondary-button" id="desktop-add-image" type="button">Add image</button></div>
+      <div class="desktop-image-identity"><p class="eyebrow">Image Studio</p><div class="desktop-name-row"><input id="desktop-image-name" class="desktop-image-name" type="text" maxlength="120" aria-label="Image name" value="Untitled image"><span class="desktop-local-status">● Local processing</span></div><span id="desktop-current-file" class="desktop-current-file">Ready to edit</span></div>
+      <div class="desktop-image-info"><span id="desktop-original-info">Original —</span><span id="desktop-edited-info">Edited —</span></div>
     </section>
 
     <div id="compatibility" class="notice danger hidden" role="alert"></div>
@@ -225,7 +225,8 @@
               </div>
               <div class="replace-actions">
                 <button class="secondary-button" id="replace-clear-selection" type="button" disabled>Clear selection</button>
-                <button class="primary-button" id="replace-apply" type="button" disabled>Replace selected text</button>
+                <button class="primary-button" id="replace-remove" type="button" disabled>1. Remove original text</button>
+                <button class="primary-button" id="replace-apply" type="button" disabled>2. Add replacement text</button>
                 <button class="secondary-button" id="replace-undo" type="button" disabled>Undo replacement</button>
               </div>
             </div>
@@ -409,6 +410,8 @@
           </div><p class="microcopy">Target-size compression uses iterative encoding; a fixed quality is never treated as a guaranteed file size.</p></div>
 
           <details class="advanced export-section"><summary>Advanced controls</summary><div class="control-section nested"><h3>Privacy & metadata</h3><label class="check-row"><input type="checkbox" checked disabled> Privacy-clean export: metadata and GPS are stripped</label><div id="metadata-box" class="metadata-box"></div></div><div class="control-section nested"><h3>Export naming</h3><div class="form-grid"><label>Prefix<input id="prefix" type="text" maxlength="40"></label><label>Suffix<input id="suffix" type="text" maxlength="40"></label></div><label class="check-row"><input id="preserve-name" type="checkbox" checked> Preserve original filename stem</label></div></details>
+
+          <div class="desktop-edit-commit" aria-label="Apply current edit"><button class="secondary-button" id="desktop-cancel-edit" type="button">Cancel changes</button><button class="primary-button" id="desktop-apply-edit" type="button">Apply edit</button></div>
 
           <div class="action-row export-section">
             <div class="mobile-export-actions">

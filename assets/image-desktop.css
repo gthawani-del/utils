@@ -1643,3 +1643,61 @@
     min-height: 48px;
   }
 }
+
+
+/* Pass 7.6: committed-edit workflow, single-image identity, and dedicated output workspaces. */
+@media (min-width: 1120px) {
+  .image-studio-body.has-image-workspace .desktop-workspace-header {
+    align-items: center;
+  }
+  .image-studio-body.has-image-workspace .desktop-image-identity {
+    min-width: 0;
+  }
+  .image-studio-body.has-image-workspace .desktop-name-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .image-studio-body.has-image-workspace .desktop-image-name {
+    width: min(420px,38vw); border: 0; border-bottom: 1px solid transparent; background: transparent;
+    padding: 1px 2px; color:#172033; font-size:16px; font-weight:750;
+  }
+  .image-studio-body.has-image-workspace .desktop-image-name:hover,
+  .image-studio-body.has-image-workspace .desktop-image-name:focus { border-bottom-color:#b8c3d4; outline:0; }
+  .image-studio-body.has-image-workspace .desktop-image-info {
+    display:flex; align-items:flex-end; gap:16px; color:#667085; font-size:11px; white-space:nowrap;
+  }
+  .image-studio-body.has-image-workspace .file-panel { display:none; }
+  .image-studio-body.has-image-workspace .workspace { grid-template-rows:minmax(0,1fr); }
+  .image-studio-body.has-image-workspace .editor-panel { grid-row:1; }
+
+  .image-studio-body.has-image-workspace .desktop-edit-commit {
+    position:sticky; bottom:0; z-index:4; display:grid; grid-template-columns:1fr 1.25fr; gap:7px;
+    padding:12px 16px; border-top:1px solid #dfe5ed; background:rgba(255,255,255,.97);
+  }
+  .image-studio-body.has-image-workspace .control-card[data-inspector-tool="social"] .desktop-edit-commit,
+  .image-studio-body.has-image-workspace .control-card[data-inspector-tool="webpack"] .desktop-edit-commit,
+  .image-studio-body.has-image-workspace .control-card[data-inspector-tool="optimize"] .desktop-edit-commit,
+  .image-studio-body.has-image-workspace .control-card[data-inspector-tool="export"] .desktop-edit-commit { display:none; }
+
+  .image-studio-body[data-desktop-workspace="output"] .editor-panel {
+    grid-template-columns:minmax(0,1fr);
+  }
+  .image-studio-body[data-desktop-workspace="output"] .preview-grid { display:none; }
+  .image-studio-body[data-desktop-workspace="output"] .control-card {
+    grid-column:1; width:100%; max-width:none; padding:20px 24px; overflow-y:auto;
+  }
+  .image-studio-body[data-desktop-workspace="output"] .control-card > .control-section { max-width:1180px; margin:0 auto; }
+  .image-studio-body[data-desktop-workspace="output"] .compiler-preset-grid {
+    grid-template-columns:repeat(5,minmax(150px,1fr)); gap:12px;
+  }
+  .image-studio-body[data-desktop-workspace="output"] .compiler-preset-card {
+    min-height:112px; align-content:center; justify-content:center; text-align:center;
+  }
+  .image-studio-body[data-desktop-workspace="output"] .compiler-options,
+  .image-studio-body[data-desktop-workspace="output"] .compiler-actions,
+  .image-studio-body[data-desktop-workspace="output"] .web-pack-group,
+  .image-studio-body[data-desktop-workspace="output"] .web-pack-actions,
+  .image-studio-body[data-desktop-workspace="output"] .web-pack-result { max-width:820px; margin-left:auto; margin-right:auto; }
+  .image-studio-body[data-desktop-workspace="output"] .web-pack-options { grid-template-columns:repeat(5,minmax(100px,1fr)); }
+  .image-studio-body.has-image-workspace .replace-actions #replace-remove,
+  .image-studio-body.has-image-workspace .replace-actions #replace-apply { grid-column:1/-1; }
+}
