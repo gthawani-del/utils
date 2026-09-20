@@ -1116,3 +1116,112 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--border); borde
     display:none !important;
   }
 }
+
+
+/* Image Studio desktop shell — mirrors Media Studio's app-first desktop structure. */
+@media (min-width: 1120px) {
+  body:not(.media-body) .site-header {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    width: 236px;
+    height: 100vh;
+    min-height: 100vh;
+    padding: 20px 14px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    background: #111923;
+    border: 0;
+    color: #eef4fb;
+  }
+  body:not(.media-body) .site-header .brand {
+    color: #fff;
+    padding: 0 7px 18px;
+  }
+  body:not(.media-body) .site-header .brand-mark {
+    background: linear-gradient(145deg,#16a3ff,#6d4ce7 60%,#e633a2);
+  }
+  body:not(.media-body) .site-header .header-actions {
+    display: grid;
+    gap: 8px;
+    margin-top: auto;
+  }
+  body:not(.media-body) .site-header .local-badge {
+    border-color: rgba(255,255,255,.1);
+    background: rgba(255,255,255,.04);
+    color: #9eabba;
+  }
+  body:not(.media-body) .site-header .ghost-button {
+    border-color: rgba(255,255,255,.1);
+    background: rgba(255,255,255,.06);
+    color: #eef4fb;
+  }
+  body:not(.media-body) .studio-shell {
+    width: auto;
+    margin: 0 0 0 236px;
+    padding: 24px 24px 48px;
+  }
+  body:not(.media-body) .studio-heading {
+    grid-template-columns: minmax(0,1fr) 310px;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  body:not(.media-body) .studio-heading h1 {
+    font-size: 34px;
+    margin-bottom: 6px;
+  }
+  body:not(.media-body) .upload-panel {
+    min-height: 150px;
+    padding: 22px;
+  }
+  body:not(.media-body) .upload-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    font-size: 22px;
+  }
+  body:not(.media-body) .workspace {
+    grid-template-columns: minmax(0,1fr) 330px;
+    gap: 18px;
+    align-items: start;
+  }
+  body:not(.media-body) .file-panel {
+    grid-column: 1 / -1;
+    position: static;
+    max-height: none;
+  }
+  body:not(.media-body) .file-list {
+    max-height: 150px;
+  }
+  body:not(.media-body) .editor-panel {
+    display: contents;
+  }
+  body:not(.media-body) .preview-grid {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  body:not(.media-body) .preview-stage {
+    min-height: 440px;
+  }
+  body:not(.media-body) .comparison-card,
+  body:not(.media-body) #jpeg-warning,
+  body:not(.media-body) #upscale-warning {
+    grid-column: 1;
+  }
+  body:not(.media-body) .control-card {
+    grid-column: 2;
+    grid-row: 2 / span 20;
+    margin-top: 0;
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
+    position: sticky;
+    top: 18px;
+  }
+  body:not(.media-body) .control-card .form-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+  body:not(.media-body) .control-card .form-row {
+    grid-template-columns: 1fr;
+  }
+}
