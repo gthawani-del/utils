@@ -358,3 +358,92 @@
     max-height: calc(100vh - 230px);
   }
 }
+
+
+/* Pass 3: contextual desktop inspector. Mobile keeps its existing tool-sheet logic. */
+.desktop-inspector-tabs { display: none; }
+
+@media (min-width: 1120px) {
+  .image-studio-body .control-card {
+    --inspector-tab-border: #dfe5ee;
+  }
+
+  .image-studio-body .desktop-inspector-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 4px;
+    padding: 10px;
+    border-bottom: 1px solid var(--inspector-tab-border);
+    background: #fff;
+  }
+
+  .image-studio-body .desktop-inspector-tab {
+    min-height: 34px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: #687386;
+    padding: 0 5px;
+    font-size: 9px;
+    font-weight: 760;
+    cursor: pointer;
+  }
+
+  .image-studio-body .desktop-inspector-tab:hover {
+    background: #f4f7fb;
+    color: #111827;
+  }
+
+  .image-studio-body .desktop-inspector-tab.active {
+    background: #111827;
+    color: #fff;
+  }
+
+  .image-studio-body .control-card > .control-header {
+    display: none;
+  }
+
+  /* Default desktop tool before JS interaction is Adjust. */
+  .image-studio-body .control-card:not([data-inspector-tool]) > .control-section,
+  .image-studio-body .control-card:not([data-inspector-tool]) > .advanced,
+  .image-studio-body .control-card:not([data-inspector-tool]) > .action-row {
+    display: none;
+  }
+  .image-studio-body .control-card:not([data-inspector-tool]) > .edit-section {
+    display: block;
+  }
+
+  .image-studio-body .control-card[data-inspector-tool] > .control-section,
+  .image-studio-body .control-card[data-inspector-tool] > .advanced,
+  .image-studio-body .control-card[data-inspector-tool] > .action-row {
+    display: none;
+  }
+
+  .image-studio-body .control-card[data-inspector-tool="adjust"] > .edit-section,
+  .image-studio-body .control-card[data-inspector-tool="crop"] > .crop-section,
+  .image-studio-body .control-card[data-inspector-tool="cleanup"] > .cleanup-section,
+  .image-studio-body .control-card[data-inspector-tool="text"] > .design-section,
+  .image-studio-body .control-card[data-inspector-tool="watermark"] > .watermark-section {
+    display: block;
+  }
+
+  .image-studio-body .control-card[data-inspector-tool="more"] > .preset-section,
+  .image-studio-body .control-card[data-inspector-tool="more"] > .resize-section,
+  .image-studio-body .control-card[data-inspector-tool="more"] > .replace-text-section,
+  .image-studio-body .control-card[data-inspector-tool="more"] > .compiler-section,
+  .image-studio-body .control-card[data-inspector-tool="more"] > .asset-doctor-section,
+  .image-studio-body .control-card[data-inspector-tool="more"] > .web-pack-section,
+  .image-studio-body .control-card[data-inspector-tool="more"] > .performance-section,
+  .image-studio-body .control-card[data-inspector-tool="more"] > .format-section,
+  .image-studio-body .control-card[data-inspector-tool="more"] > .advanced,
+  .image-studio-body .control-card[data-inspector-tool="more"] > .action-row {
+    display: block;
+  }
+
+  .image-studio-body .control-card[data-inspector-tool="more"] > .mobile-more-section {
+    display: none;
+  }
+}
