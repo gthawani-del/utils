@@ -23,16 +23,16 @@ const project = { source: { kind: 'local-file', mediaType: 'audio', duration: 60
 
 test('built-in recipes contain deterministic action specs only', () => {
   const recipes = builtInRecipes();
-  assert.equal(recipes.length, 9);
+  assert.equal(recipes.length, 6);
   assert.equal(recipes.every((recipe) => recipe.actions.length > 0), true);
   assert.equal(recipes.find((recipe) => recipe.name === 'Instagram Reel').actions[0].params.aspect, '9:16');
 });
 
 test('recipe action specs hydrate through the Command Assistant readiness model', () => {
-  const recipe = builtInRecipes().find((item) => item.name === 'Podcast Clean');
+  const recipe = builtInRecipes().find((item) => item.name === 'Client Delivery');
   const plan = planFromActionSpecs(recipe.actions, project);
-  assert.equal(plan.find((item) => item.type === 'normalize-audio').status, 'blocked');
   assert.equal(plan.find((item) => item.type === 'run-qc').status, 'ready');
+  assert.equal(plan.find((item) => item.type === 'open-category').status, 'ready');
   assert.deepEqual(actionSpecsFromPlan(plan), recipe.actions);
 });
 
@@ -66,4 +66,17 @@ test('recipes duplicate and delete without modifying the original', () => {
   assert.equal(removed.ok, true);
   assert.equal(loadCustomRecipes(storage).length, 1);
   assert.equal(loadCustomRecipes(storage)[0].id, copy.recipe.id);
+});
+
+
+test('recipe hydration exposes Version-renderable actions without pretending workflow actions are render output', () => {
+  const videoProject = { source: { kind: 'local-file', mediaType: 'video', duration: 60 } };
+  const reel = builtInRecipes().find((item) => item.name === 'Instagram Reel');
+  const videoPlan = planFromActionSpecs(reel.actions, videoProject);
+  assert.equal(videoPlan.find((item) => item.type === 'set-aspect').execution, 'renderable');
+  assert.equal(videoPlan.find((item) => item.type === 'run-qc').execution, 'workflow');
+
+  const audioPlan = planFromActionSpecs(reel.actions, project);
+  assert.equal(audioPlan.find((item) => item.type === 'set-aspect').execution, 'workflow');
+  assert.equal(audioPlan.find((item) => item.type === 'run-qc').execution, 'workflow');
 });

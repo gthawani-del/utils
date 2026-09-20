@@ -1,5 +1,5 @@
 import { ingestLocalMedia, releaseMediaSource, validateMediaUrl } from '/lib/media/ingest.js';
-import { createMediaProject, loadMediaProjectSnapshot, setProjectAudioEdits, setProjectAudioVideo, setProjectCategory, setProjectCompiler, setProjectDelivery, setProjectLyrics, setProjectSource, setProjectTranscript, setProjectVideoEdits } from '/lib/media/project.js';
+import { createMediaProject, loadMediaProjectSnapshot, setProjectAudioEdits, setProjectAudioVideo, setProjectCategory, setProjectCompiler, setProjectDelivery, setProjectLyrics, setProjectSource, setProjectTranscript, setProjectVersioning, setProjectVideoEdits } from '/lib/media/project.js';
 import { initAudioVideoWorkspace } from '/lib/media/audio-video/workspace.js';
 import { initCompilerWorkspace } from '/lib/media/compiler/workspace.js';
 import { initCommandAssistant } from '/lib/media/command/workspace.js';
@@ -8,6 +8,7 @@ import { initDeliveryWorkspace } from '/lib/media/delivery/workspace.js';
 import { initRecipeWorkspace } from '/lib/media/recipes/workspace.js';
 import { initLyricsWorkspace } from '/lib/media/lyrics/workspace.js';
 import { initTranscriptWorkspace } from '/lib/media/transcript/workspace.js';
+import { initVersionWorkspace } from '/lib/media/versions/workspace.js';
 import { createAudioEdits, audioSelectionDuration, normalizeAudioEdits, previewVolumeAt, updateAudioEdits } from '/lib/media/audio/edits.js';
 import { createVideoEdits, normalizeVideoEdits, selectionDuration, updateVideoEdits } from '/lib/media/video/edits.js';
 
@@ -51,6 +52,8 @@ const playheadInput = document.querySelector('#video-playhead');
 const playheadLabel = document.querySelector('#video-playhead-label');
 const selectionLabel = document.querySelector('#video-selection-label');
 const playbackRateSelect = document.querySelector('#video-playback-rate');
+const videoAspectSelect = document.querySelector('#video-output-aspect');
+const videoMuteInput = document.querySelector('#video-mute');
 const undoButton = document.querySelector('#video-undo');
 const redoButton = document.querySelector('#video-redo');
 const timelineStatus = document.querySelector('#timeline-status');
@@ -84,6 +87,7 @@ let qcWorkspace = null;
 let deliveryWorkspace = null;
 let commandAssistant = null;
 let recipeWorkspace = null;
+let versionWorkspace = null;
 
 if (restored) {
   project.id = restored.id || project.id;
@@ -98,6 +102,11 @@ if (restored) {
   project.audioVideo = restored.audioVideo || null;
   project.compiler = restored.compiler || null;
   project.delivery = restored.delivery || null;
+  project.versions = Array.isArray(restored.versions)
+    ? restored.versions.map((version) => ({ ...version, sessionAvailable: false }))
+    : [];
+  project.activeVersionId = restored.activeVersionId || null;
+  project.baseVersionId = restored.baseVersionId || 'original';
 }
 
 function makeDesktopButton(category, index) {
@@ -160,6 +169,7 @@ function selectCategory(id) {
   compilerWorkspace?.updateVisibility();
   qcWorkspace?.updateVisibility();
   deliveryWorkspace?.updateVisibility();
+  versionWorkspace?.refresh();
   commandAssistant?.refresh();
 }
 
@@ -183,15 +193,25 @@ function updateVideoEditorVisibility() {
   timelineStatus.textContent = visible ? 'Trim preview active' : 'Source preview';
 }
 
+function editingBaseDuration() {
+  const baseId = project.baseVersionId || 'original';
+  if (baseId !== 'original') {
+    const base = project.versions?.find((version) => version.id === baseId);
+    const duration = Number(base?.outputDuration);
+    if (Number.isFinite(duration) && duration >= 0) return duration;
+  }
+  return Number(project.source?.duration || 0);
+}
+
 function currentVideoEdits() {
   if (!project.source || project.source.mediaType !== 'video') return null;
-  const duration = Number(project.source.duration || 0);
+  const duration = editingBaseDuration();
   return normalizeVideoEdits(project.videoEdits || createVideoEdits(duration), duration);
 }
 
 function syncVideoControls() {
   const edits = currentVideoEdits();
-  const duration = Number(project.source?.duration || 0);
+  const duration = editingBaseDuration();
   if (!edits || !Number.isFinite(duration)) return;
 
   trimStartInput.max = String(duration);
@@ -200,9 +220,15 @@ function syncVideoControls() {
   trimEndInput.value = edits.trimEnd.toFixed(2);
   playheadInput.max = String(duration);
   playbackRateSelect.value = String(edits.playbackRate);
+  videoAspectSelect.value = edits.outputAspect;
+  videoMuteInput.checked = edits.muted;
+  sourcePlayerWrap.dataset.videoAspect = edits.outputAspect;
   selectionLabel.textContent = `Selection ${formatEditorTime(selectionDuration(edits, duration))}`;
 
-  if (currentPlayer) currentPlayer.playbackRate = edits.playbackRate;
+  if (currentPlayer) {
+    currentPlayer.playbackRate = edits.playbackRate;
+    currentPlayer.muted = edits.muted;
+  }
   updateUndoRedo();
   updateTimelineSelection(edits, duration);
 }
@@ -216,7 +242,7 @@ function updateTimelineSelection(edits, duration) {
 }
 
 function updatePlayhead(time) {
-  const duration = Number(project.source?.duration || 0);
+  const duration = editingBaseDuration();
   const value = Math.min(duration, Math.max(0, Number(time) || 0));
   playheadInput.value = String(value);
   playheadLabel.textContent = formatEditorTime(value);
@@ -227,7 +253,9 @@ function recordVideoEdit(next) {
   if (!current) return;
   const changed = current.trimStart !== next.trimStart
     || current.trimEnd !== next.trimEnd
-    || current.playbackRate !== next.playbackRate;
+    || current.playbackRate !== next.playbackRate
+    || current.muted !== next.muted
+    || current.outputAspect !== next.outputAspect;
   if (!changed) return;
 
   videoHistory.push(current);
@@ -240,7 +268,7 @@ function recordVideoEdit(next) {
 function applyVideoPatch(patch) {
   const current = currentVideoEdits();
   if (!current) return;
-  const duration = Number(project.source?.duration || 0);
+  const duration = editingBaseDuration();
   recordVideoEdit(updateVideoEdits(current, patch, duration));
 }
 
@@ -280,7 +308,7 @@ function updateAudioEditorVisibility() {
 
 function currentAudioEdits() {
   if (!project.source || project.source.mediaType !== 'audio') return null;
-  const duration = Number(project.source.duration || 0);
+  const duration = editingBaseDuration();
   return normalizeAudioEdits(project.audioEdits || createAudioEdits(duration), duration);
 }
 
@@ -299,7 +327,7 @@ function updateAudioTimelineSelection(edits, duration) {
 }
 
 function updateAudioPlayhead(time) {
-  const duration = Number(project.source?.duration || 0);
+  const duration = editingBaseDuration();
   const value = Math.min(duration, Math.max(0, Number(time) || 0));
   audioPlayheadInput.value = String(value);
   audioPlayheadLabel.textContent = formatEditorTime(value);
@@ -308,12 +336,12 @@ function updateAudioPlayhead(time) {
 function syncAudioPreviewVolume(time = currentPlayer?.currentTime || 0) {
   const edits = currentAudioEdits();
   if (!edits || !currentPlayer || currentPlayer.tagName !== 'AUDIO') return;
-  currentPlayer.volume = previewVolumeAt(time, edits, Number(project.source?.duration || 0));
+  currentPlayer.volume = previewVolumeAt(time, edits, editingBaseDuration());
 }
 
 function syncAudioControls() {
   const edits = currentAudioEdits();
-  const duration = Number(project.source?.duration || 0);
+  const duration = editingBaseDuration();
   if (!edits || !Number.isFinite(duration)) return;
 
   audioTrimStartInput.max = String(duration);
@@ -354,7 +382,7 @@ function recordAudioEdit(next) {
 function applyAudioPatch(patch) {
   const current = currentAudioEdits();
   if (!current) return;
-  const duration = Number(project.source?.duration || 0);
+  const duration = editingBaseDuration();
   recordAudioEdit(updateAudioEdits(current, patch, duration));
 }
 
@@ -527,6 +555,7 @@ function renderSource(source) {
   compilerWorkspace?.onSourceChanged();
   qcWorkspace?.onSourceChanged();
   deliveryWorkspace?.onSourceChanged();
+  versionWorkspace?.onSourceChanged();
   if (source.kind === 'local-file' && source.mediaType === 'video') {
     syncVideoControls();
     updatePlayhead(currentPlayer?.currentTime || 0);
@@ -563,6 +592,9 @@ async function handleFile(file) {
       project.audioVideo = null;
       project.compiler = null;
       project.delivery = null;
+      project.versions = [];
+      project.activeVersionId = null;
+      project.baseVersionId = 'original';
       setProjectVideoEdits(project, null);
       setProjectAudioEdits(project, null);
       setProjectTranscript(project, null);
@@ -570,6 +602,7 @@ async function handleFile(file) {
       setProjectAudioVideo(project, null);
       setProjectCompiler(project, null);
       setProjectDelivery(project, null);
+      setProjectVersioning(project, { versions: [], activeVersionId: null, baseVersionId: 'original' });
       resetVideoHistory();
       resetAudioHistory();
       transcriptWorkspace?.resetForNewSource();
@@ -577,6 +610,7 @@ async function handleFile(file) {
       compilerWorkspace?.resetForNewSource();
       qcWorkspace?.resetForNewSource();
       deliveryWorkspace?.resetForNewSource();
+      versionWorkspace?.resetForNewSource();
     }
     setProjectSource(project, result.source);
     renderSource(result.source);
@@ -614,16 +648,21 @@ linkForm.addEventListener('submit', (event) => {
   project.audioVideo = null;
   project.compiler = null;
   project.delivery = null;
+  project.versions = [];
+  project.activeVersionId = null;
+  project.baseVersionId = 'original';
   setProjectTranscript(project, null);
   setProjectLyrics(project, null);
   setProjectAudioVideo(project, null);
   setProjectCompiler(project, null);
   setProjectDelivery(project, null);
+  setProjectVersioning(project, { versions: [], activeVersionId: null, baseVersionId: 'original' });
   transcriptWorkspace?.resetForNewSource();
   lyricsWorkspace?.resetForNewSource();
   compilerWorkspace?.resetForNewSource();
   qcWorkspace?.resetForNewSource();
   deliveryWorkspace?.resetForNewSource();
+  versionWorkspace?.resetForNewSource();
   const source = {
     kind: 'provider-link',
     provider: checked.provider,
@@ -662,14 +701,9 @@ document.addEventListener('click', (event) => {
     return;
   }
 
-  const placeholder = event.target.closest('[data-placeholder-action]');
-  if (placeholder) {
-    const name = placeholder.dataset.placeholderAction;
-    if (name === 'Recipes' || name === 'Use a Recipe') {
-      recipeWorkspace?.open();
-      return;
-    }
-    phaseNote.textContent = `${name} is planned for a later phase; this control is not enabled yet.`;
+  const recipeAction = event.target.closest('[data-recipe-action]');
+  if (recipeAction) {
+    recipeWorkspace?.open();
   }
 });
 
@@ -772,6 +806,14 @@ playbackRateSelect.addEventListener('change', () => {
   applyVideoPatch({ playbackRate: Number(playbackRateSelect.value) });
 });
 
+videoAspectSelect.addEventListener('change', () => {
+  applyVideoPatch({ outputAspect: videoAspectSelect.value });
+});
+
+videoMuteInput.addEventListener('change', () => {
+  applyVideoPatch({ muted: videoMuteInput.checked });
+});
+
 playheadInput.addEventListener('input', () => {
   if (!currentPlayer || currentPlayer.tagName !== 'VIDEO') return;
   playingSelection = false;
@@ -849,9 +891,42 @@ emptyStage.addEventListener('drop', (event) => {
 });
 
 window.addEventListener('pagehide', () => {
+  versionWorkspace?.destroy();
   audioVideoWorkspace?.destroy();
   clearPlayer();
   if (project.source?.kind === 'local-file') releaseMediaSource(project.source);
+});
+
+versionWorkspace = initVersionWorkspace({
+  getProject: () => project,
+  getSource: () => project.source,
+  getPlayer: () => currentPlayer,
+  getVideoEdits: () => currentVideoEdits(),
+  getAudioEdits: () => currentAudioEdits(),
+  resetEditsForBase: (duration) => {
+    const safeDuration = Math.max(0, Number(duration) || 0);
+    if (project.source?.mediaType === 'video') {
+      resetVideoHistory();
+      setProjectVideoEdits(project, createVideoEdits(safeDuration));
+      syncVideoControls();
+      updatePlayhead(0);
+    } else if (project.source?.mediaType === 'audio') {
+      resetAudioHistory();
+      setProjectAudioEdits(project, createAudioEdits(safeDuration));
+      syncAudioControls();
+      updateAudioPlayhead(0);
+    }
+  },
+  saveVersioning: (versioning) => {
+    project.versions = versioning.versions;
+    project.activeVersionId = versioning.activeVersionId;
+    project.baseVersionId = versioning.baseVersionId;
+    setProjectVersioning(project, versioning);
+  },
+  setStatus: (message) => {
+    commandMessage.textContent = message;
+    if (sourceNote && !sourceStage.classList.contains('hidden')) sourceNote.textContent = message;
+  }
 });
 
 deliveryWorkspace = initDeliveryWorkspace({
@@ -954,7 +1029,7 @@ commandAssistant = initCommandAssistant({
   getProject: () => project,
   onSaveRecipe: (actions, context) => recipeWorkspace?.openSave(actions, context),
   executeAction: async (item) => {
-    const duration = Number(project.source?.duration || 0);
+    const duration = editingBaseDuration();
 
     if (item.type === 'open-category') {
       selectCategory(item.params.category);
@@ -999,10 +1074,21 @@ commandAssistant = initCommandAssistant({
     }
 
     if (item.type === 'set-aspect') {
-      if (!audioVideoWorkspace) return { ok: false, reason: 'Audio → Video workspace is unavailable.' };
-      audioVideoWorkspace.setAspect(item.params.aspect);
-      selectCategory('audio-video');
-      return { ok: true };
+      if (project.source?.mediaType === 'video') {
+        const current = currentVideoEdits();
+        if (!current) return { ok: false, reason: 'Video aspect state is unavailable.' };
+        recordVideoEdit(updateVideoEdits(current, { outputAspect: item.params.aspect }, duration));
+        return { ok: true };
+      }
+
+      if (project.source?.mediaType === 'audio') {
+        if (!audioVideoWorkspace) return { ok: false, reason: 'Audio → Video workspace is unavailable.' };
+        audioVideoWorkspace.setAspect(item.params.aspect);
+        selectCategory('audio-video');
+        return { ok: true };
+      }
+
+      return { ok: false, reason: 'Output aspect requires a compatible local audio or video source.' };
     }
 
     if (item.type === 'run-qc') {
@@ -1019,6 +1105,7 @@ commandAssistant = initCommandAssistant({
 
     return { ok: false, reason: `Unsupported command action: ${item.type}` };
   },
+  createVersion: async () => versionWorkspace?.createVersion?.() || { ok: false, reason: 'Version workspace is unavailable.' },
   setStatus: (message) => {
     commandMessage.textContent = message;
     if (sourceNote && !sourceStage.classList.contains('hidden')) sourceNote.textContent = message;
@@ -1040,6 +1127,7 @@ audioVideoWorkspace.onSourceChanged();
 compilerWorkspace.onSourceChanged();
 qcWorkspace.onSourceChanged();
 deliveryWorkspace.onSourceChanged();
+versionWorkspace.onSourceChanged();
 
 if (restored?.source?.kind === 'provider-link') {
   renderSource(restored.source);

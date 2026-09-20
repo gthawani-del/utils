@@ -53,7 +53,7 @@ test('safe fixes clamp subtitle end overflow and normalize project edit bounds',
   });
 
   assert.equal(result.changed, true);
-  assert.deepEqual(result.patch.videoEdits, { trimStart: 0, trimEnd: 10, playbackRate: 1 });
+  assert.deepEqual(result.patch.videoEdits, { trimStart: 0, trimEnd: 10, playbackRate: 1, muted: false, outputAspect: 'original' });
   assert.equal(result.patch.transcript.cues[0].id, 'a');
   assert.equal(result.patch.transcript.cues[1].end, 10);
   assert.equal(result.patch.transcript.cues[1].text, 'Second');

@@ -19,9 +19,7 @@
       <nav class="desktop-category-nav" id="desktop-category-nav"></nav>
       <div class="sidebar-links">
         <button type="button" data-media-action="open-project"><span>□</span>Projects</button>
-        <button type="button" data-placeholder-action="Recipes"><span>▤</span>Recipes</button>
-        <button type="button" data-placeholder-action="Media Library"><span>▱</span>Media Library</button>
-        <button type="button" data-placeholder-action="Settings"><span>⚙</span>Settings</button>
+        <button type="button" data-recipe-action="open"><span>▤</span>Recipes</button>
       </div>
       <div class="sidebar-note"><strong>Local-first by design.</strong><span>Files are signature-checked and previewed from local Blob URLs. Provider links are validated but not fetched.</span></div>
     </aside>
@@ -33,15 +31,14 @@
           <div><h1>Media Studio</h1><p>Create <span>·</span> Edit <span>·</span> Enhance <span>·</span> Deliver</p></div>
         </div>
         <div class="header-tools">
-          <button class="media-button recipe-button" type="button" data-placeholder-action="Recipes"><span aria-hidden="true">▤</span> Recipes</button>
-          <button class="media-button export-button desktop-only" type="button" disabled title="Export becomes available after editing is implemented"><span aria-hidden="true">⇧</span> Export</button>
+          <button class="media-button recipe-button" type="button" data-recipe-action="open"><span aria-hidden="true">▤</span> Recipes</button>
         </div>
       </header>
 
       <section class="command-section" aria-labelledby="command-title">
         <h2 id="command-title" class="visually-hidden">Command Assistant</h2>
         <form class="command-bar" id="command-form"><span class="command-spark" aria-hidden="true">✦</span><input id="command-input" type="text" autocomplete="off" maxlength="220" placeholder="Tell Utility OS what to do…"><button type="submit" aria-label="Plan command">Plan</button></form>
-        <p class="command-example">e.g. “Remove silence, add captions and make a 9:16 reel under 25 MB”</p>
+        <p class="command-example">e.g. “trim from 5s to 20s and run QC”</p>
         <div class="command-message" id="command-message" role="status" aria-live="polite"></div>
         <section class="command-plan hidden" id="command-plan" aria-labelledby="command-plan-title">
           <div class="command-plan-top">
@@ -50,8 +47,8 @@
           </div>
           <div class="command-plan-list" id="command-plan-list"></div>
           <div class="command-plan-footer">
-            <p>Nothing executes until you press Run plan. Blocked actions must be removed or resolved first.</p>
-            <div><button class="media-button" id="command-clear-plan" type="button">Clear</button><button class="media-button" id="command-save-recipe" type="button" disabled>Save as recipe</button><button class="media-button empty-primary" id="command-run-plan" type="button" disabled>Run plan</button></div>
+            <p>Preview applies Planned Actions without creating a Version. Create Version processes only Renderable actions; Working workflow actions remain planned. Blocked actions must be resolved or removed.</p>
+            <div><button class="media-button" id="command-clear-plan" type="button">Clear</button><button class="media-button" id="command-save-recipe" type="button" disabled>Save as recipe</button><button class="media-button" id="command-run-plan" type="button" disabled>Preview</button><button class="media-button empty-primary" id="command-create-version" type="button" disabled>Create Version</button></div>
           </div>
         </section>
       </section>
@@ -62,7 +59,7 @@
         <button class="start-card primary-start" type="button" data-media-action="upload"><span class="start-icon">⇧</span><span><strong>Upload Media</strong><small>Video or audio · stays local</small></span></button>
         <button class="start-card" type="button" data-media-action="paste-link"><span class="start-icon">⌁</span><span><strong>Paste Link</strong><small>YouTube or Vimeo · validate only</small></span></button>
         <button class="start-card" type="button" data-media-action="open-project"><span class="start-icon">□</span><span><strong>Open Project</strong><small>Restore session metadata</small></span></button>
-        <button class="start-card recipe-start" type="button" data-placeholder-action="Use a Recipe"><span class="start-icon">▤</span><span><strong>Use a Recipe</strong><small>Repeatable workflows later</small></span></button>
+        <button class="start-card recipe-start" type="button" data-recipe-action="open"><span class="start-icon">▤</span><span><strong>Use a Recipe</strong><small>Preview or create repeatable Versions</small></span></button>
       </section>
 
       <section class="media-workspace" aria-labelledby="workspace-title">
@@ -77,7 +74,7 @@
             <h3 id="empty-title">Start with your media</h3>
             <p id="empty-copy">Upload a local video or audio file. The same source stays available as you move between Media Studio sections.</p>
             <div class="empty-actions"><button class="media-button empty-primary" type="button" data-media-action="upload">Upload Media</button><button class="media-button" type="button" data-media-action="paste-link">Paste Link</button></div>
-            <p class="phase-note" id="phase-note">Step 2 adds secure source ingestion only. No editing or transcription is enabled yet.</p>
+            <p class="phase-note" id="phase-note">Load local media to preview edits, create real Versions, compare results and export selected Versions. Provider links remain validation-only.</p>
           </div>
 
           <div class="source-stage hidden" id="source-stage">
@@ -85,6 +82,96 @@
             <div class="source-caption"><div><strong id="source-name"></strong><span id="source-summary"></span></div><button class="media-button" type="button" data-media-action="upload">Replace source</button></div>
             <p class="phase-note source-note" id="source-note">Source ready.</p>
           </div>
+
+          <section class="version-shell hidden" id="version-shell" aria-labelledby="version-shell-title">
+            <div class="version-context-bar">
+              <div>
+                <p class="workspace-eyebrow">Version workspace</p>
+                <h3 id="version-shell-title">Source, Preview & Result</h3>
+              </div>
+              <div class="version-context-meta">
+                <span id="version-editing-base">Editing from: Original</span>
+                <span id="version-active-label">Active version: Original</span>
+                <span class="version-state-badge" id="version-preview-badge" data-status="preview">Preview</span>
+              </div>
+              <div class="version-context-actions">
+                <button class="media-button" id="version-history-open" type="button">Version History</button>
+                <button class="media-button empty-primary" id="version-create" type="button">Create Version</button>
+              </div>
+            </div>
+
+            <div class="render-proof-card" aria-label="Media processing worker foundation">
+              <div class="render-proof-copy">
+                <strong>Processing engine</strong>
+                <span id="render-proof-state" data-status="idle">Idle</span>
+                <small>Processing status for real local Version renders. “Verify render engine” remains a no-transform proof; Create Version renders the supported audio/video edit state.</small>
+              </div>
+              <progress id="render-proof-progress" max="100" value="0">0%</progress>
+              <span id="render-proof-elapsed">Elapsed —</span>
+              <div class="render-proof-actions">
+                <button class="media-button" id="render-proof-start" type="button">Verify render engine</button>
+                <button class="media-button" id="render-proof-cancel" type="button" disabled>Cancel</button>
+              </div>
+            </div>
+
+            <div class="version-compare-shell" id="version-compare-shell" data-mode="side-by-side" data-mobile-view="original">
+              <div class="version-compare-toolbar">
+                <div class="version-compare-modes" aria-label="Comparison mode">
+                  <button type="button" data-compare-mode="single">Single</button>
+                  <button class="active" type="button" data-compare-mode="side-by-side">Side-by-side</button>
+                  <button type="button" data-compare-mode="ab" disabled>A/B</button>
+                </div>
+                <label class="version-compare-reference">Compare A
+                  <select id="compare-reference-select">
+                    <option value="original">Original</option>
+                    <option value="parent" disabled>Parent Version</option>
+                  </select>
+                </label>
+                <div class="version-ab-switch" aria-label="A/B source">
+                  <button class="active" type="button" data-ab-side="a">A</button>
+                  <button type="button" data-ab-side="b">B</button>
+                </div>
+                <div class="version-mobile-toggle" aria-label="Mobile comparison">
+                  <button class="active" type="button" data-mobile-compare="original">Original</button>
+                  <button type="button" data-mobile-compare="result" disabled>Result</button>
+                </div>
+                <span id="compare-sync-note">Create or select a Ready Version to enable synchronized comparison.</span>
+              </div>
+
+              <div class="version-compare-grid">
+                <article class="version-compare-pane original-pane">
+                  <div class="version-pane-heading"><div><span id="compare-left-role">A · ORIGINAL</span><strong id="compare-original-name">Original source</strong></div><span class="version-source-lock" id="compare-left-state" data-reference="original">Immutable</span></div>
+                  <div class="version-compare-media" id="compare-original-player"></div>
+                  <div class="version-pane-placeholder" id="compare-reference-placeholder">
+                    <span class="version-pane-icon" aria-hidden="true">▶</span>
+                    <strong id="compare-reference-placeholder-title">Original source</strong>
+                    <small id="compare-reference-placeholder-copy">The immutable source can be played here when locally linked.</small>
+                  </div>
+                  <div class="version-metrics" id="compare-original-metrics"></div>
+                </article>
+
+                <article class="version-compare-pane result-pane">
+                  <div class="version-pane-heading"><div><span>B · PROCESSED</span><strong id="compare-result-title">No rendered result</strong></div><span class="version-result-state" id="compare-result-status" data-status="empty">Not rendered</span></div>
+                  <div class="version-compare-media hidden" id="compare-result-player"></div>
+                  <div class="version-result-empty" id="compare-result-empty">
+                    <span class="version-pane-icon" aria-hidden="true">◇</span>
+                    <strong>No Rendered Version yet</strong>
+                    <small>Create Version to generate a real processed result, or select a Ready Version from Version History.</small>
+                  </div>
+                  <div class="version-metrics hidden" id="compare-result-metrics"></div>
+                  <button class="media-button version-export" id="version-export" type="button" disabled>Export this Version</button>
+                </article>
+              </div>
+
+              <section class="compare-measured-panel hidden" id="compare-measured-panel">
+                <div class="compare-measured-heading">
+                  <div><strong>Measured Original → Result</strong><span>Only validated source/result metadata and recorded operations are shown.</span></div>
+                </div>
+                <div class="compare-measured-grid" id="compare-measured-grid"></div>
+                <div class="compare-change-row"><strong>Recorded changes</strong><div id="compare-change-list"></div></div>
+              </section>
+            </div>
+          </section>
 
           <section class="delivery-panel hidden" id="delivery-panel" aria-labelledby="delivery-title">
             <div class="delivery-heading">
@@ -257,7 +344,7 @@
                 <p class="workspace-eyebrow">Lyrics & Karaoke</p>
                 <h3 id="lyrics-title">Sync lyrics to the playhead</h3>
               </div>
-              <span>Local preview</span>
+              <span>Preview only</span>
             </div>
 
             <div class="lyrics-toolbar">
@@ -308,10 +395,7 @@
                 <strong>Karaoke timing</strong>
                 <p>Standard LRC gives line-level highlighting. Enhanced LRC with explicit &lt;time&gt; word markers enables true word-level highlighting.</p>
                 <p>We do not invent word timings from plain text.</p>
-                <div class="lyrics-future">
-                  <span>Waveform / spectrum</span>
-                  <small>Reserved for the Audio → Video rendering phase.</small>
-                </div>
+
               </aside>
             </div>
 
@@ -334,7 +418,6 @@
             <div class="transcript-toolbar">
               <button class="media-button empty-primary" id="transcript-import" type="button">Import SRT / VTT</button>
               <button class="media-button" id="transcript-add-cue" type="button">+ Add cue</button>
-              <button class="media-button" type="button" disabled title="A local speech-to-text engine has not been loaded yet">Generate transcript</button>
               <label class="transcript-safe-toggle"><input id="transcript-safe-toggle" type="checkbox"> Safe-area preview</label>
             </div>
 
@@ -375,7 +458,7 @@
                 <p class="workspace-eyebrow">Audio foundation</p>
                 <h3 id="audio-editor-title">Trim, level & fades</h3>
               </div>
-              <span>Preview-safe</span>
+              <span>Renderable</span>
             </div>
 
             <div class="audio-editor-toolbar">
@@ -420,13 +503,7 @@
               <button class="media-button" id="audio-reset-edits" type="button">Reset audio edits</button>
             </div>
 
-            <div class="audio-future-actions" aria-label="Planned Audio Studio actions">
-              <button type="button" disabled>Clean Voice</button>
-              <button type="button" disabled>Remove Silence</button>
-              <button type="button" disabled>Normalize</button>
-              <button type="button" disabled>Separate Stems</button>
-            </div>
-            <p class="audio-editor-note">Trim, volume and fades affect local preview/project state only. Cleanup, normalization, stems and rendered export are not enabled yet.</p>
+            <p class="audio-editor-note">Trim, volume, fade-in and fade-out remain non-destructive Preview state until Create Version. Step 5 renders all changed audio settings together into one Version.</p>
           </section>
 
           <section class="video-editor-panel hidden" id="video-editor-panel" aria-labelledby="video-editor-title">
@@ -435,13 +512,13 @@
                 <p class="workspace-eyebrow">Video foundation</p>
                 <h3 id="video-editor-title">Trim & preview</h3>
               </div>
-              <span>Non-destructive</span>
+              <span>Renderable</span>
             </div>
 
             <div class="video-editor-toolbar">
               <button class="video-tool-button" id="video-undo" type="button" disabled>↶ Undo</button>
               <button class="video-tool-button" id="video-redo" type="button" disabled>↷ Redo</button>
-              <label class="video-rate-control">Preview speed
+              <label class="video-rate-control">Playback speed
                 <select id="video-playback-rate">
                   <option value="0.5">0.5×</option>
                   <option value="0.75">0.75×</option>
@@ -451,6 +528,15 @@
                   <option value="2">2×</option>
                 </select>
               </label>
+              <label class="video-rate-control">Output aspect
+                <select id="video-output-aspect">
+                  <option value="original" selected>Original</option>
+                  <option value="16:9">16:9 landscape</option>
+                  <option value="9:16">9:16 vertical</option>
+                  <option value="1:1">1:1 square</option>
+                </select>
+              </label>
+              <label class="video-mute-control"><input id="video-mute" type="checkbox"> Mute output</label>
             </div>
 
             <div class="video-trim-grid">
@@ -474,9 +560,9 @@
 
             <div class="video-editor-actions">
               <button class="media-button empty-primary" id="video-play-selection" type="button">Play selection</button>
-              <button class="media-button" id="video-reset-edits" type="button">Reset trim</button>
+              <button class="media-button" id="video-reset-edits" type="button">Reset video edits</button>
             </div>
-            <p class="video-editor-note">These controls change the browser preview and project edit state only. Export rendering is not enabled in this foundation step.</p>
+            <p class="video-editor-note">Trim, Playback speed, Mute output and Output aspect remain non-destructive Preview state until Create Version. Aspect conversion uses a safe contain-fit with black padding where needed—no automatic crop or subject reframe.</p>
           </section>
 
           <div class="timeline-shell">
@@ -488,14 +574,14 @@
         </div>
 
         <aside class="context-panel" aria-label="Contextual tools">
-          <div class="context-tabs"><button class="active" type="button">Quick Actions</button><button type="button" disabled>Media Info</button></div>
+          <div class="context-tabs"><button class="active" type="button">Project tools</button></div>
           <div class="context-empty" id="context-empty"><span class="context-icon" aria-hidden="true">◇</span><strong>No media loaded</strong><p>Securely load a local source to inspect basic media metadata.</p></div>
           <div class="media-info-panel hidden" id="media-info-panel"></div>
           <div class="context-recipes">
-            <div class="context-heading"><strong>Recipes</strong><button type="button" data-placeholder-action="Recipes">View all</button></div>
+            <div class="context-heading"><strong>Recipes</strong><button type="button" data-recipe-action="open">View all</button></div>
             <div class="recipe-row"><span>▶</span><div><strong>YouTube Ready</strong><small>Delivery preset</small></div></div>
             <div class="recipe-row"><span>▯</span><div><strong>Instagram Reel</strong><small>9:16 social output</small></div></div>
-            <div class="recipe-row"><span>◉</span><div><strong>Podcast Clean</strong><small>Dialogue workflow</small></div></div>
+            <div class="recipe-row"><span>✓</span><div><strong>Client Delivery</strong><small>QC + delivery workflow</small></div></div>
           </div>
         </aside>
       </section>
@@ -508,9 +594,17 @@
     <a href="/"><span>⌂</span><small>Home</small></a>
     <a class="active" href="/media"><span>▣</span><small>Media Studio</small></a>
     <button type="button" data-media-action="open-project"><span>□</span><small>Projects</small></button>
-    <button type="button" data-placeholder-action="Media Library"><span>▱</span><small>Library</small></button>
-    <button type="button" data-placeholder-action="Recipes"><span>▤</span><small>Recipes</small></button>
+    <button type="button" data-recipe-action="open"><span>▤</span><small>Recipes</small></button>
   </nav>
+
+  <dialog class="media-dialog version-history-dialog" id="version-history-dialog" aria-labelledby="version-history-title">
+    <div class="version-history-body">
+      <div class="dialog-heading"><div><p class="workspace-eyebrow">Project artifacts</p><h2 id="version-history-title">Version History</h2></div><button id="version-history-close" class="dialog-close" type="button" aria-label="Close">×</button></div>
+      <p class="version-history-intro">Original is immutable. Rendered Versions are explicit project artifacts and are separate from Undo/Redo edit-state history.</p>
+      <div class="version-history-list" id="version-history-list"></div>
+      <div class="version-history-empty" id="version-history-empty"><strong>No Rendered Versions yet</strong><span>Adjust a Renderable edit, then choose Create Version. A Version appears only after real local processing succeeds.</span></div>
+    </div>
+  </dialog>
 
   <dialog class="media-dialog recipe-dialog" id="recipe-dialog" aria-labelledby="recipe-dialog-title">
     <div class="recipe-dialog-body">
