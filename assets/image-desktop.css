@@ -254,3 +254,107 @@
     margin-top: 0;
   }
 }
+
+
+/* Pass 2: one dominant desktop canvas with explicit view modes. */
+.desktop-canvas-toolbar { display: none; }
+
+@media (min-width: 1120px) {
+  .image-studio-body.has-image-workspace .desktop-canvas-toolbar {
+    grid-column: 1;
+    display: flex;
+    min-height: 42px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 2px;
+  }
+
+  .image-studio-body .desktop-canvas-toolbar > strong {
+    font-size: 11px;
+    letter-spacing: .01em;
+  }
+
+  .image-studio-body .desktop-view-switch {
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid #dfe5ee;
+    border-radius: 9px;
+    background: #fff;
+  }
+
+  .image-studio-body .desktop-view-button {
+    min-height: 30px;
+    border: 0;
+    border-radius: 6px;
+    padding: 0 10px;
+    background: transparent;
+    color: #6b7280;
+    font-size: 10px;
+    font-weight: 750;
+    cursor: pointer;
+  }
+
+  .image-studio-body .desktop-view-button.active {
+    background: #111827;
+    color: #fff;
+  }
+
+  .image-studio-body .editor-panel {
+    grid-template-rows: auto auto;
+  }
+
+  .image-studio-body .desktop-canvas-toolbar {
+    grid-row: 1;
+  }
+
+  .image-studio-body .preview-grid {
+    grid-row: 2;
+    grid-template-columns: minmax(0,1fr);
+  }
+
+  .image-studio-body .control-card {
+    grid-row: 1 / span 40;
+  }
+
+  .image-studio-body .preview-grid .preview-card {
+    width: 100%;
+  }
+
+  .image-studio-body .preview-grid[data-desktop-view="edited"] .original-preview-card,
+  .image-studio-body .preview-grid[data-desktop-view="original"] .output-preview-card,
+  .image-studio-body .preview-grid.desktop-compare-active {
+    display: none;
+  }
+
+  .image-studio-body .preview-grid[data-desktop-view="original"] .original-preview-card,
+  .image-studio-body .preview-grid[data-desktop-view="edited"] .output-preview-card {
+    display: block;
+  }
+
+  .image-studio-body .preview-stage {
+    min-height: 560px;
+    max-height: calc(100vh - 230px);
+  }
+
+  .image-studio-body .preview-stage img {
+    max-height: calc(100vh - 285px);
+    object-fit: contain;
+  }
+
+  .image-studio-body #edit-comparison.desktop-compare-requested:not(.hidden) {
+    grid-column: 1;
+    grid-row: 2;
+    display: block;
+    margin-top: 0;
+  }
+
+  .image-studio-body #edit-comparison:not(.desktop-compare-requested) {
+    display: none !important;
+  }
+
+  .image-studio-body .comparison-stage {
+    min-height: 560px;
+    max-height: calc(100vh - 230px);
+  }
+}
