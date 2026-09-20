@@ -1184,6 +1184,9 @@ async function generateCompilerPack() {
   if(els.compilerFit.value==='smart'&&!item.smartCrop?.analyzed) await runSmartCropAnalysis(item,{quiet:true});
   clearCompilerGenerated(); setBusy(true); updateCompilerState(); let totalBytes=0; const failures=[], generated=[];
   const base=collectSettings(); base.layers=layersForItem(item); base.cleanup=cleanupForItem(item); base.textReplacements=item.textReplacements||[];
+  // Pack composition must never inherit an unrelated Crop-tool selection.
+  // Safe Fit is a hard invariant: render the complete source into the target frame.
+  base.crop={mode:'none'}; base.smartCrop={enabled:false,focusX:.5,focusY:.5};
   try {
     for(let index=0;index<outputs.length;index++){
       const spec=outputs[index]; els.compilerStatus.textContent='Rendering preview '+(index+1)+'/'+outputs.length+': '+spec.label+'…';
@@ -1199,7 +1202,7 @@ async function generateCompilerPack() {
       const ext=result.value.kind==='jpeg'?'jpg':result.value.kind, baseName=item.displayName||item.file.name.replace(/\.[^.]+$/,'');
       const name=exportFilename(baseName+'.'+ext,ext,{suffix:'-'+spec.id,preserveOriginal:true});
       const blob=new Blob([result.value.buffer],{type:'image/'+result.value.kind}), url=trackObjectUrl(blob);
-      generated.push({spec,name,buffer:result.value.buffer,blob,url});
+      generated.push({spec,name,buffer:result.value.buffer,blob,url,fitMode:els.compilerFit.value});
     }
     state.compilerGenerated=generated; renderCompilerResults();
     els.compilerStatus.textContent=generated.length?generated.length+' previews ready. Review before downloading.':(failures.length?'No previews completed.':'No previews completed.');
@@ -1222,15 +1225,36 @@ function renderCompilerResults(){
   if(els.compilerResultsTitle) els.compilerResultsTitle.textContent='Social Asset Pack · '+assets.length+' asset'+(assets.length===1?'':'s')+' generated';
   setCompilerView('results');
   for(const asset of assets){
-    const card=document.createElement('article'); card.className='compiler-result-card';
-    const frame=document.createElement('div'); frame.className='compiler-result-frame'; frame.style.aspectRatio=asset.spec.width+'/'+asset.spec.height;
+    const card=document.createElement('article'); card.className='compiler-result-card'; card.tabIndex=0;
+    const frame=document.createElement('div'); frame.className='compiler-result-frame';
     const img=document.createElement('img'); img.src=asset.url; img.alt=asset.spec.label+' preview'; frame.append(img);
     const meta=document.createElement('div'); meta.className='compiler-result-meta'; const copy=document.createElement('div');
-    const title=document.createElement('strong'); title.textContent=asset.spec.label; const detail=document.createElement('span'); detail.textContent=asset.spec.width+'×'+asset.spec.height+' · '+formatBytes(asset.blob.size); copy.append(title,detail);
-    const dl=document.createElement('button'); dl.type='button'; dl.className='secondary-button'; dl.textContent='Download'; dl.addEventListener('click',()=>triggerDownload(asset.url,asset.name));
+    const title=document.createElement('strong'); title.textContent=asset.spec.label;
+    const detail=document.createElement('span'); detail.textContent=asset.spec.width+'×'+asset.spec.height+' · '+formatBytes(asset.blob.size);
+    const safety=document.createElement('span'); safety.className='compiler-fit-status '+(asset.fitMode==='contain'?'safe':'cropped');
+    safety.textContent=asset.fitMode==='contain'?'✓ Full image preserved':'⚠ Fill mode may crop';
+    copy.append(title,detail,safety);
+    const dl=document.createElement('button'); dl.type='button'; dl.className='secondary-button'; dl.textContent='Download'; dl.addEventListener('click',(event)=>{event.stopPropagation();triggerDownload(asset.url,asset.name);});
+    const open=()=>openCompilerAsset(asset); card.addEventListener('click',open); card.addEventListener('keydown',(event)=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();open();}});
     meta.append(copy,dl); card.append(frame,meta); els.compilerResults.append(card);
   }
 }
+function openCompilerAsset(asset){
+  let dialog=document.getElementById('compiler-asset-dialog');
+  if(!dialog){dialog=document.createElement('dialog');dialog.id='compiler-asset-dialog';dialog.className='compiler-asset-dialog';document.body.append(dialog);}
+  dialog.replaceChildren();
+  const shell=document.createElement('div'); shell.className='compiler-asset-detail';
+  const top=document.createElement('div'); top.className='compiler-asset-detail-head';
+  const close=document.createElement('button'); close.type='button'; close.className='text-button'; close.textContent='← All assets'; close.addEventListener('click',()=>dialog.close());
+  const info=document.createElement('div'); const title=document.createElement('h3'); title.textContent=asset.spec.label;
+  const detail=document.createElement('p'); detail.className='microcopy'; detail.textContent=asset.spec.width+'×'+asset.spec.height+' · '+formatBytes(asset.blob.size)+' · '+(asset.fitMode==='contain'?'Full image preserved':'Fill mode may crop');
+  info.append(title,detail);
+  const dl=document.createElement('button'); dl.type='button'; dl.className='primary-button'; dl.textContent='Download'; dl.addEventListener('click',()=>triggerDownload(asset.url,asset.name));
+  top.append(close,info,dl);
+  const stage=document.createElement('div'); stage.className='compiler-asset-detail-stage'; const img=document.createElement('img');img.src=asset.url;img.alt=asset.spec.label+' full preview';stage.append(img);
+  shell.append(top,stage);dialog.append(shell);dialog.showModal();
+}
+
 async function downloadCompilerPack(){
   const assets=state.compilerGenerated||[]; if(!assets.length||state.busy)return; setBusy(true); els.compilerStatus.textContent='Packing '+assets.length+' assets…';
   try{

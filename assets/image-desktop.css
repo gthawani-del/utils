@@ -1733,3 +1733,59 @@
   .image-studio-body[data-desktop-workspace="output"] .action-row.export-section{display:none!important}
   .image-studio-body[data-desktop-workspace="output"] .desktop-edit-commit{display:none!important}
 }
+
+
+/* Pass 7.9: fixed Asset Pack review canvas + Safe Fit status. */
+@media (min-width:1120px){
+  .image-studio-body .compiler-results-view{
+    height:calc(100vh - 150px);
+    min-height:520px;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr);
+    overflow:hidden;
+  }
+  .image-studio-body .compiler-results-view.hidden{display:none}
+  .image-studio-body .compiler-results{
+    display:grid;
+    grid-auto-flow:column;
+    grid-auto-columns:280px;
+    grid-template-rows:repeat(2,minmax(0,1fr));
+    gap:14px;
+    height:100%;
+    min-height:0;
+    margin:14px 0 0;
+    padding:0 2px 12px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scroll-snap-type:x proximity;
+    align-items:stretch;
+  }
+  .image-studio-body .compiler-result-card{
+    height:100%;
+    min-height:0;
+    display:grid;
+    grid-template-rows:minmax(0,1fr) auto;
+    scroll-snap-align:start;
+    cursor:pointer;
+  }
+  .image-studio-body .compiler-result-card:focus-visible{outline:2px solid #668cf0;outline-offset:2px}
+  .image-studio-body .compiler-result-frame{
+    min-height:0;
+    max-height:none;
+    height:100%;
+    padding:12px;
+    background:#eef1f5;
+  }
+  .image-studio-body .compiler-result-frame img{width:100%;height:100%;object-fit:contain}
+  .image-studio-body .compiler-result-meta{min-height:72px}
+  .image-studio-body .compiler-fit-status{font-size:10px;font-weight:700}
+  .image-studio-body .compiler-fit-status.safe{color:#18794e}
+  .image-studio-body .compiler-fit-status.cropped{color:#9a6700}
+  .compiler-asset-dialog{width:min(1100px,92vw);height:min(820px,90vh);padding:0;border:0;border-radius:14px;box-shadow:0 24px 80px rgba(15,23,42,.28)}
+  .compiler-asset-dialog::backdrop{background:rgba(15,23,42,.62)}
+  .compiler-asset-detail{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr);background:#fff}
+  .compiler-asset-detail-head{display:grid;grid-template-columns:140px minmax(0,1fr) 140px;align-items:center;gap:18px;padding:16px 18px;border-bottom:1px solid #e3e8ef}
+  .compiler-asset-detail-head h3{margin:0 0 3px;font-size:16px}.compiler-asset-detail-head p{margin:0}
+  .compiler-asset-detail-stage{min-height:0;display:flex;align-items:center;justify-content:center;padding:20px;background:#eef1f5;overflow:hidden}
+  .compiler-asset-detail-stage img{max-width:100%;max-height:100%;object-fit:contain}
+}
