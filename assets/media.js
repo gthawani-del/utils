@@ -11,7 +11,7 @@ import { initTranscriptWorkspace } from '/lib/media/transcript/workspace.js';
 import { createAudioEdits, audioSelectionDuration, normalizeAudioEdits, previewVolumeAt, updateAudioEdits } from '/lib/media/audio/edits.js';
 import { createVideoEdits, normalizeVideoEdits, selectionDuration, updateVideoEdits } from '/lib/media/video/edits.js';
 import { createTimeline, splitTimeline, removeTimelineSegment, moveTimelineSegment, timelineDuration } from '/lib/media/video/timeline.js';
-import { renderVideoWebM } from '/lib/media/video/render.js';
+import { renderVideo, supportedVideoExportFormats } from '/lib/media/video/render.js';
 
 const categories = [
   { id: 'video', name: 'Video Editor', short: 'Video Editor', icon: '▣', hint: 'Edit, trim, effects, transitions', copy: 'Upload or open a project to begin editing video in the shared Media Studio workspace.' },
@@ -332,6 +332,21 @@ for (const [id, offset] of [['#video-move-left', -1], ['#video-move-right', 1]])
   });
 }
 
+function refreshVideoExportFormats() {
+  const select = document.querySelector('#video-export-format');
+  const supported = supportedVideoExportFormats();
+  const mp4 = supported.some(item => item.format === 'mp4');
+  const webm = supported.some(item => item.format === 'webm');
+  select.querySelector('option[value="mp4"]').disabled = !mp4;
+  select.querySelector('option[value="webm"]').disabled = !webm;
+  select.value = mp4 ? 'mp4' : 'webm';
+  document.querySelector('#video-export-render').disabled = !mp4 && !webm;
+  document.querySelector('#video-export-status').textContent = mp4
+    ? 'MP4 available through native browser recording. Export runs at playback speed.'
+    : webm ? 'MP4 recording unavailable in this browser. WebM is available.'
+    : 'Video recording is unavailable in this browser.';
+}
+refreshVideoExportFormats();
 let videoRenderBusy = false;
 document.querySelector('#video-export-render').addEventListener('click', async () => {
   const status = document.querySelector('#video-export-status');
@@ -345,10 +360,12 @@ document.querySelector('#video-export-render').addEventListener('click', async (
   if (segments.some(segment => segment.end - segment.start <= 0.001)) { status.textContent = 'Select a non-empty video range.'; return; }
   videoRenderBusy = true;
   button.disabled = true;
-  status.textContent = 'Preparing local WebM export…';
+  const format = document.querySelector('#video-export-format').value;
+  status.textContent = 'Preparing local ' + format.toUpperCase() + ' export…';
   try {
     currentPlayer.pause();
-    const blob = await renderVideoWebM({
+    const blob = await renderVideo({
+      format,
       sourceUrl: source.objectUrl,
       segments,
       width: source.width,
@@ -361,12 +378,12 @@ document.querySelector('#video-export-render').addEventListener('click', async (
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = (source.name || 'video').replace(/\\.[^.]+$/, '').replace(/[^a-z0-9_-]/gi, '-') + '-edited.webm';
+    anchor.download = (source.name || 'video').replace(/\\.[^.]+$/, '').replace(/[^a-z0-9_-]/gi, '-') + '-edited.' + format;
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
-    status.textContent = 'WebM exported (' + formatBytes(blob.size) + '). Check the downloaded file before sharing.';
+    status.textContent = format.toUpperCase() + ' exported (' + formatBytes(blob.size) + '). Check playback, audio and duration before sharing.';
   } catch (error) {
     status.textContent = 'Export failed: ' + (error?.message || 'Unknown browser error');
   } finally {
