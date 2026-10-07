@@ -373,6 +373,7 @@ document.querySelector('#video-match-clips').addEventListener('click', async () 
   let audioContext;
   const stats = {};
   try {
+    if (!ctx) throw new Error('Canvas analysis unavailable');
     for (const segment of videoSegments) {
       if (stats[segment.sourceId]) continue;
       const source = videoSources[segment.sourceId];
@@ -431,7 +432,7 @@ document.querySelector('#video-detect-scenes').addEventListener('click', async (
   try {
     video.preload = 'auto'; video.muted = true; video.src = project.source.objectUrl;
     await new Promise((resolve, reject) => { video.onloadedmetadata = resolve; video.onerror = () => reject(new Error('Unable to decode video')); });
-    for (let time = 0; time < project.source.duration; time += 0.5) {
+    for (let time = 0.05; time < project.source.duration; time += 0.5) {
       await new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('Frame seek timed out')), 8000);
         video.onseeked = () => { clearTimeout(timer); resolve(); };
