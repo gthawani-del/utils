@@ -69,9 +69,12 @@ timeline.append(timelineDisplay);
 const showPanel = (tab, title, focusSelector) => {
   document.querySelector('[data-video-tool="' + tab + '"]')?.click();
   $('#studio-v2-inspector-title').textContent = title;
+  shell.dataset.activeTool = currentTool;
   shell.classList.add('studio-v2-inspector-open');
+  const inspectorBody = $('#studio-v2-inspector');
+  inspectorBody.scrollTop = 0;
   document.querySelectorAll('[data-studio-tool]').forEach(button => button.classList.toggle('active', button.dataset.studioTool === currentTool));
-  if (focusSelector) requestAnimationFrame(() => $(focusSelector)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+  // A single contextual tool remains visible; never scroll the whole editor.
 };
 let currentTool = 'edit';
 const toolTargets = {
@@ -90,6 +93,7 @@ document.querySelectorAll('[data-studio-tool]').forEach(button => button.addEven
   showPanel(tab, title, focus);
 }));
 $('#studio-v2-close').addEventListener('click', () => shell.classList.remove('studio-v2-inspector-open'));
+document.addEventListener('keydown', event => { if (event.key === 'Escape') shell.classList.remove('studio-v2-inspector-open'); });
 $('#studio-v2-export').addEventListener('click', () => {
   currentTool = 'reframe';
   showPanel('export', 'Export video', '.video-export-panel');
