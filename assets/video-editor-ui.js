@@ -31,6 +31,7 @@ shell.innerHTML = `
           <button type="button" id="studio-v2-backward" aria-label="Back five seconds">|◀</button>
           <button type="button" id="studio-v2-play" aria-label="Play or pause">▶</button>
           <button type="button" id="studio-v2-forward" aria-label="Forward five seconds">▶|</button>
+          <button type="button" id="studio-v3-fullscreen" aria-label="Fullscreen preview">⛶</button>
         </div>
       </div>
       <section class="studio-v2-timeline" aria-label="Video timeline"></section>
@@ -116,10 +117,16 @@ $('#studio-v2-add-clips').addEventListener('click', () => {
   if (target) target.click();
 });
 const player = () => $('#source-player-wrap video');
+$('#studio-v3-fullscreen').addEventListener('click', async () => {
+  const video = player();
+  if (!video) return;
+  try { if (typeof video.webkitEnterFullscreen === 'function') video.webkitEnterFullscreen(); else if (video.requestFullscreen) await video.requestFullscreen(); } catch { /* unsupported on this device */ }
+});
 function syncPreview() {
   const video = player();
   if (!video) return;
   video.playsInline = true;
+  video.controls = false;
   video.preload = 'auto';
   video.style.display = 'block';
   video.style.visibility = 'visible';
