@@ -720,6 +720,28 @@ if (document.querySelector('#video-lyrics-import')) document.querySelector('#vid
     status.textContent = 'Imported ' + Math.min(cues.length,remaining) + ' synchronized lyric lines with karaoke styling.';
   } catch (error) { status.textContent = error.message; }
 });
+// Dedicated editor dispatches recognized word cues; reuse existing text/export engine.
+document.addEventListener('utilityos:recognized-words', event => {
+  if (!hasEditableVideo()) return;
+  const words = Array.isArray(event.detail?.words) ? event.detail.words : [];
+  const duration = Number(project.source.duration);
+  let count = 0;
+  for (let i = 0; i < words.length && count < 100 && videoTextCues.length < 100; i += 5) {
+    const group = words.slice(i, i + 5);
+    if (!group.length) continue;
+    try {
+      const text = group.map(word => word.text).join(' ').trim();
+      const cue = normalizeTextCue({
+        text, start: group[0].start, end: group.at(-1).end,
+        words: group, effect: 'pop', template: event.detail.mode === 'lyrics' ? 'rhythm' : 'clean',
+        beatReactive: event.detail.mode === 'lyrics', beats: videoBeatTimes
+      }, duration);
+      videoTextCues.push(cue); count++;
+    } catch { /* Ignore invalid recognition spans */ }
+  }
+  renderKineticCues(); syncKineticPreview();
+  document.dispatchEvent(new CustomEvent('utilityos:captions-ready', { detail: { count } }));
+});
 let videoRenderBusy = false;
 document.querySelector('#video-export-render').addEventListener('click', async () => {
   const status = document.querySelector('#video-export-status');
