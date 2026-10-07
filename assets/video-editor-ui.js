@@ -16,6 +16,7 @@ shell.innerHTML = `
     <button type="button" class="studio-v2-header-button" id="studio-v2-import">+ Add</button>
     <button type="button" class="studio-v2-export" id="studio-v2-export">Export</button>
   </header>
+  <p class="studio-v2-preview-error" id="studio-v2-preview-error" role="status"></p>
   <div class="studio-v2-layout">
     <aside class="studio-v2-library">
       <h3>Project media</h3><p>Imported clips and source media</p>
@@ -121,6 +122,7 @@ function syncPreview() {
   };
   video.addEventListener('loadeddata', revealFirstFrame, { once: true });
   video.addEventListener('loadedmetadata', update, { once: true });
+  video.addEventListener('loadeddata', () => { const status = $('#studio-v2-preview-error'); if (status) status.textContent = ''; }, { once: true });
   video.addEventListener('error', () => {
     const status = $('#studio-v2-preview-error');
     if (status) status.textContent = 'Preview cannot decode this file. Try an H.264 MP4 or WebM.';
