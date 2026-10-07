@@ -368,7 +368,7 @@ document.querySelector('#video-remove-silence').addEventListener('click', async 
     status.textContent = 'Silence removal currently requires one unsplit source clip.';
     return;
   }
-  if (project.source.file.size > 150 * 1024 * 1024) { status.textContent = 'Audio analysis limited to source files under 150 MB.'; return; }
+  if (project.source.file.size > 50 * 1024 * 1024 || project.source.duration > 600) { status.textContent = 'Silence analysis is limited to videos under 50 MB and 10 minutes to protect mobile memory.'; return; }
   button.disabled = true;
   status.textContent = 'Decoding audio locally…';
   let context;
