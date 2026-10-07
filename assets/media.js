@@ -223,6 +223,7 @@ function hasEditableVideo() {
 function updateVideoEditorVisibility() {
   const visible = hasEditableVideo();
   videoEditorPanel.classList.toggle('hidden', !visible);
+  document.querySelector('#video-empty-workspace').classList.toggle('hidden', visible || project.activeCategory !== 'video');
   timelineStatus.textContent = visible ? 'Video ready' : 'Source preview';
   document.querySelector('#video-timeline-controls').classList.toggle('hidden', !visible);
   renderVideoSegments();
