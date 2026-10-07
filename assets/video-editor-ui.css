@@ -229,3 +229,20 @@
   .video-editor-route .studio-v2-inspector-head { gap:8px; }
   .video-editor-route .studio-v3-sheet-actions #studio-v2-close { display:none; }
 }
+
+/* Timeline-centered editing. Zoom applies to the actual thumbnail/waveform lanes. */
+.video-editor-route .studio-v3-timeline-control { display:flex; align-items:center; gap:8px; margin-top:6px; }
+.video-editor-route .studio-v3-timeline-control .studio-v2-seek-label { flex:1; min-width:0; margin:0; }
+.video-editor-route .studio-v3-zoom { display:flex; align-items:center; gap:4px; flex:0 0 auto; color:#aabbd0; font-size:11px; }
+.video-editor-route .studio-v3-zoom button { width:34px; min-height:44px; border:1px solid #34465e; border-radius:8px; color:#e2e8f0; background:#1b293b; font-size:18px; }
+.video-editor-route .studio-v2-video-track { scroll-behavior:smooth; touch-action:pan-x; }
+.video-editor-route .studio-v2-video-track .studio-v2-thumb { flex-basis:calc(56px * var(--timeline-zoom, 1)); }
+.video-editor-route .studio-v2-audio-track .studio-v2-wave-bar { min-width:calc(2px * var(--timeline-zoom, 1)); }
+.video-editor-route .studio-v2-segments button { cursor:grab; user-select:none; }
+.video-editor-route .studio-v2-segments button:active { cursor:grabbing; }
+@media(max-width:759px) {
+  .video-editor-route .studio-v2-timeline .timeline-toolbar { margin-bottom:5px; }
+  .video-editor-route .studio-v2-track { grid-template-columns:38px minmax(0,1fr); gap:5px; }
+  .video-editor-route .studio-v2-seek-label input { min-height:36px; }
+  .video-editor-route .studio-v3-zoom button { width:34px; }
+}
