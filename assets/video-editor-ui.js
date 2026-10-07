@@ -70,7 +70,7 @@ timelineDisplay.innerHTML = `
   <div class="studio-v2-track"><span>Video</span><div class="studio-v2-track-content studio-v2-video-track" id="studio-v2-video-track"><span>Import clips to populate timeline</span></div></div>
   <div class="studio-v2-track"><span>Audio</span><div class="studio-v2-track-content studio-v2-audio-track" id="studio-v2-audio-track"><span>Audio waveform available after import</span></div></div>
   <div class="studio-v3-timeline-control"><label class="studio-v2-seek-label"><span class="studio-v2-visually-hidden">Timeline playhead</span><input id="studio-v2-seek" type="range" min="0" max="1000" value="0" aria-label="Scrub video timeline"></label><div class="studio-v3-zoom"><button type="button" id="studio-v3-zoom-out" aria-label="Zoom out timeline">−</button><span id="studio-v3-zoom-label">100%</span><button type="button" id="studio-v3-zoom-in" aria-label="Zoom in timeline">+</button></div></div>
-  <div class="studio-v2-segments" id="studio-v2-segments" aria-label="Clip sequence"></div>`;
+  <div class="studio-v2-segments" id="studio-v2-segments" aria-label="Clip sequence"></div><span class="studio-v2-visually-hidden" id="studio-v2-reorder-status" role="status"></span>`;
 timeline.append(timelineDisplay);
 
 const showPanel = (tab, title, focusSelector) => {
@@ -289,6 +289,25 @@ function update() {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = sourceButton.textContent;
       button.addEventListener('click', () => { sourceButton.click(); currentTool = 'edit'; showPanel('edit', 'Edit clip', '.video-segments'); });
+      let touchStart = null;
+      button.addEventListener('touchstart', event => {
+        if (event.touches.length !== 1) return;
+        touchStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+      }, { passive: true });
+      button.addEventListener('touchend', event => {
+        if (!touchStart || !event.changedTouches.length) return;
+        const deltaX = event.changedTouches[0].clientX - touchStart.x;
+        const deltaY = event.changedTouches[0].clientY - touchStart.y;
+        touchStart = null;
+        if (Math.abs(deltaX) < 48 || Math.abs(deltaX) < Math.abs(deltaY) * 1.4) return;
+        sourceButton.click();
+        const move = $(deltaX > 0 ? '#video-move-right' : '#video-move-left');
+        if (move && !move.disabled) {
+          move.click();
+          const message = $('#studio-v2-reorder-status');
+          if (message) message.textContent = 'Clip moved ' + (deltaX > 0 ? 'right' : 'left');
+        }
+      }, { passive: true });
       button.setAttribute('draggable', 'true');
       button.addEventListener('dragstart', event => { event.dataTransfer?.setData('text/plain', String([...strip.children].indexOf(button))); });
       button.addEventListener('dragover', event => event.preventDefault());
