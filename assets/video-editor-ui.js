@@ -64,7 +64,7 @@ timelineDisplay.innerHTML = `
   <div class="studio-v2-track"><span>Text</span><div class="studio-v2-track-content" id="studio-v2-text-track"></div></div>
   <div class="studio-v2-track"><span>Video</span><div class="studio-v2-track-content studio-v2-video-track" id="studio-v2-video-track"><span>Import clips to populate timeline</span></div></div>
   <div class="studio-v2-track"><span>Audio</span><div class="studio-v2-track-content studio-v2-audio-track" id="studio-v2-audio-track"><span>Audio waveform available after import</span></div></div>
-  <label class="studio-v2-seek-label"><span class="studio-v2-visually-hidden">Timeline playhead</span><input id="studio-v2-seek" type="range" min="0" max="1000" value="0" aria-label="Scrub video timeline"></label>
+  <div class="studio-v3-timeline-control"><label class="studio-v2-seek-label"><span class="studio-v2-visually-hidden">Timeline playhead</span><input id="studio-v2-seek" type="range" min="0" max="1000" value="0" aria-label="Scrub video timeline"></label><div class="studio-v3-zoom"><button type="button" id="studio-v3-zoom-out" aria-label="Zoom out timeline">−</button><span id="studio-v3-zoom-label">100%</span><button type="button" id="studio-v3-zoom-in" aria-label="Zoom in timeline">+</button></div></div>
   <div class="studio-v2-segments" id="studio-v2-segments" aria-label="Clip sequence"></div>`;
 timeline.append(timelineDisplay);
 
@@ -141,6 +141,30 @@ function syncPreview() {
   if (video.readyState >= 2) revealFirstFrame();
 }
 
+let timelineZoom = 1;
+function setTimelineZoom(value) {
+  timelineZoom = Math.max(1, Math.min(4, value));
+  $('#studio-v3-zoom-label').textContent = Math.round(timelineZoom * 100) + '%';
+  $('#studio-v2-video-track').style.setProperty('--timeline-zoom', String(timelineZoom));
+  $('#studio-v2-audio-track').style.setProperty('--timeline-zoom', String(timelineZoom));
+}
+$('#studio-v3-zoom-in').addEventListener('click', () => setTimelineZoom(timelineZoom + .5));
+$('#studio-v3-zoom-out').addEventListener('click', () => setTimelineZoom(timelineZoom - .5));
+let touchDistance = null;
+$('#studio-v2-video-track').addEventListener('touchstart', event => {
+  if (event.touches.length === 2) touchDistance = Math.abs(event.touches[0].clientX - event.touches[1].clientX);
+}, { passive: true });
+$('#studio-v2-video-track').addEventListener('touchend', event => {
+  if (event.touches.length < 2) touchDistance = null;
+}, { passive: true });
+$('#studio-v2-video-track').addEventListener('touchmove', event => {
+  if (event.touches.length !== 2 || touchDistance === null) return;
+  const distance = Math.abs(event.touches[0].clientX - event.touches[1].clientX);
+  if (Math.abs(distance - touchDistance) > 24) {
+    setTimelineZoom(timelineZoom + (distance > touchDistance ? .25 : -.25));
+    touchDistance = distance;
+  }
+}, { passive: true });
 $('#studio-v2-seek').addEventListener('input', event => {
   const video = player();
   if (video && Number.isFinite(video.duration)) video.currentTime = Number(event.target.value) / 1000 * video.duration;
@@ -224,6 +248,20 @@ function update() {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = sourceButton.textContent;
       button.addEventListener('click', () => { sourceButton.click(); currentTool = 'edit'; showPanel('edit', 'Edit clip', '.video-segments'); });
+      button.setAttribute('draggable', 'true');
+      button.addEventListener('dragstart', event => { event.dataTransfer?.setData('text/plain', String([...strip.children].indexOf(button))); });
+      button.addEventListener('dragover', event => event.preventDefault());
+      button.addEventListener('drop', event => {
+        event.preventDefault();
+        const from = Number(event.dataTransfer?.getData('text/plain'));
+        const to = [...strip.children].indexOf(button);
+        if (!Number.isInteger(from) || from === to) return;
+        const original = [...list.querySelectorAll('.video-segment-item')];
+        original[from]?.click();
+        const direction = from < to ? '#video-move-right' : '#video-move-left';
+        const steps = Math.abs(to - from);
+        for (let n = 0; n < steps; n++) { const move = $(direction); if (!move || move.disabled) break; move.click(); }
+      });
       strip.append(button);
     }
   }
