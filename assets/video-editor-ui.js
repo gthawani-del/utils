@@ -329,6 +329,44 @@ document.addEventListener('play', event => { if (event.target === player()) upda
 document.addEventListener('pause', event => { if (event.target === player()) update(); }, true);
 update();
 
+// iOS-friendly fallback: sample audio from the playing media element when file decoding fails.
+let waveformContext = null;
+let waveformSource = null;
+let waveformAnalyser = null;
+let waveformAnimation = 0;
+async function attachPlaybackWaveform() {
+  const video = player();
+  if (!video || waveformSource) return;
+  const Context = window.AudioContext || window.webkitAudioContext;
+  if (!Context) return;
+  try {
+    waveformContext = new Context();
+    waveformSource = waveformContext.createMediaElementSource(video);
+    waveformAnalyser = waveformContext.createAnalyser();
+    waveformAnalyser.fftSize = 256;
+    waveformSource.connect(waveformAnalyser);
+    waveformAnalyser.connect(waveformContext.destination);
+    await waveformContext.resume();
+    const levels = new Uint8Array(waveformAnalyser.frequencyBinCount);
+    const track = $('#studio-v2-audio-track');
+    const bars = Array.from({ length: 48 }, () => {
+      const bar = document.createElement('span'); bar.className = 'studio-v2-wave-bar'; track.append(bar); return bar;
+    });
+    track.replaceChildren(...bars);
+    const tick = () => {
+      if (!video.isConnected || video.paused) { waveformAnimation = 0; return; }
+      waveformAnalyser.getByteFrequencyData(levels);
+      bars.forEach((bar,i) => { bar.style.height = Math.max(3, Math.round(levels[Math.floor(i * levels.length / bars.length)] / 255 * 28)) + 'px'; });
+      waveformAnimation = requestAnimationFrame(tick);
+    };
+    video.addEventListener('play', () => { if (!waveformAnimation) tick(); });
+    video.addEventListener('pause', () => { cancelAnimationFrame(waveformAnimation); waveformAnimation = 0; });
+  } catch {
+    $('#studio-v2-audio-track').textContent = 'Audio waveform unavailable on this device';
+    await waveformContext?.close().catch(() => {});
+    waveformContext = null; waveformSource = null;
+  }
+}
 const input = $('#media-file-input');
 input?.addEventListener('change', async () => {
   const file = input.files?.[0];
@@ -358,6 +396,7 @@ input?.addEventListener('change', async () => {
       track.append(bar);
     }
   } catch {
-    $('#studio-v2-audio-track').textContent = 'Audio track · waveform preview unavailable on this device';
+    $('#studio-v2-audio-track').textContent = 'Waveform will appear during playback';
+    player()?.addEventListener('play', attachPlaybackWaveform, { once: true });
   } finally { await context?.close().catch(() => {}); }
 });
