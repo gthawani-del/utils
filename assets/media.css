@@ -3516,3 +3516,12 @@
 .video-segment-card select { width: 100%; min-height: 44px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #1e293b; padding: 8px; font-size: 14px; }
 .video-export-grid input { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 9px; font-size: 16px; }
 @media (max-width: 759px) { .video-segment-card { flex-basis: 154px; } }
+
+/* Phase 4 repair controls: minimum 44px targets, readable mobile labels. */
+.video-repair-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin: 14px 0; }
+.video-repair-controls label { display: grid; gap: 7px; min-width: 0; font-size: 14px; font-weight: 650; }
+.video-repair-controls select { min-height: 44px; min-width: 0; padding: 8px; font-size: 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; }
+.video-repair-controls input[type="range"] { width: 100%; min-height: 44px; accent-color: #2563eb; }
+.video-captions-toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; }
+.video-captions-toggle input { width: 20px; height: 20px; }
+@media (max-width: 759px) { .video-repair-controls { grid-template-columns: minmax(0,1fr); } }
