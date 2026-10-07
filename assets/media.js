@@ -197,6 +197,7 @@ function selectCategory(id) {
   }
   updateVideoEditorVisibility();
   updateAudioEditorVisibility();
+  document.body.classList.toggle('video-workspace-active', category.id === 'video');
   transcriptWorkspace?.updateVisibility();
   lyricsWorkspace?.updateVisibility();
   audioVideoWorkspace?.updateVisibility();
