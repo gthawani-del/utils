@@ -12,6 +12,8 @@ import { createAudioEdits, audioSelectionDuration, normalizeAudioEdits, previewV
 import { createVideoEdits, normalizeVideoEdits, selectionDuration, updateVideoEdits } from '/lib/media/video/edits.js';
 import { createTimeline, splitTimeline, removeTimelineSegment, moveTimelineSegment, timelineDuration } from '/lib/media/video/timeline.js';
 import { renderVideo, supportedVideoExportFormats } from '/lib/media/video/render.js';
+import { renderConformedVideo } from '/lib/media/video/conform-render.js';
+import { appendTimeline, timelineDuration as conformDuration } from '/lib/media/video/timeline.js';
 import { normalizeTextCue, kineticTextFrame } from '/lib/media/video/kinetic.js';
 import { detectBeats, parseWordTimings, MOTION_TEMPLATES } from '/lib/media/video/motion.js';
 
@@ -78,6 +80,8 @@ let videoHistory = [];
 let videoFuture = [];
 let playingSelection = false;
 let videoSegments = [];
+let videoSources = {};
+let nextVideoSourceId = 1;
 let videoTextCues = [];
 let videoBeatTimes = [];
 let selectedTextCue = -1;
@@ -315,11 +319,11 @@ function renderVideoSegments() {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'video-segment-item' + (index === selectedVideoSegment ? ' selected' : '');
-    button.textContent = (index + 1) + ' · ' + formatEditorTime(segment.end - segment.start);
+    button.textContent = (index + 1) + ' · ' + (videoSources[segment.sourceId]?.name || 'Clip') + ' · ' + formatEditorTime(segment.end - segment.start);
     button.setAttribute('aria-pressed', String(index === selectedVideoSegment));
     button.addEventListener('click', () => {
       selectedVideoSegment = index;
-      if (currentPlayer) currentPlayer.currentTime = segment.start;
+      if (currentPlayer && videoSources[segment.sourceId]?.objectUrl === project.source?.objectUrl) currentPlayer.currentTime = segment.start;
       renderVideoSegments();
     });
     list.append(button);
@@ -333,14 +337,38 @@ function resetVideoSegments() {
   videoSegments = project.source?.mediaType === 'video'
     ? createTimeline('active-video', Number(project.source.duration || 0)) : [];
   selectedVideoSegment = videoSegments.length ? 0 : -1;
+  videoSources = project.source?.mediaType === 'video' && project.source.objectUrl ? { 'active-video': project.source } : {};
   renderVideoSegments();
 }
 function changeVideoSegments(next, message) {
   videoSegments = next;
   selectedVideoSegment = Math.min(selectedVideoSegment, next.length - 1);
-  document.querySelector('#video-segment-note').textContent = message + ' Preview uses the original source; rendered export is not available.';
+  document.querySelector('#video-segment-note').textContent = message + ' Export will use the current segment order. Source preview shows one clip at a time.';
   renderVideoSegments();
 }
+const extraClipsInput = document.querySelector('#video-add-clips-input');
+document.querySelector('#video-add-clips').addEventListener('click', () => extraClipsInput.click());
+extraClipsInput.addEventListener('change', async () => {
+  const note = document.querySelector('#video-segment-note');
+  const files = [...(extraClipsInput.files || [])].slice(0, 12);
+  let added = 0;
+  for (const file of files) {
+    const result = await ingestLocalMedia(file);
+    if (!result.ok) { note.textContent = file.name + ': ' + result.reason; continue; }
+    if (result.source.mediaType !== 'video' || !(result.source.duration > 0)) {
+      releaseMediaSource(result.source);
+      note.textContent = file.name + ': not a playable video.';
+      continue;
+    }
+    const id = 'clip-' + nextVideoSourceId++;
+    videoSources[id] = result.source;
+    videoSegments = appendTimeline(videoSegments, id, result.source.duration);
+    added++;
+  }
+  extraClipsInput.value = '';
+  note.textContent = added + ' clips added locally. All will be fitted to the selected output canvas.';
+  renderVideoSegments();
+});
 document.querySelector('#video-split').addEventListener('click', () => {
   if (!hasEditableVideo()) return;
   const time = currentPlayer.currentTime;
@@ -538,15 +566,14 @@ document.querySelector('#video-export-render').addEventListener('click', async (
   status.textContent = 'Preparing local ' + format.toUpperCase() + ' export…';
   try {
     currentPlayer.pause();
-    const blob = await renderVideo({
+    const blob = await renderConformedVideo({
       format,
       textCues: videoTextCues,
-      sourceUrl: source.objectUrl,
+      sources: videoSources,
       segments,
-      width: source.width,
-      height: source.height,
       aspect: document.querySelector('#video-export-aspect').value,
       fit: document.querySelector('#video-export-fit').value,
+      fps: Number(document.querySelector('#video-export-fps').value),
       rotation: Number(document.querySelector('#video-export-rotation').value),
       onProgress: percent => { status.textContent = 'Rendering locally: ' + percent + '%'; }
     });
@@ -859,7 +886,11 @@ async function handleFile(file) {
       return;
     }
 
-    if (!preserveEdits) audioVideoWorkspace?.resetForNewSource();
+    if (!preserveEdits) {
+      for (const [id, extra] of Object.entries(videoSources)) if (id !== 'active-video') releaseMediaSource(extra);
+      videoSources = {};
+      audioVideoWorkspace?.resetForNewSource();
+    }
     if (project.source?.kind === 'local-file') releaseMediaSource(project.source);
     if (!preserveEdits) {
       project.videoEdits = null;
