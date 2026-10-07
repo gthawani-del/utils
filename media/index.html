@@ -10,6 +10,7 @@
 </head>
 <body class="media-body">
   <input id="media-file-input" class="visually-hidden" type="file" accept="video/*,audio/*,.mp4,.mov,.m4a,.webm,.ogg,.wav,.mp3,.flac,.aac,.avi">
+  <input id="video-add-clips-input" class="visually-hidden" type="file" accept="video/*,.mp4,.mov,.webm,.avi" multiple>
   <input id="transcript-file-input" class="visually-hidden" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip">
   <input id="lyrics-file-input" class="visually-hidden" type="file" accept=".lrc,.txt,text/plain">
   <div class="media-app">
@@ -487,13 +488,14 @@
             <section data-video-panel="edit" class="video-segments" aria-label="Clip segments">
               <div class="video-segments-heading"><strong>Clip segments</strong><span id="video-segment-summary">Load a video to begin</span></div>
               <div class="video-segment-actions">
+                <button class="video-tool-button" id="video-add-clips" type="button">+ Add video clips</button>
                 <button class="video-tool-button" id="video-split" type="button">Split at playhead</button>
                 <button class="video-tool-button" id="video-delete-segment" type="button" disabled>Delete selected</button>
                 <button class="video-tool-button" id="video-move-left" type="button" disabled>Move left</button>
                 <button class="video-tool-button" id="video-move-right" type="button" disabled>Move right</button>
               </div>
               <div class="video-segment-list" id="video-segment-list" role="group" aria-label="Select clip segment"></div>
-              <p class="video-editor-note" id="video-segment-note" role="status">Segment changes are local edit decisions. Rendered export is not available yet.</p>
+              <p class="video-editor-note" id="video-segment-note" role="status">Add separate video files, arrange their order, then export a conformed sequence.</p>
             </section>
             <section data-video-panel="text" class="video-kinetic-panel hidden" aria-label="Kinetic typography">
               <div class="video-segments-heading"><strong>Kinetic typography</strong><span>Timed text overlays</span></div>
@@ -525,11 +527,12 @@
               <p id="video-kinetic-status" class="video-editor-note" role="status">Text animations render directly into exported video.</p>
             </section>
             <section data-video-panel="export" class="video-export-panel hidden" aria-label="Video framing and export">
-              <div class="video-segments-heading"><strong>Frame & export</strong><span>Local video recording</span></div>
+              <div class="video-segments-heading"><strong>Smooth & Match</strong><span>Normalize clip sizes and frame pacing</span></div>
               <div class="video-export-grid">
                 <label>Format<select id="video-export-format"><option value="mp4">MP4 (if supported)</option><option value="webm">WebM</option></select></label>
-                <label>Aspect ratio<select id="video-export-aspect"><option value="original">Original</option><option value="9:16">9:16 Portrait</option><option value="16:9">16:9 Landscape</option><option value="1:1">1:1 Square</option><option value="4:5">4:5 Portrait</option></select></label>
+                <label>Aspect ratio<select id="video-export-aspect"><option value="9:16" selected>9:16 Portrait</option><option value="original">Original</option><option value="16:9">16:9 Landscape</option><option value="1:1">1:1 Square</option><option value="4:5">4:5 Portrait</option></select></label>
                 <label>Framing<select id="video-export-fit"><option value="contain">Fit · preserve full frame</option><option value="cover">Fill · crop edges</option></select></label>
+                <label>Frame rate<select id="video-export-fps"><option value="30" selected>30 fps (recommended)</option><option value="24">24 fps</option><option value="60">60 fps</option></select></label>
                 <label>Rotation<select id="video-export-rotation"><option value="0">0°</option><option value="90">90° clockwise</option><option value="180">180°</option><option value="270">270° clockwise</option></select></label>
               </div>
               <button class="media-button empty-primary video-render-button" id="video-export-render" type="button">Render & download video</button>
