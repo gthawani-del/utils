@@ -429,7 +429,12 @@
             <p class="audio-editor-note">Trim, volume and fades affect local preview/project state only. Cleanup, normalization, stems and rendered export are not enabled yet.</p>
           </section>
 
-          <section class="video-editor-panel hidden" id="video-editor-panel" aria-labelledby="video-editor-title">
+          <div class="timeline-shell">
+            <div class="timeline-toolbar"><span>Timeline</span><span id="timeline-status">Source preview</span></div><div class="video-timeline-controls hidden" id="video-timeline-controls"><button type="button" id="video-timeline-play" aria-label="Play or pause video">▶ Play</button><button type="button" id="video-timeline-undo" aria-label="Undo last video edit">↶ Undo</button><button type="button" id="video-timeline-redo" aria-label="Redo last video edit">↷ Redo</button><button type="button" id="video-timeline-export" aria-label="Open video export controls">Export</button></div>
+            <div class="timeline-track"><span class="track-label">Video</span><span class="track-placeholder" id="video-track-placeholder"></span></div>
+            <div class="timeline-track"><span class="track-label">Audio</span><span class="track-placeholder audio-placeholder"></span></div>
+            <div class="timeline-track"><span class="track-label">Captions</span><span class="track-placeholder caption-placeholder"></span></div>
+          </div>          <section class="video-editor-panel hidden" id="video-editor-panel" aria-labelledby="video-editor-title">
             <div class="video-editor-heading">
               <div>
                 <p class="workspace-eyebrow">Video foundation</p>
@@ -437,8 +442,9 @@
               </div>
               <span>Non-destructive</span>
             </div>
+            <nav class="video-tool-tabs" aria-label="Video editing tools"><button type="button" data-video-tool="edit" aria-pressed="true">Edit</button><button type="button" data-video-tool="text" aria-pressed="false">Text & Motion</button><button type="button" data-video-tool="export" aria-pressed="false">Export</button></nav>
 
-            <div class="video-editor-toolbar">
+            <div class="video-editor-toolbar" data-video-panel="edit">
               <button class="video-tool-button" id="video-undo" type="button" disabled>↶ Undo</button>
               <button class="video-tool-button" id="video-redo" type="button" disabled>↷ Redo</button>
               <label class="video-rate-control">Preview speed
@@ -453,8 +459,8 @@
               </label>
             </div>
 
-            <p class="video-editor-note">Scrub the video below, then play your selection. Use precise trim points only when needed.</p>
-            <div class="video-scrubber-wrap">
+            <p class="video-editor-note" data-video-panel="edit">Scrub the video below, then play your selection. Use precise trim points only when needed.</p>
+            <div class="video-scrubber-wrap" data-video-panel="edit">
               <div class="video-scrubber-meta">
                 <span id="video-playhead-label">00:00.00</span>
                 <strong id="video-selection-label">Selection 00:00.00</strong>
@@ -463,7 +469,7 @@
             </div>
 
 
-            <details class="video-precision-panel">
+            <details class="video-precision-panel" data-video-panel="edit">
               <summary>Precise trim controls <span>In / Out</span></summary>
             <div class="video-trim-grid">
               <label>In point (seconds)
@@ -478,7 +484,7 @@
 
             </details>
 
-            <section class="video-segments" aria-label="Clip segments">
+            <section data-video-panel="edit" class="video-segments" aria-label="Clip segments">
               <div class="video-segments-heading"><strong>Clip segments</strong><span id="video-segment-summary">Load a video to begin</span></div>
               <div class="video-segment-actions">
                 <button class="video-tool-button" id="video-split" type="button">Split at playhead</button>
@@ -489,7 +495,7 @@
               <div class="video-segment-list" id="video-segment-list" role="group" aria-label="Select clip segment"></div>
               <p class="video-editor-note" id="video-segment-note" role="status">Segment changes are local edit decisions. Rendered export is not available yet.</p>
             </section>
-            <section class="video-kinetic-panel" aria-label="Kinetic typography">
+            <section data-video-panel="text" class="video-kinetic-panel hidden" aria-label="Kinetic typography">
               <div class="video-segments-heading"><strong>Kinetic typography</strong><span>Timed text overlays</span></div>
               <div class="video-kinetic-grid">
                 <label>Text<input id="video-kinetic-text" maxlength="160" placeholder="Your title or caption"></label>
@@ -518,7 +524,7 @@
               <div id="video-kinetic-list" class="video-kinetic-list" aria-label="Text overlays"></div>
               <p id="video-kinetic-status" class="video-editor-note" role="status">Text animations render directly into exported video.</p>
             </section>
-            <section class="video-export-panel" aria-label="Video framing and export">
+            <section data-video-panel="export" class="video-export-panel hidden" aria-label="Video framing and export">
               <div class="video-segments-heading"><strong>Frame & export</strong><span>Local video recording</span></div>
               <div class="video-export-grid">
                 <label>Format<select id="video-export-format"><option value="mp4">MP4 (if supported)</option><option value="webm">WebM</option></select></label>
@@ -529,19 +535,14 @@
               <button class="media-button empty-primary video-render-button" id="video-export-render" type="button">Render & download video</button>
               <p id="video-export-status" class="video-editor-note" role="status" aria-live="polite">MP4 is offered only when the browser supports native recording. WebM is the fallback.</p>
             </section>
-            <div class="video-editor-actions">
+            <div class="video-editor-actions" data-video-panel="edit">
               <button class="media-button empty-primary" id="video-play-selection" type="button">Play selection</button>
               <button class="media-button" id="video-reset-edits" type="button">Reset trim</button>
             </div>
-            <p class="video-editor-note">These controls change the browser preview and project edit state only. Export rendering is not enabled in this foundation step.</p>
+            <p class="video-editor-note" data-video-panel="edit">Trim and speed preview are non-destructive. Use Export to render your changes.</p>
           </section>
 
-          <div class="timeline-shell">
-            <div class="timeline-toolbar"><span>Timeline</span><span id="timeline-status">Source preview</span></div>
-            <div class="timeline-track"><span class="track-label">Video</span><span class="track-placeholder" id="video-track-placeholder"></span></div>
-            <div class="timeline-track"><span class="track-label">Audio</span><span class="track-placeholder audio-placeholder"></span></div>
-            <div class="timeline-track"><span class="track-label">Captions</span><span class="track-placeholder caption-placeholder"></span></div>
-          </div>
+
         </div>
 
         <aside class="context-panel" aria-label="Contextual tools">
