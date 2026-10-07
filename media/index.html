@@ -489,6 +489,18 @@
               <div class="video-segment-list" id="video-segment-list" role="group" aria-label="Select clip segment"></div>
               <p class="video-editor-note" id="video-segment-note" role="status">Segment changes are local edit decisions. Rendered export is not available yet.</p>
             </section>
+            <section class="video-kinetic-panel" aria-label="Kinetic typography">
+              <div class="video-segments-heading"><strong>Kinetic typography</strong><span>Timed text overlays</span></div>
+              <div class="video-kinetic-grid">
+                <label>Text<input id="video-kinetic-text" maxlength="160" placeholder="Your title or caption"></label>
+                <label>Effect<select id="video-kinetic-effect"><option value="fade">Fade</option><option value="pop">Pop</option><option value="slide">Slide</option><option value="pulse">Pulse</option></select></label>
+                <label>Start (sec)<input id="video-kinetic-start" type="number" min="0" step="0.1" value="0"></label>
+                <label>End (sec)<input id="video-kinetic-end" type="number" min="0" step="0.1" value="3"></label>
+              </div>
+              <button class="video-tool-button" id="video-kinetic-add" type="button">Add timed text</button>
+              <div id="video-kinetic-list" class="video-kinetic-list" aria-label="Text overlays"></div>
+              <p id="video-kinetic-status" class="video-editor-note" role="status">Text animations render directly into exported video.</p>
+            </section>
             <section class="video-export-panel" aria-label="Video framing and export">
               <div class="video-segments-heading"><strong>Frame & export</strong><span>Local video recording</span></div>
               <div class="video-export-grid">
