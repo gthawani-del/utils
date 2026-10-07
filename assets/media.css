@@ -3415,3 +3415,15 @@
 .video-precision-panel .video-trim-grid { padding: 0 12px 12px; margin-top: 0; }
 .video-precision-panel:focus-within { border-color: var(--media-blue); }
 @media (max-width: 759px) { .video-editor-heading { margin-bottom: 8px; } .video-scrubber-wrap { margin-top: 10px; } .video-precision-panel .video-trim-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
+
+/* Video segment editing: compact, touch-friendly controls. */
+.video-segments { margin-top: 14px; padding: 12px; border: 1px solid var(--media-line); border-radius: 12px; background: #f8fafc; }
+.video-segments-heading { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 10px; font-size: 12px; }
+.video-segments-heading span { color: var(--media-muted); font-size: 10px; }
+.video-segment-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.video-segment-actions .video-tool-button { min-height: 44px; }
+.video-segment-list { display: flex; gap: 5px; overflow-x: auto; padding: 10px 0 3px; scrollbar-width: thin; }
+.video-segment-item { min-width: 95px; min-height: 44px; border: 1px solid #cbd5e1; border-radius: 8px; background: #e8efff; color: #1e3a8a; font-size: 11px; font-weight: 700; cursor: pointer; }
+.video-segment-item.selected { outline: 2px solid var(--media-blue); outline-offset: -2px; background: #dbeafe; }
+.video-segment-item:focus-visible { outline: 3px solid var(--media-blue); outline-offset: 2px; }
+@media (max-width: 759px) { .video-segment-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .video-segment-actions .video-tool-button { width: 100%; } }
