@@ -14,7 +14,7 @@ import { createTimeline, splitTimeline, removeTimelineSegment, moveTimelineSegme
 import { renderVideo, supportedVideoExportFormats } from '/lib/media/video/render.js';
 import { renderConformedVideo } from '/lib/media/video/conform-render.js';
 import { detectSilentRanges, keepRangesWithoutSilence } from '/lib/media/video/smart-audio.js';
-import { detectSceneCuts, meanLuminance, matchBrightness, rmsLevel, matchAudioGain } from '/lib/media/video/repair.js';
+import { detectSceneCuts, meanLuminance, matchBrightness, rmsLevel, matchAudioGain, mapCaptionsToTimeline } from '/lib/media/video/repair.js';
 import { appendTimeline, timelineDuration as conformDuration } from '/lib/media/video/timeline.js';
 import { normalizeTextCue, kineticTextFrame } from '/lib/media/video/kinetic.js';
 import { detectBeats, parseWordTimings, MOTION_TEMPLATES } from '/lib/media/video/motion.js';
@@ -709,7 +709,7 @@ document.querySelector('#video-export-render').addEventListener('click', async (
     const blob = await renderConformedVideo({
       format,
       textCues: videoTextCues,
-      captionCues: document.querySelector('#video-include-captions').checked ? (project.transcript?.cues || []) : [],
+      captionCues: document.querySelector('#video-include-captions').checked ? mapCaptionsToTimeline(project.transcript?.cues || [], segments) : [],
       repair: {
         stabilization: Number(document.querySelector('#video-stabilization').value),
         brightness: Number(document.querySelector('#video-repair-brightness').value),
