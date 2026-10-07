@@ -16,7 +16,8 @@ import { renderConformedVideo } from '/lib/media/video/conform-render.js';
 import { detectSilentRanges, keepRangesWithoutSilence } from '/lib/media/video/smart-audio.js';
 import { detectSceneCuts, meanLuminance, matchBrightness, rmsLevel, matchAudioGain, mapCaptionsToTimeline } from '/lib/media/video/repair.js';
 import { appendTimeline, timelineDuration as conformDuration } from '/lib/media/video/timeline.js';
-import { normalizeTextCue, kineticTextFrame } from '/lib/media/video/kinetic.js';
+import { normalizeTextCue, kineticTextFrame, TEXT_FONTS } from '/lib/media/video/kinetic.js';
+import { lyricCuesFromLrc } from '/lib/media/video/lyrics-sync.js';
 import { detectBeats, parseWordTimings, MOTION_TEMPLATES } from '/lib/media/video/motion.js';
 
 const isDedicatedVideoEditor = location.pathname.replace(/\/+$/, '').endsWith('/media/video-editor');
@@ -669,6 +670,10 @@ function syncKineticPreview() {
   const time = currentPlayer?.currentTime || 0;
   const frame = videoTextCues.map(cue => kineticTextFrame(cue, time)).find(Boolean);
   overlay.textContent = frame?.words?.length && frame.activeWordIndex >= 0 ? frame.words.map((word, index) => index === frame.activeWordIndex ? '[' + word.text + ']' : word.text).join(' ') : frame?.text || '';
+  const cue = videoTextCues.find(item => kineticTextFrame(item, time));
+  overlay.style.fontFamily = TEXT_FONTS[cue?.style?.font] || TEXT_FONTS.sans;
+  overlay.style.fontSize = cue?.style?.size ? Math.min(42, cue.style.size) + 'px' : '';
+  overlay.style.color = cue?.style?.color || '#ffffff';
   overlay.style.opacity = frame ? String(frame.alpha) : '0';
   overlay.style.transform = frame ? 'translateY(' + frame.offsetY + 'px) scale(' + frame.scale + ')' : 'none';
   overlay.classList.toggle('hidden', !hasEditableVideo() || !frame);
@@ -682,6 +687,14 @@ document.querySelector('#video-kinetic-add').addEventListener('click', () => {
       text: document.querySelector('#video-kinetic-text').value,
       effect: document.querySelector('#video-kinetic-effect').value,
       template: document.querySelector('#video-motion-template').value,
+      style: {
+        font: document.querySelector('#video-text-font')?.value || 'sans',
+        size: Number(document.querySelector('#video-text-size')?.value || 55),
+        color: document.querySelector('#video-text-color')?.value || '#ffffff',
+        highlight: document.querySelector('#video-text-highlight')?.value || '#facc15',
+        stroke: document.querySelector('#video-text-stroke')?.value || '#111111',
+        weight: document.querySelector('#video-text-weight')?.value || 'bold'
+      },
       beats: videoBeatTimes,
       start: Number(document.querySelector('#video-kinetic-start').value),
       end: Number(document.querySelector('#video-kinetic-end').value)
@@ -691,6 +704,20 @@ document.querySelector('#video-kinetic-add').addEventListener('click', () => {
     selectedTextCue = videoTextCues.length - 1;
     renderKineticCues(); syncKineticPreview();
     status.textContent = 'Text added. Scrub or play to preview the timing.';
+  } catch (error) { status.textContent = error.message; }
+});
+if (document.querySelector('#video-lyrics-import')) document.querySelector('#video-lyrics-import').addEventListener('click', async () => {
+  const status = document.querySelector('#video-lyrics-message');
+  const file = document.querySelector('#video-lyrics-lrc').files?.[0];
+  if (!hasEditableVideo() || !file) { status.textContent = 'Load a video and select an LRC file.'; return; }
+  if (file.size > 1024 * 1024) { status.textContent = 'LRC file must be under 1 MB.'; return; }
+  try {
+    const cues = lyricCuesFromLrc(await file.text(), Number(project.source.duration));
+    if (!cues.length) throw new Error('No valid timed lyrics found.');
+    const remaining = Math.max(0, 100 - videoTextCues.length);
+    videoTextCues.push(...cues.slice(0, remaining).map(cue => normalizeTextCue({ ...cue, beats: videoBeatTimes }, Number(project.source.duration))));
+    renderKineticCues(); syncKineticPreview();
+    status.textContent = 'Imported ' + Math.min(cues.length,remaining) + ' synchronized lyric lines with karaoke styling.';
   } catch (error) { status.textContent = error.message; }
 });
 let videoRenderBusy = false;
