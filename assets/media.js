@@ -12,6 +12,7 @@ import { createAudioEdits, audioSelectionDuration, normalizeAudioEdits, previewV
 import { createVideoEdits, normalizeVideoEdits, selectionDuration, updateVideoEdits } from '/lib/media/video/edits.js';
 import { createTimeline, splitTimeline, removeTimelineSegment, moveTimelineSegment, timelineDuration } from '/lib/media/video/timeline.js';
 import { renderVideo, supportedVideoExportFormats } from '/lib/media/video/render.js';
+import { normalizeTextCue, kineticTextFrame } from '/lib/media/video/kinetic.js';
 
 const categories = [
   { id: 'video', name: 'Video Editor', short: 'Video Editor', icon: '▣', hint: 'Edit, trim, effects, transitions', copy: 'Upload or open a project to begin editing video in the shared Media Studio workspace.' },
@@ -76,6 +77,7 @@ let videoHistory = [];
 let videoFuture = [];
 let playingSelection = false;
 let videoSegments = [];
+let videoTextCues = [];
 let selectedVideoSegment = -1;
 let audioHistory = [];
 let audioFuture = [];
@@ -347,6 +349,51 @@ function refreshVideoExportFormats() {
     : 'Video recording is unavailable in this browser.';
 }
 refreshVideoExportFormats();
+function renderKineticCues() {
+  const list = document.querySelector('#video-kinetic-list');
+  list.replaceChildren();
+  videoTextCues.forEach((cue, index) => {
+    const row = document.createElement('div');
+    row.className = 'video-kinetic-row';
+    const label = document.createElement('span');
+    label.textContent = cue.text + ' · ' + cue.start.toFixed(1) + '–' + cue.end.toFixed(1) + 's · ' + cue.effect;
+    const remove = document.createElement('button');
+    remove.type = 'button'; remove.textContent = 'Remove';
+    remove.addEventListener('click', () => { videoTextCues.splice(index, 1); renderKineticCues(); syncKineticPreview(); });
+    row.append(label, remove); list.append(row);
+  });
+}
+function syncKineticPreview() {
+  const wrap = document.querySelector('#source-player-wrap');
+  let overlay = wrap.querySelector('.video-kinetic-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'video-kinetic-overlay';
+    wrap.append(overlay);
+  }
+  const time = currentPlayer?.currentTime || 0;
+  const frame = videoTextCues.map(cue => kineticTextFrame(cue, time)).find(Boolean);
+  overlay.textContent = frame?.text || '';
+  overlay.style.opacity = frame ? String(frame.alpha) : '0';
+  overlay.style.transform = frame ? 'translateY(' + frame.offsetY + 'px) scale(' + frame.scale + ')' : 'none';
+  overlay.classList.toggle('hidden', !hasEditableVideo() || !frame);
+}
+document.querySelector('#video-kinetic-add').addEventListener('click', () => {
+  const status = document.querySelector('#video-kinetic-status');
+  try {
+    if (!hasEditableVideo()) throw new Error('Load a local video first');
+    if (videoTextCues.length >= 100) throw new Error('Maximum 100 text overlays');
+    const cue = normalizeTextCue({
+      text: document.querySelector('#video-kinetic-text').value,
+      effect: document.querySelector('#video-kinetic-effect').value,
+      start: Number(document.querySelector('#video-kinetic-start').value),
+      end: Number(document.querySelector('#video-kinetic-end').value)
+    }, Number(project.source.duration));
+    videoTextCues.push(cue);
+    renderKineticCues(); syncKineticPreview();
+    status.textContent = 'Text added. Scrub or play to preview the timing.';
+  } catch (error) { status.textContent = error.message; }
+});
 let videoRenderBusy = false;
 document.querySelector('#video-export-render').addEventListener('click', async () => {
   const status = document.querySelector('#video-export-status');
@@ -366,6 +413,7 @@ document.querySelector('#video-export-render').addEventListener('click', async (
     currentPlayer.pause();
     const blob = await renderVideo({
       format,
+      textCues: videoTextCues,
       sourceUrl: source.objectUrl,
       segments,
       width: source.width,
@@ -591,6 +639,7 @@ function renderSource(source) {
       setProjectVideoEdits(project, project.videoEdits);
       media.addEventListener('timeupdate', () => {
         updatePlayhead(media.currentTime);
+        syncKineticPreview();
         const edits = currentVideoEdits();
         if (playingSelection && edits && media.currentTime >= edits.trimEnd) {
           media.pause();
@@ -598,7 +647,7 @@ function renderSource(source) {
           playingSelection = false;
         }
       });
-      media.addEventListener('seeked', () => updatePlayhead(media.currentTime));
+      media.addEventListener('seeked', () => { updatePlayhead(media.currentTime); syncKineticPreview(); });
     } else {
       project.videoEdits = null;
       setProjectVideoEdits(project, null);
@@ -708,7 +757,7 @@ async function handleFile(file) {
     }
     setProjectSource(project, result.source);
     renderSource(result.source);
-    if (!preserveEdits) resetVideoSegments();
+    if (!preserveEdits) { resetVideoSegments(); videoTextCues = []; renderKineticCues(); }
   } finally {
     document.body.classList.remove('media-busy');
     fileInput.value = '';
@@ -762,6 +811,7 @@ linkForm.addEventListener('submit', (event) => {
   setProjectSource(project, source);
   renderSource(source);
   resetVideoSegments();
+  videoTextCues = []; renderKineticCues();
   closeLinkDialog();
 });
 
