@@ -576,6 +576,9 @@ document.querySelector('#video-export-render').addEventListener('click', async (
       aspect: document.querySelector('#video-export-aspect').value,
       fit: document.querySelector('#video-export-fit').value,
       fps: Number(document.querySelector('#video-export-fps').value),
+      resolution: Number(document.querySelector('#video-export-resolution').value),
+      customWidth: Number(document.querySelector('#video-export-width').value),
+      customHeight: Number(document.querySelector('#video-export-height').value),
       rotation: Number(document.querySelector('#video-export-rotation').value),
       onProgress: percent => { status.textContent = 'Rendering locally: ' + percent + '%'; }
     });
