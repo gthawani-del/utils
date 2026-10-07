@@ -63,7 +63,7 @@ timelineDisplay.innerHTML = `
   <div class="studio-v2-track"><span>Text</span><div class="studio-v2-track-content" id="studio-v2-text-track"></div></div>
   <div class="studio-v2-track"><span>Video</span><div class="studio-v2-track-content studio-v2-video-track" id="studio-v2-video-track"><span>Import clips to populate timeline</span></div></div>
   <div class="studio-v2-track"><span>Audio</span><div class="studio-v2-track-content studio-v2-audio-track" id="studio-v2-audio-track"><span>Audio waveform available after import</span></div></div>
-  <label class="studio-v2-seek-label">Playhead <input id="studio-v2-seek" type="range" min="0" max="1000" value="0" aria-label="Scrub video timeline"></label>
+  <label class="studio-v2-seek-label"><span class="studio-v2-visually-hidden">Timeline playhead</span><input id="studio-v2-seek" type="range" min="0" max="1000" value="0" aria-label="Scrub video timeline"></label>
   <div class="studio-v2-segments" id="studio-v2-segments" aria-label="Clip sequence"></div>`;
 timeline.append(timelineDisplay);
 
@@ -265,6 +265,6 @@ input?.addEventListener('change', async () => {
       track.append(bar);
     }
   } catch {
-    $('#studio-v2-audio-track').textContent = 'Audio waveform unavailable for this codec';
+    $('#studio-v2-audio-track').textContent = 'Audio track · waveform preview unavailable on this device';
   } finally { await context?.close().catch(() => {}); }
 });
