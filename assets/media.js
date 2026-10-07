@@ -109,6 +109,34 @@ if (restored) {
   project.delivery = restored.delivery || null;
 }
 
+let activeVideoTool = 'edit';
+function selectVideoTool(tool) {
+  if (!['edit', 'text', 'export'].includes(tool)) return;
+  activeVideoTool = tool;
+  document.querySelectorAll('[data-video-tool]').forEach(button => {
+    const active = button.dataset.videoTool === tool;
+    button.setAttribute('aria-pressed', String(active));
+    button.classList.toggle('active', active);
+  });
+  document.querySelectorAll('[data-video-panel]').forEach(panel => {
+    panel.classList.toggle('hidden', panel.dataset.videoPanel !== tool);
+  });
+}
+document.querySelectorAll('[data-video-tool]').forEach(button => {
+  button.addEventListener('click', () => selectVideoTool(button.dataset.videoTool));
+});
+document.querySelector('#video-timeline-export').addEventListener('click', () => {
+  selectVideoTool('export');
+  document.querySelector('#video-editor-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+document.querySelector('#video-timeline-undo').addEventListener('click', () => undoButton.click());
+document.querySelector('#video-timeline-redo').addEventListener('click', () => redoButton.click());
+document.querySelector('#video-timeline-play').addEventListener('click', async () => {
+  if (!hasEditableVideo()) return;
+  if (currentPlayer.paused) {
+    try { await currentPlayer.play(); } catch { sourceNote.textContent = 'Playback was blocked by the browser.'; }
+  } else currentPlayer.pause();
+});
 function makeDesktopButton(category, index) {
   const button = document.createElement('button');
   button.type = 'button';
@@ -189,7 +217,8 @@ function hasEditableVideo() {
 function updateVideoEditorVisibility() {
   const visible = hasEditableVideo();
   videoEditorPanel.classList.toggle('hidden', !visible);
-  timelineStatus.textContent = visible ? 'Trim preview active' : 'Source preview';
+  timelineStatus.textContent = visible ? 'Video ready' : 'Source preview';
+  document.querySelector('#video-timeline-controls').classList.toggle('hidden', !visible);
   renderVideoSegments();
 }
 
@@ -266,6 +295,8 @@ function restoreVideoEdit(next) {
 function updateUndoRedo() {
   undoButton.disabled = videoHistory.length === 0;
   redoButton.disabled = videoFuture.length === 0;
+  document.querySelector('#video-timeline-undo').disabled = undoButton.disabled;
+  document.querySelector('#video-timeline-redo').disabled = redoButton.disabled;
 }
 
 function resetVideoHistory() {
@@ -744,6 +775,8 @@ function renderSource(source) {
         }
       });
       media.addEventListener('seeked', () => { updatePlayhead(media.currentTime); syncKineticPreview(); });
+      media.addEventListener('play', () => { document.querySelector('#video-timeline-play').textContent = 'Ⅱ Pause'; });
+      media.addEventListener('pause', () => { document.querySelector('#video-timeline-play').textContent = '▶ Play'; });
     } else {
       project.videoEdits = null;
       setProjectVideoEdits(project, null);
@@ -1309,6 +1342,7 @@ recipeWorkspace = initRecipeWorkspace({
   }
 });
 
+selectVideoTool('edit');
 selectCategory(project.activeCategory || 'video');
 transcriptWorkspace.onSourceChanged();
 lyricsWorkspace.onSourceChanged();
