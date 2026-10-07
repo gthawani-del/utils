@@ -19,6 +19,7 @@ import { appendTimeline, timelineDuration as conformDuration } from '/lib/media/
 import { normalizeTextCue, kineticTextFrame } from '/lib/media/video/kinetic.js';
 import { detectBeats, parseWordTimings, MOTION_TEMPLATES } from '/lib/media/video/motion.js';
 
+const isDedicatedVideoEditor = location.pathname.replace(/\/+$/, '').endsWith('/media/video-editor');
 const categories = [
   { id: 'video', name: 'Video Editor', short: 'Video Editor', icon: '▣', hint: 'Edit, trim, effects, transitions', copy: 'Upload or open a project to begin editing video in the shared Media Studio workspace.' },
   { id: 'audio', name: 'Audio Studio', short: 'Audio Studio', icon: '◫', hint: 'Clean, enhance, mix, convert', copy: 'Audio tools will use the same project media without requiring a second upload.' },
@@ -197,7 +198,7 @@ function selectCategory(id) {
   }
   updateVideoEditorVisibility();
   updateAudioEditorVisibility();
-  document.body.classList.toggle('video-workspace-active', category.id === 'video');
+  document.body.classList.toggle('video-workspace-active', isDedicatedVideoEditor && category.id === 'video');
   transcriptWorkspace?.updateVisibility();
   lyricsWorkspace?.updateVisibility();
   audioVideoWorkspace?.updateVisibility();
@@ -224,7 +225,7 @@ function hasEditableVideo() {
 function updateVideoEditorVisibility() {
   const visible = hasEditableVideo();
   videoEditorPanel.classList.toggle('hidden', !visible);
-  document.querySelector('#video-empty-workspace').classList.toggle('hidden', visible || project.activeCategory !== 'video');
+  document.querySelector('#video-empty-workspace').classList.toggle('hidden', !isDedicatedVideoEditor || visible || project.activeCategory !== 'video');
   timelineStatus.textContent = visible ? 'Video ready' : 'Source preview';
   document.querySelector('#video-timeline-controls').classList.toggle('hidden', !visible);
   renderVideoSegments();
@@ -1527,7 +1528,7 @@ recipeWorkspace = initRecipeWorkspace({
 });
 
 selectVideoTool('edit');
-selectCategory(project.activeCategory || 'video');
+selectCategory(isDedicatedVideoEditor ? 'video' : (project.activeCategory || 'video'));
 transcriptWorkspace.onSourceChanged();
 lyricsWorkspace.onSourceChanged();
 audioVideoWorkspace.onSourceChanged();
