@@ -366,6 +366,7 @@ async function analyzeVideoBeats() {
     const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
     if (!Context) throw new Error('Web Audio is unavailable');
     context = new Context();
+    if (project.source.file.size > 150 * 1024 * 1024) throw new Error('Beat analysis limited to 150 MB source files to protect device memory');
     const bytes = await project.source.file.arrayBuffer();
     const buffer = await context.decodeAudioData(bytes);
     const samples = buffer.getChannelData(0);
@@ -906,7 +907,7 @@ linkForm.addEventListener('submit', (event) => {
   setProjectSource(project, source);
   renderSource(source);
   resetVideoSegments();
-  videoTextCues = []; renderKineticCues();
+  videoTextCues = []; videoBeatTimes = []; selectedTextCue = -1; renderKineticCues();
   closeLinkDialog();
 });
 
