@@ -180,3 +180,27 @@
 .video-editor-route .video-lyrics-import input { max-width: 100%; color: #e2e8f0; background: transparent; font-size: 13px; }
 .video-editor-route .video-lyrics-import p { color: #9fb1c9; font-size: 12px; line-height: 1.5; }
 @media(max-width:759px) { .video-editor-route .video-text-style { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+/* UX correction: override inherited light Media Studio timeline styles. */
+.video-editor-route .studio-v2-timeline .timeline-shell,
+.video-editor-route .studio-v2-timeline .timeline-shell * { color: #dce6f4; }
+.video-editor-route .studio-v2-timeline .timeline-shell { background: #151e2b !important; border: 1px solid #334155 !important; box-shadow: none !important; }
+.video-editor-route .studio-v2-timeline .timeline-toolbar,
+.video-editor-route .studio-v2-timeline .studio-v2-track-system,
+.video-editor-route .studio-v2-timeline .studio-v2-seek-label { background: transparent !important; }
+.video-editor-route .studio-v2-timeline .studio-v2-track-content { background: #253044; }
+.video-editor-route .studio-v2-timeline .studio-v2-video-track { background: #26374e; }
+.video-editor-route .studio-v2-timeline .studio-v2-audio-track { background: #1b594f; color: #c6f7e4; }
+.video-editor-route .studio-v2-timeline .studio-v2-track > span { color: #aabbd0; }
+.video-editor-route .studio-v2-timeline .studio-v2-seek-label { color: #aabbd0; }
+.video-editor-route .studio-v2-timeline .studio-v2-segments button { color: #e2e8f0; }
+@media(max-width:759px) {
+  .video-editor-route .studio-v2-tools { margin-top: 0; }
+  .video-editor-route .studio-v2-tool-grid { display: flex; overflow-x: auto; gap: 6px; scroll-snap-type: x mandatory; padding-bottom: 5px; scrollbar-width: none; }
+  .video-editor-route .studio-v2-tool-grid button { flex: 0 0 74px; min-height: 64px; scroll-snap-align: start; padding: 6px 3px; font-size: 11px; }
+  .video-editor-route .studio-v2-tool-grid button span { font-size: 20px; }
+  .video-editor-route .studio-v2-timeline .timeline-shell { padding: 10px; }
+  .video-editor-route .studio-v2-segments { padding-left: 0; }
+  .video-editor-route .studio-v2-seek-label { margin-left: 0; }
+  .video-editor-route .studio-v2-preview { border: 0; }
+}
