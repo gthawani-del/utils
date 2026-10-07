@@ -490,14 +490,15 @@
               <p class="video-editor-note" id="video-segment-note" role="status">Segment changes are local edit decisions. Rendered export is not available yet.</p>
             </section>
             <section class="video-export-panel" aria-label="Video framing and export">
-              <div class="video-segments-heading"><strong>Frame & export</strong><span>Browser-local WebM</span></div>
+              <div class="video-segments-heading"><strong>Frame & export</strong><span>Local video recording</span></div>
               <div class="video-export-grid">
+                <label>Format<select id="video-export-format"><option value="mp4">MP4 (if supported)</option><option value="webm">WebM</option></select></label>
                 <label>Aspect ratio<select id="video-export-aspect"><option value="original">Original</option><option value="9:16">9:16 Portrait</option><option value="16:9">16:9 Landscape</option><option value="1:1">1:1 Square</option><option value="4:5">4:5 Portrait</option></select></label>
                 <label>Framing<select id="video-export-fit"><option value="contain">Fit · preserve full frame</option><option value="cover">Fill · crop edges</option></select></label>
                 <label>Rotation<select id="video-export-rotation"><option value="0">0°</option><option value="90">90° clockwise</option><option value="180">180°</option><option value="270">270° clockwise</option></select></label>
               </div>
-              <button class="media-button empty-primary video-render-button" id="video-export-render" type="button">Render & download WebM</button>
-              <p id="video-export-status" class="video-editor-note" role="status" aria-live="polite">Exports run at playback speed. WebM requires a supported browser; MP4 is not available.</p>
+              <button class="media-button empty-primary video-render-button" id="video-export-render" type="button">Render & download video</button>
+              <p id="video-export-status" class="video-editor-note" role="status" aria-live="polite">MP4 is offered only when the browser supports native recording. WebM is the fallback.</p>
             </section>
             <div class="video-editor-actions">
               <button class="media-button empty-primary" id="video-play-selection" type="button">Play selection</button>
