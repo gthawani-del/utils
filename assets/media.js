@@ -395,6 +395,46 @@ document.querySelector('#video-key-add').addEventListener('click', () => {
   renderKineticCues(); syncKineticPreview();
   status.textContent = 'Keyframe added to selected overlay.';
 });
+function renderWordEditor() {
+  const list = document.querySelector('#video-word-list');
+  list.replaceChildren();
+  const cue = videoTextCues[selectedTextCue];
+  if (!cue) { list.textContent = 'Select a text overlay to edit its word timing.'; return; }
+  if (!cue.words.length) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.textContent = 'Create evenly timed words';
+    button.addEventListener('click', () => {
+      videoTextCues[selectedTextCue] = normalizeTextCue({ ...cue, words: parseWordTimings(cue.text, cue.start, cue.end) }, Number(project.source.duration));
+      renderWordEditor();
+    });
+    list.append(button); return;
+  }
+  cue.words.forEach((word, index) => {
+    const row = document.createElement('label');
+    row.className = 'video-word-row';
+    const title = document.createElement('span'); title.textContent = word.text;
+    const start = document.createElement('input');
+    start.type = 'number'; start.step = '0.01'; start.min = String(cue.start); start.max = String(cue.end);
+    start.value = String(Number(word.start.toFixed(2)));
+    start.setAttribute('aria-label', 'Start time for ' + word.text);
+    const end = document.createElement('input');
+    end.type = 'number'; end.step = '0.01'; end.min = String(cue.start); end.max = String(cue.end);
+    end.value = String(Number(word.end.toFixed(2)));
+    end.setAttribute('aria-label', 'End time for ' + word.text);
+    const change = () => {
+      const nextWords = cue.words.map(w => ({ ...w }));
+      nextWords[index] = { ...word, start: Number(start.value), end: Number(end.value) };
+      if (nextWords[index].end <= nextWords[index].start || nextWords[index].start < cue.start || nextWords[index].end > cue.end) {
+        document.querySelector('#video-kinetic-status').textContent = 'Word times must remain inside the text cue and end after start.';
+        return;
+      }
+      videoTextCues[selectedTextCue] = normalizeTextCue({ ...cue, words: nextWords }, Number(project.source.duration));
+      syncKineticPreview();
+    };
+    start.addEventListener('change', change); end.addEventListener('change', change);
+    row.append(title, start, end); list.append(row);
+  });
+}
 function renderKineticCues() {
   const list = document.querySelector('#video-kinetic-list');
   list.replaceChildren();
@@ -412,6 +452,7 @@ function renderKineticCues() {
     remove.addEventListener('click', () => { videoTextCues.splice(index, 1); selectedTextCue = -1; renderKineticCues(); syncKineticPreview(); });
     row.append(label, select, remove); list.append(row);
   });
+  renderWordEditor();
 }
 function syncKineticPreview() {
   const wrap = document.querySelector('#source-player-wrap');
