@@ -208,3 +208,24 @@
 .studio-v2-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 .video-editor-route .studio-v2-seek-label { display: block; position: relative; margin-top: 4px; }
 .video-editor-route .studio-v2-seek-label input { display: block; width: 100%; }
+
+/* V3 editing workflow: persistent timeline actions and focused inspector. */
+.video-editor-route .studio-v3-edit-actions { display:flex; flex-wrap:wrap; gap:6px; padding:4px 0; }
+.video-editor-route .studio-v3-edit-actions button { min-height:44px; flex:1 1 65px; border:1px solid #34465e; border-radius:8px; color:#e2e8f0; background:#1b293b; font-size:13px; font-weight:600; }
+.video-editor-route .studio-v3-edit-actions button:disabled { opacity:.4; }
+.video-editor-route .studio-v3-sheet-actions { display:flex; gap:6px; align-items:center; }
+.video-editor-route .studio-v3-sheet-actions button { min-height:44px; padding:8px 12px; border-radius:8px; border:1px solid #475569; background:#1e293b; color:#e2e8f0; font-size:13px; }
+.video-editor-route #studio-v3-apply { background:#2563eb; border-color:#2563eb; color:#fff; }
+.video-editor-route .studio-v2-timeline .studio-v2-track-system { border-radius:8px; }
+.video-editor-route .studio-v2-timeline .studio-v2-track-content { min-height:30px; }
+.video-editor-route .studio-v2-timeline .studio-v2-video-track { min-height:50px; }
+.video-editor-route .studio-v2-timeline .studio-v2-thumb { height:50px; }
+@media (max-width:759px) {
+  .video-editor-route .studio-v2-main { padding:8px 10px calc(18px + env(safe-area-inset-bottom)); gap:8px; }
+  .video-editor-route .studio-v2-preview .source-player-wrap { max-height:36dvh; }
+  .video-editor-route .studio-v2-preview .source-player-wrap video { max-height:36dvh; }
+  .video-editor-route .studio-v2-tools h3 { margin:2px 0 6px; font-size:13px; }
+  .video-editor-route .studio-v3-edit-actions button { font-size:12px; }
+  .video-editor-route .studio-v2-inspector-head { gap:8px; }
+  .video-editor-route .studio-v3-sheet-actions #studio-v2-close { display:none; }
+}
