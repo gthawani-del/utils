@@ -10,6 +10,7 @@ import { initLyricsWorkspace } from '/lib/media/lyrics/workspace.js';
 import { initTranscriptWorkspace } from '/lib/media/transcript/workspace.js';
 import { createAudioEdits, audioSelectionDuration, normalizeAudioEdits, previewVolumeAt, updateAudioEdits } from '/lib/media/audio/edits.js';
 import { createVideoEdits, normalizeVideoEdits, selectionDuration, updateVideoEdits } from '/lib/media/video/edits.js';
+import { createTimeline, splitTimeline, removeTimelineSegment, moveTimelineSegment, timelineDuration } from '/lib/media/video/timeline.js';
 
 const categories = [
   { id: 'video', name: 'Video Editor', short: 'Video Editor', icon: '▣', hint: 'Edit, trim, effects, transitions', copy: 'Upload or open a project to begin editing video in the shared Media Studio workspace.' },
@@ -73,6 +74,8 @@ let currentPlayer = null;
 let videoHistory = [];
 let videoFuture = [];
 let playingSelection = false;
+let videoSegments = [];
+let selectedVideoSegment = -1;
 let audioHistory = [];
 let audioFuture = [];
 let playingAudioSelection = false;
@@ -181,6 +184,7 @@ function updateVideoEditorVisibility() {
   const visible = hasEditableVideo();
   videoEditorPanel.classList.toggle('hidden', !visible);
   timelineStatus.textContent = visible ? 'Trim preview active' : 'Source preview';
+  renderVideoSegments();
 }
 
 function currentVideoEdits() {
@@ -262,6 +266,62 @@ function resetVideoHistory() {
   videoHistory = [];
   videoFuture = [];
   updateUndoRedo();
+}
+
+function renderVideoSegments() {
+  const list = document.querySelector('#video-segment-list');
+  const summary = document.querySelector('#video-segment-summary');
+  list.replaceChildren();
+  const total = timelineDuration(videoSegments);
+  summary.textContent = videoSegments.length + ' segment(s) · ' + formatEditorTime(total);
+  videoSegments.forEach((segment, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'video-segment-item' + (index === selectedVideoSegment ? ' selected' : '');
+    button.textContent = (index + 1) + ' · ' + formatEditorTime(segment.end - segment.start);
+    button.setAttribute('aria-pressed', String(index === selectedVideoSegment));
+    button.addEventListener('click', () => {
+      selectedVideoSegment = index;
+      if (currentPlayer) currentPlayer.currentTime = segment.start;
+      renderVideoSegments();
+    });
+    list.append(button);
+  });
+  document.querySelector('#video-split').disabled = !hasEditableVideo() || videoSegments.length >= 500;
+  document.querySelector('#video-delete-segment').disabled = selectedVideoSegment < 0;
+  document.querySelector('#video-move-left').disabled = selectedVideoSegment <= 0;
+  document.querySelector('#video-move-right').disabled = selectedVideoSegment < 0 || selectedVideoSegment >= videoSegments.length - 1;
+}
+function resetVideoSegments() {
+  videoSegments = project.source?.mediaType === 'video'
+    ? createTimeline('active-video', Number(project.source.duration || 0)) : [];
+  selectedVideoSegment = videoSegments.length ? 0 : -1;
+  renderVideoSegments();
+}
+function changeVideoSegments(next, message) {
+  videoSegments = next;
+  selectedVideoSegment = Math.min(selectedVideoSegment, next.length - 1);
+  document.querySelector('#video-segment-note').textContent = message + ' Preview uses the original source; rendered export is not available.';
+  renderVideoSegments();
+}
+document.querySelector('#video-split').addEventListener('click', () => {
+  if (!hasEditableVideo()) return;
+  const time = currentPlayer.currentTime;
+  const next = splitTimeline(videoSegments, time);
+  changeVideoSegments(next, next.length > videoSegments.length ? 'Segment split.' : 'Move the playhead inside a segment to split.');
+});
+document.querySelector('#video-delete-segment').addEventListener('click', () => {
+  if (selectedVideoSegment < 0) return;
+  changeVideoSegments(removeTimelineSegment(videoSegments, selectedVideoSegment), 'Segment removed from edit plan.');
+});
+for (const [id, offset] of [['#video-move-left', -1], ['#video-move-right', 1]]) {
+  document.querySelector(id).addEventListener('click', () => {
+    const target = selectedVideoSegment + offset;
+    if (selectedVideoSegment < 0 || target < 0 || target >= videoSegments.length) return;
+    videoSegments = moveTimelineSegment(videoSegments, selectedVideoSegment, target);
+    selectedVideoSegment = target;
+    changeVideoSegments(videoSegments, 'Segment reordered.');
+  });
 }
 
 function hasEditableAudio() {
@@ -580,6 +640,7 @@ async function handleFile(file) {
     }
     setProjectSource(project, result.source);
     renderSource(result.source);
+    if (!preserveEdits) resetVideoSegments();
   } finally {
     document.body.classList.remove('media-busy');
     fileInput.value = '';
@@ -632,6 +693,7 @@ linkForm.addEventListener('submit', (event) => {
   };
   setProjectSource(project, source);
   renderSource(source);
+  resetVideoSegments();
   closeLinkDialog();
 });
 
