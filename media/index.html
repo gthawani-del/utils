@@ -433,7 +433,7 @@
             <div class="video-editor-heading">
               <div>
                 <p class="workspace-eyebrow">Video foundation</p>
-                <h3 id="video-editor-title">Trim & preview</h3>
+                <h3 id="video-editor-title">Video timeline</h3>
               </div>
               <span>Non-destructive</span>
             </div>
@@ -453,6 +453,18 @@
               </label>
             </div>
 
+            <p class="video-editor-note">Scrub the video below, then play your selection. Use precise trim points only when needed.</p>
+            <div class="video-scrubber-wrap">
+              <div class="video-scrubber-meta">
+                <span id="video-playhead-label">00:00.00</span>
+                <strong id="video-selection-label">Selection 00:00.00</strong>
+              </div>
+              <input id="video-playhead" class="video-playhead" type="range" min="0" max="0" step="0.01" value="0" aria-label="Video playhead">
+            </div>
+
+
+            <details class="video-precision-panel">
+              <summary>Precise trim controls <span>In / Out</span></summary>
             <div class="video-trim-grid">
               <label>In point (seconds)
                 <input id="video-trim-start" type="number" min="0" step="0.01" value="0">
@@ -464,13 +476,7 @@
               <button class="video-tool-button" id="video-set-out" type="button">Set Out at playhead</button>
             </div>
 
-            <div class="video-scrubber-wrap">
-              <div class="video-scrubber-meta">
-                <span id="video-playhead-label">00:00.00</span>
-                <strong id="video-selection-label">Selection 00:00.00</strong>
-              </div>
-              <input id="video-playhead" class="video-playhead" type="range" min="0" max="0" step="0.01" value="0" aria-label="Video playhead">
-            </div>
+            </details>
 
             <div class="video-editor-actions">
               <button class="media-button empty-primary" id="video-play-selection" type="button">Play selection</button>
