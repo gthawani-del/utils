@@ -155,6 +155,7 @@ function setTimelineZoom(value) {
   $('#studio-v2-video-track').style.setProperty('--timeline-zoom', String(timelineZoom));
   $('#studio-v2-audio-track').style.setProperty('--timeline-zoom', String(timelineZoom));
 }
+$('#studio-v2-audio-track').addEventListener('click', () => { currentTool = 'audio'; showPanel('edit', 'Audio & silence', '.video-smart-panel'); });
 $('#studio-v3-zoom-in').addEventListener('click', () => setTimelineZoom(timelineZoom + .5));
 $('#studio-v3-zoom-out').addEventListener('click', () => setTimelineZoom(timelineZoom - .5));
 let touchDistance = null;
@@ -280,7 +281,9 @@ function update() {
       captions.dataset.key = key;
       captions.replaceChildren();
       for (const label of labels.slice(0, 8)) {
-        const span = document.createElement('span'); span.className = 'studio-v2-caption-chip'; span.textContent = label; captions.append(span);
+        const span = document.createElement('button'); span.type = 'button'; span.className = 'studio-v2-caption-chip'; span.textContent = label;
+        span.addEventListener('click', () => { currentTool = 'kinetic'; showPanel('text', 'Edit text & motion', '.video-kinetic-panel'); });
+        captions.append(span);
       }
     }
   }
