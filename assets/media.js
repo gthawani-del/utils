@@ -742,6 +742,30 @@ document.addEventListener('utilityos:recognized-words', event => {
   renderKineticCues(); syncKineticPreview();
   document.dispatchEvent(new CustomEvent('utilityos:captions-ready', { detail: { count } }));
 });
+// Transaction snapshots for dedicated editor. Source Blob URLs are retained; only edit decisions roll back.
+let editorTransaction = null;
+document.addEventListener('utilityos:edit-begin', () => {
+  editorTransaction = {
+    segments: structuredClone(videoSegments),
+    text: structuredClone(videoTextCues),
+    edits: project.videoEdits ? structuredClone(project.videoEdits) : null,
+    selected: selectedVideoSegment
+  };
+});
+document.addEventListener('utilityos:edit-commit', () => { editorTransaction = null; });
+document.addEventListener('utilityos:edit-rollback', () => {
+  if (!editorTransaction) return;
+  videoSegments = editorTransaction.segments;
+  videoTextCues = editorTransaction.text;
+  selectedVideoSegment = editorTransaction.selected;
+  if (editorTransaction.edits && project.source?.mediaType === 'video') {
+    project.videoEdits = editorTransaction.edits;
+    setProjectVideoEdits(project, editorTransaction.edits);
+    syncVideoControls();
+  }
+  editorTransaction = null;
+  renderVideoSegments(); renderKineticCues(); syncKineticPreview();
+});
 let videoRenderBusy = false;
 document.querySelector('#video-export-render').addEventListener('click', async () => {
   const status = document.querySelector('#video-export-status');
