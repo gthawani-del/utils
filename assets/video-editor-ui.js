@@ -50,7 +50,7 @@ shell.innerHTML = `
       </section>
     </div>
     <aside class="studio-v2-inspector" id="studio-v2-inspector" aria-label="Editing controls">
-      <div class="studio-v2-inspector-head"><strong id="studio-v2-inspector-title">Edit clip</strong><div class="studio-v3-sheet-actions"><button type="button" id="studio-v3-cancel">Cancel</button><button type="button" id="studio-v3-apply">Done</button><button type="button" id="studio-v2-close" aria-label="Close editing controls">×</button></div></div>
+      <div class="studio-v2-inspector-head"><strong id="studio-v2-inspector-title">Edit clip</strong><div class="studio-v3-sheet-actions"><button type="button" id="studio-v3-cancel">Close</button><button type="button" id="studio-v3-apply">Done</button><button type="button" id="studio-v2-close" aria-label="Close editing controls">×</button></div></div>
     </aside>
   </div>`;
 root.append(shell);
