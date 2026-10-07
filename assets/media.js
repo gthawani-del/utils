@@ -11,6 +11,7 @@ import { initTranscriptWorkspace } from '/lib/media/transcript/workspace.js';
 import { createAudioEdits, audioSelectionDuration, normalizeAudioEdits, previewVolumeAt, updateAudioEdits } from '/lib/media/audio/edits.js';
 import { createVideoEdits, normalizeVideoEdits, selectionDuration, updateVideoEdits } from '/lib/media/video/edits.js';
 import { createTimeline, splitTimeline, removeTimelineSegment, moveTimelineSegment, timelineDuration } from '/lib/media/video/timeline.js';
+import { renderVideoWebM } from '/lib/media/video/render.js';
 
 const categories = [
   { id: 'video', name: 'Video Editor', short: 'Video Editor', icon: '▣', hint: 'Edit, trim, effects, transitions', copy: 'Upload or open a project to begin editing video in the shared Media Studio workspace.' },
@@ -307,7 +308,14 @@ function changeVideoSegments(next, message) {
 document.querySelector('#video-split').addEventListener('click', () => {
   if (!hasEditableVideo()) return;
   const time = currentPlayer.currentTime;
-  const next = splitTimeline(videoSegments, time);
+  let offset = 0;
+  let position = null;
+  for (const segment of videoSegments) {
+    if (time > segment.start && time < segment.end) { position = offset + time - segment.start; break; }
+    offset += segment.end - segment.start;
+  }
+  if (position === null) { document.querySelector('#video-segment-note').textContent = 'Move the playhead inside a retained segment before splitting.'; return; }
+  const next = splitTimeline(videoSegments, position);
   changeVideoSegments(next, next.length > videoSegments.length ? 'Segment split.' : 'Move the playhead inside a segment to split.');
 });
 document.querySelector('#video-delete-segment').addEventListener('click', () => {
@@ -323,6 +331,49 @@ for (const [id, offset] of [['#video-move-left', -1], ['#video-move-right', 1]])
     changeVideoSegments(videoSegments, 'Segment reordered.');
   });
 }
+
+let videoRenderBusy = false;
+document.querySelector('#video-export-render').addEventListener('click', async () => {
+  const status = document.querySelector('#video-export-status');
+  const button = document.querySelector('#video-export-render');
+  if (videoRenderBusy || !hasEditableVideo() || !videoSegments.length) return;
+  const source = project.source;
+  const edits = currentVideoEdits();
+  // Respect the existing in/out trim selection when the timeline has not been split.
+  const segments = videoSegments.length === 1 && videoSegments[0].start === 0 && videoSegments[0].end === Number(source.duration)
+    ? [{ ...videoSegments[0], start: edits.trimStart, end: edits.trimEnd }] : videoSegments;
+  if (segments.some(segment => segment.end - segment.start <= 0.001)) { status.textContent = 'Select a non-empty video range.'; return; }
+  videoRenderBusy = true;
+  button.disabled = true;
+  status.textContent = 'Preparing local WebM export…';
+  try {
+    currentPlayer.pause();
+    const blob = await renderVideoWebM({
+      sourceUrl: source.objectUrl,
+      segments,
+      width: source.width,
+      height: source.height,
+      aspect: document.querySelector('#video-export-aspect').value,
+      fit: document.querySelector('#video-export-fit').value,
+      rotation: Number(document.querySelector('#video-export-rotation').value),
+      onProgress: percent => { status.textContent = 'Rendering locally: ' + percent + '%'; }
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = (source.name || 'video').replace(/\\.[^.]+$/, '').replace(/[^a-z0-9_-]/gi, '-') + '-edited.webm';
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    status.textContent = 'WebM exported (' + formatBytes(blob.size) + '). Check the downloaded file before sharing.';
+  } catch (error) {
+    status.textContent = 'Export failed: ' + (error?.message || 'Unknown browser error');
+  } finally {
+    videoRenderBusy = false;
+    button.disabled = false;
+  }
+});
 
 function hasEditableAudio() {
   return project.activeCategory === 'audio'
