@@ -3427,3 +3427,26 @@
 .video-segment-item.selected { outline: 2px solid var(--media-blue); outline-offset: -2px; background: #dbeafe; }
 .video-segment-item:focus-visible { outline: 3px solid var(--media-blue); outline-offset: 2px; }
 @media (max-width: 759px) { .video-segment-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .video-segment-actions .video-tool-button { width: 100%; } }
+
+/* Mobile video controls: readable labels, 44px targets and no tiny action text. */
+.video-export-panel { margin-top: 14px; padding: 14px; border: 1px solid var(--media-line); border-radius: 12px; background: #f8fafc; }
+.video-export-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+.video-export-grid label { display: grid; gap: 6px; color: var(--media-ink); font-size: 13px; font-weight: 650; }
+.video-export-grid select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 9px; background: white; color: var(--media-ink); font-size: 14px; }
+.video-render-button { margin-top: 14px; min-height: 44px; font-size: 14px; }
+.video-editor-panel .video-tool-button, .video-editor-panel .video-segment-item { font-size: 13px; line-height: 1.35; }
+.video-editor-panel .video-editor-note { font-size: 12px; line-height: 1.5; }
+.video-editor-panel .video-segments-heading { font-size: 14px; }
+.video-editor-panel .video-segments-heading span { font-size: 12px; }
+.video-editor-panel .video-scrubber-meta { font-size: 13px; }
+.video-editor-panel .video-precision-panel > summary { font-size: 14px; }
+.video-editor-panel .video-precision-panel > summary span { font-size: 12px; }
+.video-editor-panel .video-trim-grid label, .video-editor-panel .video-rate-control { font-size: 13px; }
+.video-editor-panel .video-trim-grid input, .video-editor-panel .video-rate-control select { min-height: 44px; font-size: 16px; }
+.video-editor-panel button:focus-visible, .video-editor-panel select:focus-visible { outline: 2px solid var(--media-blue); outline-offset: 2px; }
+@media (max-width: 759px) {
+  .video-export-grid { grid-template-columns: minmax(0,1fr); }
+  .video-editor-panel .video-segment-item { min-width: 108px; min-height: 48px; }
+  .video-editor-panel .video-tool-button { min-height: 44px; }
+  .video-editor-panel .video-editor-actions .media-button { min-height: 44px; font-size: 14px; }
+}
