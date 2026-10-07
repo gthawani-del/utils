@@ -204,3 +204,7 @@
   .video-editor-route .studio-v2-seek-label { margin-left: 0; }
   .video-editor-route .studio-v2-preview { border: 0; }
 }
+
+.studio-v2-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+.video-editor-route .studio-v2-seek-label { display: block; position: relative; margin-top: 4px; }
+.video-editor-route .studio-v2-seek-label input { display: block; width: 100%; }
