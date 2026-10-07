@@ -3557,3 +3557,10 @@
   .video-workspace-active .video-empty-controls { gap: 5px; }
   .video-workspace-active .video-empty-controls span { font-size: 12px; }
 }
+
+/* Separate Media Studio from the dedicated Video Editor route. */
+.video-editor-launch { display: inline-flex; align-items: center; min-height: 44px; margin-top: 4px; color: #1d4ed8; font-size: 13px; font-weight: 750; text-decoration: none; }
+.video-editor-launch.hidden { display: none; }
+.video-editor-route .header-tools > a.media-button { display: inline-flex; align-items: center; text-decoration: none; font-size: 13px; }
+.video-editor-route .media-sidebar .sidebar-product small { font-size: 12px; }
+@media (max-width:759px) { .video-editor-route .header-tools > a.media-button { min-width: 0; padding: 9px; font-size: 12px; } }
