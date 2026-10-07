@@ -350,7 +350,9 @@ const extraClipsInput = document.querySelector('#video-add-clips-input');
 document.querySelector('#video-add-clips').addEventListener('click', () => extraClipsInput.click());
 extraClipsInput.addEventListener('change', async () => {
   const note = document.querySelector('#video-segment-note');
-  const files = [...(extraClipsInput.files || [])].slice(0, 12);
+  const remaining = Math.max(0, 12 - Object.keys(videoSources).length);
+  const files = [...(extraClipsInput.files || [])].slice(0, remaining);
+  if (!files.length) { note.textContent = 'Maximum 12 source videos per local project.'; extraClipsInput.value = ''; return; }
   let added = 0;
   for (const file of files) {
     const result = await ingestLocalMedia(file);
@@ -557,7 +559,7 @@ document.querySelector('#video-export-render').addEventListener('click', async (
   const source = project.source;
   const edits = currentVideoEdits();
   // Respect the existing in/out trim selection when the timeline has not been split.
-  const segments = videoSegments.length === 1 && videoSegments[0].start === 0 && videoSegments[0].end === Number(source.duration)
+  const segments = videoSegments.length === 1 && videoSegments[0].sourceId === 'active-video' && videoSegments[0].start === 0 && videoSegments[0].end === Number(source.duration)
     ? [{ ...videoSegments[0], start: edits.trimStart, end: edits.trimEnd }] : videoSegments;
   if (segments.some(segment => segment.end - segment.start <= 0.001)) { status.textContent = 'Select a non-empty video range.'; return; }
   videoRenderBusy = true;
