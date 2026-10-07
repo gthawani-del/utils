@@ -15,7 +15,7 @@ for (const file of required) await access(resolve(root, file));
 
 const vercel = JSON.parse(await readFile(resolve(root, 'vercel.json'), 'utf8'));
 const csp = vercel.headers?.[0]?.headers?.find((item) => item.key === 'Content-Security-Policy')?.value || '';
-for (const directive of ["default-src 'self'", "connect-src 'none'", "object-src 'none'", "frame-ancestors 'none'"]) {
+for (const directive of ["default-src 'self'", "connect-src https://cdn.jsdelivr.net https://huggingface.co", "object-src 'none'", "frame-ancestors 'none'"]) {
   if (!csp.includes(directive)) throw new Error(`Missing required CSP directive: ${directive}`);
 }
 if (vercel.outputDirectory !== 'dist') throw new Error('Vercel outputDirectory must be dist.');
