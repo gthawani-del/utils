@@ -51,7 +51,7 @@ shell.innerHTML = `
       </section>
     </div>
     <aside class="studio-v2-inspector" id="studio-v2-inspector" aria-label="Editing controls">
-      <div class="studio-v2-inspector-head"><strong id="studio-v2-inspector-title">Edit clip</strong><div class="studio-v3-sheet-actions"><button type="button" id="studio-v3-cancel">Close</button><button type="button" id="studio-v3-apply">Done</button><button type="button" id="studio-v2-close" aria-label="Close editing controls">×</button></div></div>
+      <div class="studio-v2-inspector-head"><strong id="studio-v2-inspector-title">Edit clip</strong><div class="studio-v3-sheet-actions"><button type="button" id="studio-v3-cancel">Discard</button><button type="button" id="studio-v3-apply">Done</button><button type="button" id="studio-v2-close" aria-label="Close editing controls">×</button></div></div>
     </aside>
   </div>`;
 root.append(shell);
@@ -76,6 +76,8 @@ timeline.append(timelineDisplay);
 const showPanel = (tab, title, focusSelector) => {
   document.querySelector('[data-video-tool="' + tab + '"]')?.click();
   $('#studio-v2-inspector-title').textContent = title;
+  if (shell.classList.contains('studio-v2-inspector-open')) document.dispatchEvent(new Event('utilityos:edit-commit'));
+  document.dispatchEvent(new Event('utilityos:edit-begin'));
   shell.dataset.activeTool = currentTool;
   recognition.hidden = !['captions','kinetic'].includes(currentTool);
   shell.classList.add('studio-v2-inspector-open');
@@ -126,10 +128,10 @@ async function runRecognition(mode) {
 $('#studio-v4-captions').addEventListener('click', () => runRecognition('captions'));
 $('#studio-v4-lyrics').addEventListener('click', () => runRecognition('lyrics'));
 recognition.hidden = true;
-$('#studio-v2-close').addEventListener('click', () => shell.classList.remove('studio-v2-inspector-open'));
+$('#studio-v2-close').addEventListener('click', () => { document.dispatchEvent(new Event('utilityos:edit-rollback')); shell.classList.remove('studio-v2-inspector-open'); });
 const closeTool = () => shell.classList.remove('studio-v2-inspector-open');
-$('#studio-v3-apply').addEventListener('click', closeTool);
-$('#studio-v3-cancel').addEventListener('click', closeTool);
+$('#studio-v3-apply').addEventListener('click', () => { document.dispatchEvent(new Event('utilityos:edit-commit')); closeTool(); });
+$('#studio-v3-cancel').addEventListener('click', () => { document.dispatchEvent(new Event('utilityos:edit-rollback')); closeTool(); });
 for (const [id, source] of [['studio-v3-undo','#video-undo'],['studio-v3-redo','#video-redo'],['studio-v3-split','#video-split'],['studio-v3-delete','#video-delete-segment']]) {
   $('#' + id).addEventListener('click', () => {
     const target = $(source);
@@ -137,7 +139,7 @@ for (const [id, source] of [['studio-v3-undo','#video-undo'],['studio-v3-redo','
   });
 }
 
-document.addEventListener('keydown', event => { if (event.key === 'Escape') shell.classList.remove('studio-v2-inspector-open'); });
+document.addEventListener('keydown', event => { if (event.key === 'Escape') { document.dispatchEvent(new Event('utilityos:edit-rollback')); closeTool(); } });
 $('#studio-v2-export').addEventListener('click', () => {
   currentTool = 'reframe';
   showPanel('export', 'Export video', '.video-export-panel');
