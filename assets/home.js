@@ -1,6 +1,7 @@
 import { clearWorkspace } from '/lib/security/workspace.js';
 
 const tools = [
+  ['Video Editor', 'Edit clips, kinetic typography, Smooth & Match and local export in a dedicated workspace.', '/media/video-editor', true, 'VID'],
   ['Image Studio', 'Resize, crop, convert, compress, rotate, strip metadata, and batch export images.', '/image', true, 'IMG'],
   ['Media Editor + Transcriber', 'Local media editing and transcription workflows.', '/media', true, 'MED'],
   ['Docs Reader', 'Inspect and work with documents locally.', '#', false, 'DOC'],
@@ -16,7 +17,7 @@ const tools = [
 const grid = document.querySelector('#tool-grid');
 for (const [name, description, href, active, code] of tools) {
   const article = document.createElement('article');
-  article.className = `tool-card${active ? ' active-card' : ''}`;
+  article.className = `tool-card${active ? ' active-card' : ''}${name === 'Video Editor' ? ' featured-video-card' : ''}`;
   const icon = document.createElement('div'); icon.className = 'tool-icon'; icon.textContent = code;
   const meta = document.createElement('div'); meta.className = 'tool-meta';
   const title = document.createElement('h3'); title.textContent = name;
