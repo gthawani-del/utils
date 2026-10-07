@@ -190,6 +190,7 @@ function selectCategory(id) {
   });
 
   workspaceTitle.textContent = category.name;
+  document.querySelector('.video-editor-launch')?.classList.toggle('hidden', category.id !== 'video');
   setProjectCategory(project, category.id);
 
   if (!project.source) {
