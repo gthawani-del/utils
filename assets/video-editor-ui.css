@@ -114,3 +114,59 @@
 .studio-v2-audio-track { justify-content: space-around; gap: 2px; padding: 3px 7px; color: #b8e7d9; font-size: 11px; }
 .studio-v2-wave-bar { flex: 1 1 2px; max-width: 4px; min-width: 1px; background: #6ee7b7; border-radius: 2px; }
 @media (max-width:759px) { .studio-v2-segments button { max-width: 145px; font-size: 11px; } }
+
+/* Focused contextual tools: the old form panels are retained as processing controls,
+   but only the relevant subset is exposed for the selected tool. */
+.video-editor-route .studio-v2-inspector .video-tool-tabs,
+.video-editor-route .studio-v2-inspector .video-editor-heading,
+.video-editor-route .studio-v2-inspector .video-editor-toolbar,
+.video-editor-route .studio-v2-inspector .video-editor-actions,
+.video-editor-route .studio-v2-inspector .video-scrubber-wrap,
+.video-editor-route .studio-v2-inspector .video-precision-panel,
+.video-editor-route .studio-v2-inspector .video-segments,
+.video-editor-route .studio-v2-inspector .video-smart-panel,
+.video-editor-route .studio-v2-inspector .video-kinetic-panel,
+.video-editor-route .studio-v2-inspector .video-export-panel { display: none !important; }
+.video-editor-route .studio-v2-root[data-active-tool="edit"] .video-segments,
+.video-editor-route .studio-v2-root[data-active-tool="edit"] .video-precision-panel,
+.video-editor-route .studio-v2-root[data-active-tool="kinetic"] .video-kinetic-panel,
+.video-editor-route .studio-v2-root[data-active-tool="captions"] .video-kinetic-panel,
+.video-editor-route .studio-v2-root[data-active-tool="audio"] .video-smart-panel,
+.video-editor-route .studio-v2-root[data-active-tool="more"] .video-smart-panel,
+.video-editor-route .studio-v2-root[data-active-tool="effects"] .video-export-panel,
+.video-editor-route .studio-v2-root[data-active-tool="adjust"] .video-export-panel,
+.video-editor-route .studio-v2-root[data-active-tool="reframe"] .video-export-panel { display: block !important; }
+.video-editor-route .studio-v2-root[data-active-tool="effects"] .video-export-grid,
+.video-editor-route .studio-v2-root[data-active-tool="adjust"] .video-export-grid,
+.video-editor-route .studio-v2-root[data-active-tool="reframe"] .video-repair-controls { display: none !important; }
+.video-editor-route .studio-v2-root[data-active-tool="effects"] .video-captions-toggle,
+.video-editor-route .studio-v2-root[data-active-tool="adjust"] .video-captions-toggle,
+.video-editor-route .studio-v2-root[data-active-tool="reframe"] .video-captions-toggle { display: none !important; }
+.video-editor-route .studio-v2-root[data-active-tool="kinetic"] .video-word-editor,
+.video-editor-route .studio-v2-root[data-active-tool="captions"] .video-kinetic-grid,
+.video-editor-route .studio-v2-root[data-active-tool="captions"] #video-kinetic-add { display: none !important; }
+.video-editor-route .studio-v2-root[data-active-tool="effects"] .video-export-panel > .video-segments-heading,
+.video-editor-route .studio-v2-root[data-active-tool="adjust"] .video-export-panel > .video-segments-heading { display: none; }
+.video-editor-route .studio-v2-inspector .video-kinetic-grid,
+.video-editor-route .studio-v2-inspector .video-export-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.video-editor-route .studio-v2-inspector label { font-size: 13px; line-height: 1.35; }
+.video-editor-route .studio-v2-inspector input,
+.video-editor-route .studio-v2-inspector select { font-size: 16px; min-height: 44px; }
+.video-editor-route .studio-v2-inspector .video-kinetic-grid label:first-child { grid-column: 1 / -1; }
+.video-editor-route .studio-v2-inspector .video-export-panel,
+.video-editor-route .studio-v2-inspector .video-kinetic-panel,
+.video-editor-route .studio-v2-inspector .video-segments,
+.video-editor-route .studio-v2-inspector .video-smart-panel { border: 0; background: transparent; padding: 0; }
+.video-editor-route .studio-v2-preview .source-player-wrap video { display: block !important; visibility: visible !important; opacity: 1 !important; width: 100%; height: auto; max-height: 42vh; object-fit: contain; }
+.video-editor-route .studio-v2-preview .source-player-wrap { border: 0; background: #000; }
+.video-editor-route .studio-v2-timeline .timeline-shell { color: #dce6f4; background: #151e2b; }
+.video-editor-route .studio-v2-timeline .timeline-toolbar { color: #cbd5e1; }
+@media (max-width:759px) {
+  .video-editor-route .studio-v2-inspector { max-height: 62dvh; padding: 12px 16px calc(16px + env(safe-area-inset-bottom)); }
+  .video-editor-route .studio-v2-inspector-head { position: sticky; top: -12px; z-index: 3; background: #111b29; padding: 10px 0 12px; border-bottom: 1px solid #334155; margin-bottom: 12px; }
+  .video-editor-route .studio-v2-inspector .video-kinetic-grid,
+  .video-editor-route .studio-v2-inspector .video-export-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .video-editor-route .studio-v2-preview .source-caption { display: none; }
+  .video-editor-route .studio-v2-preview .source-player-wrap { max-height: 34dvh; }
+  .video-editor-route .studio-v2-preview .source-player-wrap video { max-height: 34dvh; }
+}
