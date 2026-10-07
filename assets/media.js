@@ -14,7 +14,7 @@ import { createTimeline, splitTimeline, removeTimelineSegment, moveTimelineSegme
 import { renderVideo, supportedVideoExportFormats } from '/lib/media/video/render.js';
 import { renderConformedVideo } from '/lib/media/video/conform-render.js';
 import { detectSilentRanges, keepRangesWithoutSilence } from '/lib/media/video/smart-audio.js';
-import { detectSceneCuts } from '/lib/media/video/repair.js';
+import { detectSceneCuts, meanLuminance, matchBrightness, rmsLevel, matchAudioGain } from '/lib/media/video/repair.js';
 import { appendTimeline, timelineDuration as conformDuration } from '/lib/media/video/timeline.js';
 import { normalizeTextCue, kineticTextFrame } from '/lib/media/video/kinetic.js';
 import { detectBeats, parseWordTimings, MOTION_TEMPLATES } from '/lib/media/video/motion.js';
@@ -361,6 +361,61 @@ function changeVideoSegments(next, message) {
   document.querySelector('#video-segment-note').textContent = message + ' Export will use the current segment order. Source preview shows one clip at a time.';
   renderVideoSegments();
 }
+document.querySelector('#video-match-clips').addEventListener('click', async () => {
+  const status = document.querySelector('#video-smart-status');
+  const button = document.querySelector('#video-match-clips');
+  if (!hasEditableVideo() || !videoSegments.length) { status.textContent = 'Load video clips first.'; return; }
+  button.disabled = true;
+  status.textContent = 'Comparing clip brightness and loudness locally…';
+  const canvas = document.createElement('canvas');
+  canvas.width = 64; canvas.height = 36;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  let audioContext;
+  const stats = {};
+  try {
+    for (const segment of videoSegments) {
+      if (stats[segment.sourceId]) continue;
+      const source = videoSources[segment.sourceId];
+      const video = document.createElement('video');
+      video.muted = true; video.preload = 'auto';
+      try {
+        video.src = source.objectUrl;
+        await new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error('Clip decode timed out')), 12000);
+          video.onloadeddata = () => { clearTimeout(timer); resolve(); };
+          video.onerror = () => { clearTimeout(timer); reject(new Error('Video decode failed')); };
+        });
+        ctx.drawImage(video, 0, 0, 64, 36);
+        const brightness = meanLuminance(ctx.getImageData(0, 0, 64, 36).data);
+        let loudness = 0;
+        if (source.file && source.file.size <= 50 * 1024 * 1024) {
+          const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
+          if (Context) {
+            audioContext ||= new Context();
+            try {
+              const audio = await audioContext.decodeAudioData(await source.file.arrayBuffer());
+              loudness = rmsLevel(audio.getChannelData(0));
+            } catch { /* Unsupported audio codec: retain default gain. */ }
+          }
+        }
+        stats[segment.sourceId] = { brightness, loudness };
+      } finally { video.pause(); video.removeAttribute('src'); video.load(); }
+    }
+    const values = Object.values(stats);
+    const referenceBrightness = values.find(item => item.brightness > 0)?.brightness || 0;
+    const referenceLoudness = values.find(item => item.loudness > 0)?.loudness || 0;
+    videoSegments.forEach(segment => {
+      const stat = stats[segment.sourceId];
+      segment.repair = {
+        ...(segment.repair || {}),
+        brightness: matchBrightness(referenceBrightness, stat.brightness),
+        gain: matchAudioGain(referenceLoudness, stat.loudness)
+      };
+    });
+    status.textContent = 'Matched ' + values.length + ' source clips using conservative brightness and RMS audio gains. Review export.';
+  } catch (error) { status.textContent = 'Matching failed: ' + error.message; }
+  finally { await audioContext?.close().catch(() => {}); button.disabled = false; }
+});
 document.querySelector('#video-detect-scenes').addEventListener('click', async () => {
   const status = document.querySelector('#video-smart-status');
   const button = document.querySelector('#video-detect-scenes');
