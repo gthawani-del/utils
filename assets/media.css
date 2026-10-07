@@ -3509,3 +3509,10 @@
   .media-body:has(#video-editor-panel:not(.hidden)) .video-editor-heading h3 { font-size: 16px; }
   .media-body:has(#video-editor-panel:not(.hidden)) .video-tool-tabs { position: sticky; top: 0; z-index: 6; background: #fff; padding: 8px 0; }
 }
+
+/* Universal Smooth & Match per-clip controls */
+.video-segment-card { flex: 0 0 158px; display: grid; gap: 6px; }
+.video-segment-card .video-segment-item { width: 100%; min-width: 0; min-height: 44px; font-size: 13px; }
+.video-segment-card select { width: 100%; min-height: 44px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #1e293b; padding: 8px; font-size: 14px; }
+.video-export-grid input { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 9px; font-size: 16px; }
+@media (max-width: 759px) { .video-segment-card { flex-basis: 154px; } }
