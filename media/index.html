@@ -497,6 +497,18 @@
                 <label>Start (sec)<input id="video-kinetic-start" type="number" min="0" step="0.1" value="0"></label>
                 <label>End (sec)<input id="video-kinetic-end" type="number" min="0" step="0.1" value="3"></label>
               </div>
+              <div class="video-kinetic-grid">
+                <label>Motion template<select id="video-motion-template"><option value="clean">Clean</option><option value="punch">Punch</option><option value="cinematic">Cinematic</option><option value="rhythm">Rhythm</option></select></label>
+                <label>Word timing<select id="video-word-mode"><option value="none">Whole phrase</option><option value="equal">Evenly timed words</option></select></label>
+                <label>Keyframe at (sec)<input id="video-key-time" type="number" min="0" step="0.1" value="0"></label>
+                <label>Scale<input id="video-key-scale" type="number" min="0.2" max="4" step="0.1" value="1"></label>
+                <label>Vertical offset (px)<input id="video-key-y" type="number" min="-500" max="500" step="1" value="0"></label>
+              </div>
+              <div class="video-segment-actions">
+                <button class="video-tool-button" id="video-beat-analyze" type="button">Detect beats locally</button>
+                <button class="video-tool-button" id="video-key-add" type="button">Add keyframe to selected text</button>
+              </div>
+              <p id="video-beat-status" class="video-editor-note" role="status">Beat detection uses the uploaded video's audio. Word timing is editable, not automatic transcription.</p>
               <button class="video-tool-button" id="video-kinetic-add" type="button">Add timed text</button>
               <div id="video-kinetic-list" class="video-kinetic-list" aria-label="Text overlays"></div>
               <p id="video-kinetic-status" class="video-editor-note" role="status">Text animations render directly into exported video.</p>
