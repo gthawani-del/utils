@@ -14,6 +14,7 @@ import { createTimeline, splitTimeline, removeTimelineSegment, moveTimelineSegme
 import { renderVideo, supportedVideoExportFormats } from '/lib/media/video/render.js';
 import { renderConformedVideo } from '/lib/media/video/conform-render.js';
 import { detectSilentRanges, keepRangesWithoutSilence } from '/lib/media/video/smart-audio.js';
+import { detectSceneCuts } from '/lib/media/video/repair.js';
 import { appendTimeline, timelineDuration as conformDuration } from '/lib/media/video/timeline.js';
 import { normalizeTextCue, kineticTextFrame } from '/lib/media/video/kinetic.js';
 import { detectBeats, parseWordTimings, MOTION_TEMPLATES } from '/lib/media/video/motion.js';
@@ -360,6 +361,37 @@ function changeVideoSegments(next, message) {
   document.querySelector('#video-segment-note').textContent = message + ' Export will use the current segment order. Source preview shows one clip at a time.';
   renderVideoSegments();
 }
+document.querySelector('#video-detect-scenes').addEventListener('click', async () => {
+  const status = document.querySelector('#video-smart-status');
+  const button = document.querySelector('#video-detect-scenes');
+  if (!hasEditableVideo() || !project.source?.objectUrl) { status.textContent = 'Load a local video first.'; return; }
+  if (project.source.duration > 600) { status.textContent = 'Scene scan limited to 10-minute clips.'; return; }
+  button.disabled = true;
+  status.textContent = 'Scanning sample frames locally…';
+  const video = document.createElement('video');
+  const canvas = document.createElement('canvas');
+  canvas.width = 64; canvas.height = 36;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const samples = [];
+  try {
+    video.preload = 'auto'; video.muted = true; video.src = project.source.objectUrl;
+    await new Promise((resolve, reject) => { video.onloadedmetadata = resolve; video.onerror = () => reject(new Error('Unable to decode video')); });
+    for (let time = 0; time < project.source.duration; time += 0.5) {
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('Frame seek timed out')), 8000);
+        video.onseeked = () => { clearTimeout(timer); resolve(); };
+        video.currentTime = time;
+      });
+      ctx.drawImage(video, 0, 0, 64, 36);
+      samples.push({ time, pixels: ctx.getImageData(0, 0, 64, 36).data.slice() });
+    }
+    const cuts = detectSceneCuts(samples);
+    status.textContent = cuts.length + ' candidate scene cuts found at ' + cuts.slice(0, 12).map(t => t.toFixed(1) + 's').join(', ') + (cuts.length > 12 ? '…' : '') + '. No edits applied.';
+  } catch (error) { status.textContent = 'Scene detection failed: ' + error.message; }
+  finally {
+    video.pause(); video.removeAttribute('src'); video.load(); button.disabled = false;
+  }
+});
 document.querySelector('#video-remove-silence').addEventListener('click', async () => {
   const status = document.querySelector('#video-smart-status');
   const button = document.querySelector('#video-remove-silence');
@@ -621,6 +653,13 @@ document.querySelector('#video-export-render').addEventListener('click', async (
     const blob = await renderConformedVideo({
       format,
       textCues: videoTextCues,
+      captionCues: document.querySelector('#video-include-captions').checked ? (project.transcript?.cues || []) : [],
+      repair: {
+        brightness: Number(document.querySelector('#video-repair-brightness').value),
+        contrast: Number(document.querySelector('#video-repair-contrast').value),
+        gain: Number(document.querySelector('#video-repair-gain').value),
+        interpolation: document.querySelector('#video-motion-repair').value
+      },
       sources: videoSources,
       segments,
       aspect: document.querySelector('#video-export-aspect').value,
