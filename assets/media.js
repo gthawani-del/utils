@@ -13,6 +13,7 @@ import { createVideoEdits, normalizeVideoEdits, selectionDuration, updateVideoEd
 import { createTimeline, splitTimeline, removeTimelineSegment, moveTimelineSegment, timelineDuration } from '/lib/media/video/timeline.js';
 import { renderVideo, supportedVideoExportFormats } from '/lib/media/video/render.js';
 import { renderConformedVideo } from '/lib/media/video/conform-render.js';
+import { detectSilentRanges, keepRangesWithoutSilence } from '/lib/media/video/smart-audio.js';
 import { appendTimeline, timelineDuration as conformDuration } from '/lib/media/video/timeline.js';
 import { normalizeTextCue, kineticTextFrame } from '/lib/media/video/kinetic.js';
 import { detectBeats, parseWordTimings, MOTION_TEMPLATES } from '/lib/media/video/motion.js';
@@ -359,6 +360,42 @@ function changeVideoSegments(next, message) {
   document.querySelector('#video-segment-note').textContent = message + ' Export will use the current segment order. Source preview shows one clip at a time.';
   renderVideoSegments();
 }
+document.querySelector('#video-remove-silence').addEventListener('click', async () => {
+  const status = document.querySelector('#video-smart-status');
+  const button = document.querySelector('#video-remove-silence');
+  if (!hasEditableVideo() || !project.source?.file) { status.textContent = 'Load a local video first.'; return; }
+  if (videoSegments.length !== 1 || videoSegments[0].sourceId !== 'active-video') {
+    status.textContent = 'Silence removal currently requires one unsplit source clip.';
+    return;
+  }
+  if (project.source.file.size > 150 * 1024 * 1024) { status.textContent = 'Audio analysis limited to source files under 150 MB.'; return; }
+  button.disabled = true;
+  status.textContent = 'Decoding audio locally…';
+  let context;
+  try {
+    const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
+    if (!Context) throw new Error('Web Audio unavailable');
+    context = new Context();
+    const buffer = await context.decodeAudioData(await project.source.file.arrayBuffer());
+    const mono = new Float32Array(buffer.length);
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+      const samples = buffer.getChannelData(channel);
+      for (let i = 0; i < mono.length; i++) mono[i] += samples[i] / buffer.numberOfChannels;
+    }
+    const silent = detectSilentRanges(mono, buffer.sampleRate);
+    const keep = keepRangesWithoutSilence(project.source.duration, silent);
+    if (!silent.length || !keep.length) { status.textContent = 'No removable long silent sections found.'; return; }
+    videoSegments = keep.map(range => ({ sourceId:'active-video', ...range }));
+    selectedVideoSegment = 0;
+    renderVideoSegments();
+    status.textContent = 'Removed ' + silent.length + ' long silent range(s) from the edit plan. Review before exporting.';
+  } catch (error) {
+    status.textContent = 'Analysis failed: ' + (error.message || 'Audio could not be decoded');
+  } finally {
+    await context?.close().catch(() => {});
+    button.disabled = false;
+  }
+});
 const extraClipsInput = document.querySelector('#video-add-clips-input');
 document.querySelector('#video-add-clips').addEventListener('click', () => extraClipsInput.click());
 extraClipsInput.addEventListener('change', async () => {
