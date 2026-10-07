@@ -170,3 +170,13 @@
   .video-editor-route .studio-v2-preview .source-player-wrap { max-height: 34dvh; }
   .video-editor-route .studio-v2-preview .source-player-wrap video { max-height: 34dvh; }
 }
+
+.video-editor-route .video-text-style { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin: 12px 0; }
+.video-editor-route .video-text-style label { display: grid; gap: 6px; font-size: 13px; }
+.video-editor-route .video-text-style input, .video-editor-route .video-text-style select { width: 100%; min-width: 0; min-height: 44px; padding: 6px; border: 1px solid #475569; border-radius: 8px; background: #fff; color: #111827; font-size: 16px; }
+.video-editor-route .video-text-style input[type="color"] { padding: 4px; }
+.video-editor-route .video-lyrics-import { display: grid; gap: 9px; margin: 14px 0; padding: 12px; border: 1px solid #334155; border-radius: 10px; }
+.video-editor-route .video-lyrics-import label { display: grid; gap: 7px; }
+.video-editor-route .video-lyrics-import input { max-width: 100%; color: #e2e8f0; background: transparent; font-size: 13px; }
+.video-editor-route .video-lyrics-import p { color: #9fb1c9; font-size: 12px; line-height: 1.5; }
+@media(max-width:759px) { .video-editor-route .video-text-style { grid-template-columns: repeat(2,minmax(0,1fr)); } }
