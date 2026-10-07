@@ -326,7 +326,20 @@ function renderVideoSegments() {
       if (currentPlayer && videoSources[segment.sourceId]?.objectUrl === project.source?.objectUrl) currentPlayer.currentTime = segment.start;
       renderVideoSegments();
     });
-    list.append(button);
+    const fit = document.createElement('select');
+    fit.setAttribute('aria-label', 'Framing for clip ' + (index + 1));
+    for (const [value, label] of [['default','Use global fit'],['contain','Fit'],['cover','Fill'],['blur','Blur background']]) {
+      const option = document.createElement('option'); option.value = value; option.textContent = label; fit.append(option);
+    }
+    fit.value = segment.fit || 'default';
+    fit.addEventListener('change', () => {
+      if (fit.value === 'default') delete segment.fit; else segment.fit = fit.value;
+      document.querySelector('#video-segment-note').textContent = 'Clip framing updated for export.';
+    });
+    const item = document.createElement('div');
+    item.className = 'video-segment-card';
+    item.append(button, fit);
+    list.append(item);
   });
   document.querySelector('#video-split').disabled = !hasEditableVideo() || videoSegments.length >= 500;
   document.querySelector('#video-delete-segment').disabled = selectedVideoSegment < 0;
