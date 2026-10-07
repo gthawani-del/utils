@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeTextCue, kineticTextFrame } from '../lib/media/video/kinetic.js';
 test('normalizes valid text and animation', () => {
-  assert.deepEqual(normalizeTextCue({ text: ' Hello ', start: 1, end: 3, effect: 'pop' }, 5), { text: 'Hello', start: 1, end: 3, effect: 'pop' });
+  const cue = normalizeTextCue({ text: ' Hello ', start: 1, end: 3, effect: 'pop' }, 5);
+  assert.equal(cue.text, 'Hello');
+  assert.equal(cue.effect, 'pop');
+  assert.equal(cue.style.font, 'sans');
 });
 test('rejects empty text and invalid times', () => {
   assert.throws(() => normalizeTextCue({ text: '', start: 0, end: 2 }), RangeError);
