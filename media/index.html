@@ -478,6 +478,17 @@
 
             </details>
 
+            <section class="video-segments" aria-label="Clip segments">
+              <div class="video-segments-heading"><strong>Clip segments</strong><span id="video-segment-summary">Load a video to begin</span></div>
+              <div class="video-segment-actions">
+                <button class="video-tool-button" id="video-split" type="button">Split at playhead</button>
+                <button class="video-tool-button" id="video-delete-segment" type="button" disabled>Delete selected</button>
+                <button class="video-tool-button" id="video-move-left" type="button" disabled>Move left</button>
+                <button class="video-tool-button" id="video-move-right" type="button" disabled>Move right</button>
+              </div>
+              <div class="video-segment-list" id="video-segment-list" role="group" aria-label="Select clip segment"></div>
+              <p class="video-editor-note" id="video-segment-note" role="status">Segment changes are local edit decisions. Rendered export is not available yet.</p>
+            </section>
             <div class="video-editor-actions">
               <button class="media-button empty-primary" id="video-play-selection" type="button">Play selection</button>
               <button class="media-button" id="video-reset-edits" type="button">Reset trim</button>
