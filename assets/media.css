@@ -3404,3 +3404,14 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Video editor: progressive disclosure for precise controls. */
+.video-precision-panel { margin-top: 12px; border: 1px solid var(--media-line); border-radius: 12px; background: #fff; }
+.video-precision-panel > summary { display: flex; justify-content: space-between; gap: 12px; align-items: center; cursor: pointer; padding: 12px 14px; font-size: 12px; font-weight: 750; list-style: none; min-height: 44px; }
+.video-precision-panel > summary::-webkit-details-marker { display: none; }
+.video-precision-panel > summary::before { content: '▸'; color: var(--media-blue); }
+.video-precision-panel[open] > summary::before { content: '▾'; }
+.video-precision-panel > summary span { margin-left: auto; font-size: 10px; color: var(--media-muted); }
+.video-precision-panel .video-trim-grid { padding: 0 12px 12px; margin-top: 0; }
+.video-precision-panel:focus-within { border-color: var(--media-blue); }
+@media (max-width: 759px) { .video-editor-heading { margin-bottom: 8px; } .video-scrubber-wrap { margin-top: 10px; } .video-precision-panel .video-trim-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
