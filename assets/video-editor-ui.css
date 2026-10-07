@@ -105,3 +105,12 @@
   .studio-v2-inspector-open .studio-v2-inspector { display: block; }
   .studio-v2-inspector-head button { display: grid; place-items: center; min-width: 44px; min-height: 44px; border: 1px solid #475569; border-radius: 8px; color: white; background: #253044; font-size: 25px; }
 }
+
+.studio-v2-seek-label { display: grid; gap: 5px; margin: 6px 0 2px 52px; color: #9eafc6; font-size: 12px; }
+.studio-v2-seek-label input { width: 100%; min-height: 30px; accent-color: #60a5fa; }
+.studio-v2-segments { display: flex; gap: 5px; overflow-x: auto; padding: 5px 0 0 52px; }
+.studio-v2-segments:empty { display: none; }
+.studio-v2-segments button { flex: 0 0 auto; max-width: 200px; min-height: 44px; padding: 6px 10px; border: 1px solid #48648a; border-radius: 8px; background: #243a56; color: #e2e8f0; font-size: 12px; overflow-wrap: anywhere; }
+.studio-v2-audio-track { justify-content: space-around; gap: 2px; padding: 3px 7px; color: #b8e7d9; font-size: 11px; }
+.studio-v2-wave-bar { flex: 1 1 2px; max-width: 4px; min-width: 1px; background: #6ee7b7; border-radius: 2px; }
+@media (max-width:759px) { .studio-v2-segments button { max-width: 145px; font-size: 11px; } }
