@@ -34,6 +34,7 @@ shell.innerHTML = `
         </div>
       </div>
       <section class="studio-v2-timeline" aria-label="Video timeline"></section>
+      <div class="studio-v3-edit-actions"><button type="button" id="studio-v3-undo" aria-label="Undo edit">↶ Undo</button><button type="button" id="studio-v3-redo" aria-label="Redo edit">↷ Redo</button><button type="button" id="studio-v3-split">Split</button><button type="button" id="studio-v3-delete">Delete</button></div>
       <section class="studio-v2-tools" aria-label="Editing tools">
         <h3>Editing tools</h3>
         <div class="studio-v2-tool-grid">
@@ -49,7 +50,7 @@ shell.innerHTML = `
       </section>
     </div>
     <aside class="studio-v2-inspector" id="studio-v2-inspector" aria-label="Editing controls">
-      <div class="studio-v2-inspector-head"><strong id="studio-v2-inspector-title">Edit clip</strong><button type="button" id="studio-v2-close" aria-label="Close editing controls">×</button></div>
+      <div class="studio-v2-inspector-head"><strong id="studio-v2-inspector-title">Edit clip</strong><div class="studio-v3-sheet-actions"><button type="button" id="studio-v3-cancel">Cancel</button><button type="button" id="studio-v3-apply">Done</button><button type="button" id="studio-v2-close" aria-label="Close editing controls">×</button></div></div>
     </aside>
   </div>`;
 root.append(shell);
@@ -94,6 +95,16 @@ document.querySelectorAll('[data-studio-tool]').forEach(button => button.addEven
   showPanel(tab, title, focus);
 }));
 $('#studio-v2-close').addEventListener('click', () => shell.classList.remove('studio-v2-inspector-open'));
+const closeTool = () => shell.classList.remove('studio-v2-inspector-open');
+$('#studio-v3-apply').addEventListener('click', closeTool);
+$('#studio-v3-cancel').addEventListener('click', closeTool);
+for (const [id, source] of [['studio-v3-undo','#video-undo'],['studio-v3-redo','#video-redo'],['studio-v3-split','#video-split'],['studio-v3-delete','#video-delete-segment']]) {
+  $('#' + id).addEventListener('click', () => {
+    const target = $(source);
+    if (target && !target.disabled) target.click();
+  });
+}
+
 document.addEventListener('keydown', event => { if (event.key === 'Escape') shell.classList.remove('studio-v2-inspector-open'); });
 $('#studio-v2-export').addEventListener('click', () => {
   currentTool = 'reframe';
@@ -195,6 +206,7 @@ function update() {
   play.textContent = ready && !video.paused ? 'Ⅱ' : '▶';
   $('#studio-v2-time').textContent = ready ? clock(video.currentTime) + ' / ' + clock(video.duration) : '00:00 / 00:00';
   $('#studio-v2-seek').value = ready && video.duration ? String(Math.round(video.currentTime / video.duration * 1000)) : '0';
+  for (const [id, source] of [['studio-v3-undo','#video-undo'],['studio-v3-redo','#video-redo'],['studio-v3-split','#video-split'],['studio-v3-delete','#video-delete-segment']]) { const button = $('#' + id), target = $(source); if (button && target) button.disabled = target.disabled; }
   const source = ready ? video.currentSrc || video.src : '';
   if (source !== lastSource) {
     lastSource = source;
