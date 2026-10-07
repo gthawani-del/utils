@@ -528,7 +528,20 @@
               <div class="video-segments-heading"><strong>Kinetic typography</strong><span>Timed text overlays</span></div>
               <div class="video-kinetic-grid">
                 <label>Text<input id="video-kinetic-text" maxlength="160" placeholder="Your title or caption"></label>
-                <label>Effect<select id="video-kinetic-effect"><option value="fade">Fade</option><option value="pop">Pop</option><option value="slide">Slide</option><option value="pulse">Pulse</option></select></label>
+                <div class="video-text-style">
+                <label>Font<select id="video-text-font"><option value="sans">Modern Sans</option><option value="serif">Editorial Serif</option><option value="mono">Monospace</option><option value="display">Bold Display</option></select></label>
+                <label>Size<input id="video-text-size" type="number" min="18" max="120" value="55"></label>
+                <label>Color<input id="video-text-color" type="color" value="#ffffff"></label>
+                <label>Highlight<input id="video-text-highlight" type="color" value="#facc15"></label>
+                <label>Outline<input id="video-text-stroke" type="color" value="#111111"></label>
+                <label>Weight<select id="video-text-weight"><option value="bold">Bold</option><option value="normal">Regular</option></select></label>
+              </div>
+              <div class="video-lyrics-import">
+                <label>Synced lyrics file (.lrc)<input id="video-lyrics-lrc" type="file" accept=".lrc,text/plain"></label>
+                <button id="video-lyrics-import" class="video-tool-button" type="button">Import timed lyrics + karaoke</button>
+                <p id="video-lyrics-message" role="status">LRC timing is automatic on import. Recognition of lyrics from audio is not yet available.</p>
+              </div>
+              <label>Effect<select id="video-kinetic-effect"><option value="fade">Fade</option><option value="pop">Pop</option><option value="slide">Slide</option><option value="pulse">Pulse</option><option value="zoom">Zoom</option><option value="bounce">Bounce</option><option value="typewriter">Typewriter</option></select></label>
                 <label>Start (sec)<input id="video-kinetic-start" type="number" min="0" step="0.1" value="0"></label>
                 <label>End (sec)<input id="video-kinetic-end" type="number" min="0" step="0.1" value="3"></label>
               </div>
