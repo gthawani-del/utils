@@ -655,6 +655,7 @@ document.querySelector('#video-export-render').addEventListener('click', async (
       textCues: videoTextCues,
       captionCues: document.querySelector('#video-include-captions').checked ? (project.transcript?.cues || []) : [],
       repair: {
+        stabilization: Number(document.querySelector('#video-stabilization').value),
         brightness: Number(document.querySelector('#video-repair-brightness').value),
         contrast: Number(document.querySelector('#video-repair-contrast').value),
         gain: Number(document.querySelector('#video-repair-gain').value),
