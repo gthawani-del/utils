@@ -100,6 +100,30 @@ $('#studio-v2-add-clips').addEventListener('click', () => {
   if (target) target.click();
 });
 const player = () => $('#source-player-wrap video');
+function syncPreview() {
+  const video = player();
+  if (!video) return;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.style.display = 'block';
+  video.style.visibility = 'visible';
+  video.style.opacity = '1';
+  if (video.readyState === 0) video.load();
+  const revealFirstFrame = () => {
+    if (video.paused && video.readyState >= 2 && video.currentTime === 0 && video.duration > .1) {
+      try { video.currentTime = Math.min(.05, video.duration / 2); } catch { /* preserve native playback */ }
+    }
+    update();
+  };
+  video.addEventListener('loadeddata', revealFirstFrame, { once: true });
+  video.addEventListener('loadedmetadata', update, { once: true });
+  video.addEventListener('error', () => {
+    const status = $('#studio-v2-preview-error');
+    if (status) status.textContent = 'Preview cannot decode this file. Try an H.264 MP4 or WebM.';
+  }, { once: true });
+  if (video.readyState >= 2) revealFirstFrame();
+}
+
 $('#studio-v2-seek').addEventListener('input', event => {
   const video = player();
   if (video && Number.isFinite(video.duration)) video.currentTime = Number(event.target.value) / 1000 * video.duration;
@@ -160,7 +184,7 @@ async function buildThumbnails(url) {
 }
 function update() {
   const video = player();
-  const ready = !!video;
+  const ready = !!video && video.readyState >= 1;
   const play = $('#studio-v2-play');
   play.textContent = ready && !video.paused ? 'Ⅱ' : '▶';
   $('#studio-v2-time').textContent = ready ? clock(video.currentTime) + ' / ' + clock(video.duration) : '00:00 / 00:00';
@@ -168,7 +192,7 @@ function update() {
   const source = ready ? video.currentSrc || video.src : '';
   if (source !== lastSource) {
     lastSource = source;
-    if (source) buildThumbnails(source);
+    if (source) { syncPreview(); buildThumbnails(source); }
     else $('#studio-v2-video-track').textContent = 'Import clips to populate timeline';
   }
   const list = $('#video-segment-list');
@@ -198,7 +222,7 @@ function update() {
     }
   }
 }
-const observer = new MutationObserver(update);
+const observer = new MutationObserver(() => { syncPreview(); update(); });
 observer.observe($('#source-player-wrap'), { childList: true });
 observer.observe($('#video-segment-list'), { childList: true });
 document.addEventListener('timeupdate', event => { if (event.target === player()) update(); }, true);
