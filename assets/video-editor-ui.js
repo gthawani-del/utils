@@ -61,7 +61,9 @@ timelineDisplay.className = 'studio-v2-track-system';
 timelineDisplay.innerHTML = `
   <div class="studio-v2-track"><span>Text</span><div class="studio-v2-track-content" id="studio-v2-text-track"></div></div>
   <div class="studio-v2-track"><span>Video</span><div class="studio-v2-track-content studio-v2-video-track" id="studio-v2-video-track"><span>Import clips to populate timeline</span></div></div>
-  <div class="studio-v2-track"><span>Audio</span><div class="studio-v2-track-content studio-v2-audio-track" id="studio-v2-audio-track"></div></div>`;
+  <div class="studio-v2-track"><span>Audio</span><div class="studio-v2-track-content studio-v2-audio-track" id="studio-v2-audio-track"><span>Audio waveform available after import</span></div></div>
+  <label class="studio-v2-seek-label">Playhead <input id="studio-v2-seek" type="range" min="0" max="1000" value="0" aria-label="Scrub video timeline"></label>
+  <div class="studio-v2-segments" id="studio-v2-segments" aria-label="Clip sequence"></div>`;
 timeline.append(timelineDisplay);
 
 const showPanel = (tab, title, focusSelector) => {
@@ -98,6 +100,10 @@ $('#studio-v2-add-clips').addEventListener('click', () => {
   if (target) target.click();
 });
 const player = () => $('#source-player-wrap video');
+$('#studio-v2-seek').addEventListener('input', event => {
+  const video = player();
+  if (video && Number.isFinite(video.duration)) video.currentTime = Number(event.target.value) / 1000 * video.duration;
+});
 $('#studio-v2-play').addEventListener('click', () => {
   const video = player();
   if (!video) { $('#media-file-input')?.click(); return; }
@@ -158,6 +164,7 @@ function update() {
   const play = $('#studio-v2-play');
   play.textContent = ready && !video.paused ? 'Ⅱ' : '▶';
   $('#studio-v2-time').textContent = ready ? clock(video.currentTime) + ' / ' + clock(video.duration) : '00:00 / 00:00';
+  $('#studio-v2-seek').value = ready && video.duration ? String(Math.round(video.currentTime / video.duration * 1000)) : '0';
   const source = ready ? video.currentSrc || video.src : '';
   if (source !== lastSource) {
     lastSource = source;
@@ -169,6 +176,14 @@ function update() {
   if (list && library && library.dataset.lastMarkup !== list.textContent) {
     library.dataset.lastMarkup = list.textContent;
     library.textContent = list.textContent || 'Import a video to begin.';
+    const strip = $('#studio-v2-segments');
+    strip.replaceChildren();
+    for (const sourceButton of list.querySelectorAll('.video-segment-item')) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.textContent = sourceButton.textContent;
+      button.addEventListener('click', () => { sourceButton.click(); currentTool = 'edit'; showPanel('edit', 'Edit clip', '.video-segments'); });
+      strip.append(button);
+    }
   }
   const captions = $('#studio-v2-text-track');
   if (captions) {
@@ -190,3 +205,36 @@ document.addEventListener('timeupdate', event => { if (event.target === player()
 document.addEventListener('play', event => { if (event.target === player()) update(); }, true);
 document.addEventListener('pause', event => { if (event.target === player()) update(); }, true);
 update();
+
+const input = $('#media-file-input');
+input?.addEventListener('change', async () => {
+  const file = input.files?.[0];
+  if (!file || file.size > 20 * 1024 * 1024 || !file.type.startsWith('video/')) return;
+  let context;
+  try {
+    const Context = window.AudioContext || window.webkitAudioContext;
+    if (!Context) return;
+    context = new Context();
+    const audio = await context.decodeAudioData(await file.arrayBuffer());
+    const samples = audio.getChannelData(0);
+    const count = 72;
+    const values = [];
+    for (let i = 0; i < count; i++) {
+      const start = Math.floor(i * samples.length / count);
+      const end = Math.floor((i + 1) * samples.length / count);
+      let sum = 0;
+      for (let j = start; j < end; j += 12) sum += samples[j] * samples[j];
+      values.push(Math.min(1, Math.sqrt(sum / Math.max(1, Math.ceil((end - start) / 12))) * 3));
+    }
+    const track = $('#studio-v2-audio-track');
+    track.replaceChildren();
+    for (const value of values) {
+      const bar = document.createElement('span');
+      bar.className = 'studio-v2-wave-bar';
+      bar.style.height = Math.max(3, Math.round(value * 28)) + 'px';
+      track.append(bar);
+    }
+  } catch {
+    $('#studio-v2-audio-track').textContent = 'Audio waveform unavailable for this codec';
+  } finally { await context?.close().catch(() => {}); }
+});
