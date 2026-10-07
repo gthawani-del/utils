@@ -13,6 +13,7 @@ import { createVideoEdits, normalizeVideoEdits, selectionDuration, updateVideoEd
 import { createTimeline, splitTimeline, removeTimelineSegment, moveTimelineSegment, timelineDuration } from '/lib/media/video/timeline.js';
 import { renderVideo, supportedVideoExportFormats } from '/lib/media/video/render.js';
 import { normalizeTextCue, kineticTextFrame } from '/lib/media/video/kinetic.js';
+import { detectBeats, parseWordTimings, MOTION_TEMPLATES } from '/lib/media/video/motion.js';
 
 const categories = [
   { id: 'video', name: 'Video Editor', short: 'Video Editor', icon: '▣', hint: 'Edit, trim, effects, transitions', copy: 'Upload or open a project to begin editing video in the shared Media Studio workspace.' },
@@ -78,6 +79,8 @@ let videoFuture = [];
 let playingSelection = false;
 let videoSegments = [];
 let videoTextCues = [];
+let videoBeatTimes = [];
+let selectedTextCue = -1;
 let selectedVideoSegment = -1;
 let audioHistory = [];
 let audioFuture = [];
@@ -349,6 +352,49 @@ function refreshVideoExportFormats() {
     : 'Video recording is unavailable in this browser.';
 }
 refreshVideoExportFormats();
+async function analyzeVideoBeats() {
+  const status = document.querySelector('#video-beat-status');
+  if (!hasEditableVideo() || !project.source?.file) {
+    status.textContent = 'Local source audio is required for beat detection.';
+    return;
+  }
+  const button = document.querySelector('#video-beat-analyze');
+  button.disabled = true;
+  status.textContent = 'Analyzing audio transients locally…';
+  let context;
+  try {
+    const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
+    if (!Context) throw new Error('Web Audio is unavailable');
+    context = new Context();
+    const bytes = await project.source.file.arrayBuffer();
+    const buffer = await context.decodeAudioData(bytes);
+    const samples = buffer.getChannelData(0);
+    videoBeatTimes = detectBeats(samples, buffer.sampleRate);
+    videoTextCues = videoTextCues.map(cue => normalizeTextCue({ ...cue, beats: videoBeatTimes }, Number(project.source.duration)));
+    status.textContent = videoBeatTimes.length + ' candidate beats found. Rhythm templates now react to these transients.';
+    syncKineticPreview();
+  } catch (error) {
+    status.textContent = 'Beat analysis unavailable: ' + (error.message || 'Unable to decode audio');
+  } finally {
+    await context?.close().catch(() => {});
+    button.disabled = false;
+  }
+}
+document.querySelector('#video-beat-analyze').addEventListener('click', analyzeVideoBeats);
+document.querySelector('#video-motion-template').addEventListener('change', event => {
+  document.querySelector('#video-kinetic-effect').value = MOTION_TEMPLATES[event.target.value].effect;
+});
+document.querySelector('#video-key-add').addEventListener('click', () => {
+  const status = document.querySelector('#video-kinetic-status');
+  if (selectedTextCue < 0 || !videoTextCues[selectedTextCue]) { status.textContent = 'Select a text overlay first.'; return; }
+  const cue = videoTextCues[selectedTextCue];
+  const keyframe = { time: Number(document.querySelector('#video-key-time').value), scale: Number(document.querySelector('#video-key-scale').value), y: Number(document.querySelector('#video-key-y').value) };
+  const next = normalizeTextCue({ ...cue, keyframes: [...cue.keyframes, keyframe] }, Number(project.source.duration));
+  if (next.keyframes.length <= cue.keyframes.length) { status.textContent = 'Invalid keyframe time, scale or offset.'; return; }
+  videoTextCues[selectedTextCue] = next;
+  renderKineticCues(); syncKineticPreview();
+  status.textContent = 'Keyframe added to selected overlay.';
+});
 function renderKineticCues() {
   const list = document.querySelector('#video-kinetic-list');
   list.replaceChildren();
@@ -357,10 +403,14 @@ function renderKineticCues() {
     row.className = 'video-kinetic-row';
     const label = document.createElement('span');
     label.textContent = cue.text + ' · ' + cue.start.toFixed(1) + '–' + cue.end.toFixed(1) + 's · ' + cue.effect;
+    const select = document.createElement('button');
+    select.type = 'button'; select.textContent = selectedTextCue === index ? 'Selected' : 'Select';
+    select.setAttribute('aria-pressed', String(selectedTextCue === index));
+    select.addEventListener('click', () => { selectedTextCue = index; renderKineticCues(); });
     const remove = document.createElement('button');
     remove.type = 'button'; remove.textContent = 'Remove';
-    remove.addEventListener('click', () => { videoTextCues.splice(index, 1); renderKineticCues(); syncKineticPreview(); });
-    row.append(label, remove); list.append(row);
+    remove.addEventListener('click', () => { videoTextCues.splice(index, 1); selectedTextCue = -1; renderKineticCues(); syncKineticPreview(); });
+    row.append(label, select, remove); list.append(row);
   });
 }
 function syncKineticPreview() {
@@ -373,7 +423,7 @@ function syncKineticPreview() {
   }
   const time = currentPlayer?.currentTime || 0;
   const frame = videoTextCues.map(cue => kineticTextFrame(cue, time)).find(Boolean);
-  overlay.textContent = frame?.text || '';
+  overlay.textContent = frame?.words?.length && frame.activeWordIndex >= 0 ? frame.words.map((word, index) => index === frame.activeWordIndex ? '[' + word.text + ']' : word.text).join(' ') : frame?.text || '';
   overlay.style.opacity = frame ? String(frame.alpha) : '0';
   overlay.style.transform = frame ? 'translateY(' + frame.offsetY + 'px) scale(' + frame.scale + ')' : 'none';
   overlay.classList.toggle('hidden', !hasEditableVideo() || !frame);
@@ -386,10 +436,14 @@ document.querySelector('#video-kinetic-add').addEventListener('click', () => {
     const cue = normalizeTextCue({
       text: document.querySelector('#video-kinetic-text').value,
       effect: document.querySelector('#video-kinetic-effect').value,
+      template: document.querySelector('#video-motion-template').value,
+      beats: videoBeatTimes,
       start: Number(document.querySelector('#video-kinetic-start').value),
       end: Number(document.querySelector('#video-kinetic-end').value)
     }, Number(project.source.duration));
+    if (document.querySelector('#video-word-mode').value === 'equal') cue.words = parseWordTimings(cue.text, cue.start, cue.end);
     videoTextCues.push(cue);
+    selectedTextCue = videoTextCues.length - 1;
     renderKineticCues(); syncKineticPreview();
     status.textContent = 'Text added. Scrub or play to preview the timing.';
   } catch (error) { status.textContent = error.message; }
@@ -757,7 +811,7 @@ async function handleFile(file) {
     }
     setProjectSource(project, result.source);
     renderSource(result.source);
-    if (!preserveEdits) { resetVideoSegments(); videoTextCues = []; renderKineticCues(); }
+    if (!preserveEdits) { resetVideoSegments(); videoTextCues = []; videoBeatTimes = []; selectedTextCue = -1; renderKineticCues(); }
   } finally {
     document.body.classList.remove('media-busy');
     fileInput.value = '';
