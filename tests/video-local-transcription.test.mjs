@@ -17,3 +17,11 @@ test('recognizer uses supported Transformers.js v3 Whisper browser runtime', asy
   assert.match(source, /device: 'wasm'/);
   assert.match(source, /dtype: 'q8'/);
 });
+
+test('ONNX-compatible multilingual model and diagnostic failures are configured', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../lib/media/video/local-transcription.js', import.meta.url), 'utf8');
+  assert.ok(source.includes('onnx-community/whisper-tiny'));
+  assert.ok(source.includes('Recognition runtime could not load'));
+  assert.ok(source.includes('Recognition model failed to load'));
+});
