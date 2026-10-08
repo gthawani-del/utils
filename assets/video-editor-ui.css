@@ -283,3 +283,20 @@
   .video-editor-route .studio-v3-edit-actions button { min-height:44px; background:transparent; border:0; font-size:11px; }
   .video-editor-route .studio-v2-inspector { z-index:200; }
 }
+
+/* Dedicated YouCut-inspired lyric recognition dialog. No changes to Media Studio. */
+.video-editor-route .studio-v4-recognition[hidden] { display:none !important; }
+.video-editor-route .studio-v4-recognition { position:fixed; z-index:350; inset:auto 0 0; width:100%; max-width:540px; margin:0 auto; padding:18px 18px calc(24px + env(safe-area-inset-bottom)); background:#f8fafc; color:#111827; border-radius:18px 18px 0 0; box-shadow:0 -20px 70px #0009; display:grid; gap:20px; font-size:16px; }
+.video-editor-route .studio-lyrics-heading { display:flex; align-items:center; justify-content:center; position:relative; min-height:42px; }
+.video-editor-route .studio-lyrics-heading strong { font-size:19px; font-weight:700; }
+.video-editor-route .studio-lyrics-heading button { position:absolute; right:0; min-width:44px; min-height:44px; border:0; background:transparent; color:#475569; font-size:30px; }
+.video-editor-route .studio-lyrics-language { display:grid; grid-template-columns:1fr minmax(145px, 58%); align-items:center; gap:12px; font-size:15px; font-weight:600; }
+.video-editor-route .studio-lyrics-language select { width:100%; min-width:0; min-height:48px; padding:8px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#111827; font-size:15px; }
+.video-editor-route .studio-lyrics-source { display:grid; justify-items:center; gap:6px; padding:12px; color:#334155; text-align:center; }
+.video-editor-route .studio-lyrics-source > span { display:grid; place-items:center; width:86px; height:70px; background:#e2e8f0; border:2px solid #2563eb; border-radius:8px; font-size:28px; }
+.video-editor-route .studio-lyrics-source strong { font-size:14px; }
+.video-editor-route .studio-lyrics-source small { font-size:12px; max-width:100%; overflow-wrap:anywhere; }
+.video-editor-route .studio-lyrics-start { width:100%; min-height:52px; border:0; border-radius:11px; background:#2563eb; color:white; font-size:17px; font-weight:700; }
+.video-editor-route .studio-lyrics-start:disabled { opacity:.5; }
+.video-editor-route #studio-v4-status { margin:0; min-height:20px; color:#475569; font-size:13px; line-height:1.45; }
+@media(min-width:760px) { .video-editor-route .studio-v4-recognition { top:50%; bottom:auto; transform:translateY(-50%); border-radius:16px; } }
