@@ -110,8 +110,15 @@ let recognitionBusy = false;
 async function runRecognition(mode) {
   const status = $('#studio-v4-status');
   if (recognitionBusy) return;
-  const file = $('#media-file-input')?.files?.[0];
-  if (!file) { status.textContent = 'Import a local video first.'; return; }
+  const source = await new Promise(resolve => {
+    let answered = false;
+    document.dispatchEvent(new CustomEvent('utilityos:request-recognition-source', {
+      detail: { resolve: value => { if (!answered) { answered = true; resolve(value); } } }
+    }));
+    if (!answered) resolve(null);
+  });
+  const file = source?.file;
+  if (!file) { status.textContent = 'No locally retained video file found. Reimport the video to enable recognition.'; return; }
   recognitionBusy = true;
   $('#studio-v4-captions').disabled = true;
   $('#studio-v4-lyrics').disabled = true;
@@ -119,7 +126,7 @@ async function runRecognition(mode) {
     const { recognizeLocalAudio } = await import('/lib/media/video/local-transcription.js');
     const words = await recognizeLocalAudio(file, { onStatus: text => { status.textContent = text; } });
     if (!words.length) throw new Error('No words recognized. Try clearer audio or a timed lyrics file.');
-    document.dispatchEvent(new CustomEvent('utilityos:recognized-words', { detail: { mode, words } }));
+    document.dispatchEvent(new CustomEvent('utilityos:recognized-words', { detail: { mode, words, sourceId: source.sourceId, segmentStart: source.segmentStart } }));
     status.textContent = 'Recognition complete. Review the words and timing before export.';
   } catch (error) {
     status.textContent = 'Recognition unavailable: ' + (error.message || String(error));
