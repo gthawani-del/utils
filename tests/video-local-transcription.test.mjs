@@ -14,6 +14,7 @@ test('recognizer uses supported Transformers.js v3 Whisper browser runtime', asy
   const source = await readFile(new URL('../lib/media/video/local-transcription.js', import.meta.url), 'utf8');
   assert.match(source, /@huggingface\/transformers@3\.8\.1/);
   assert.doesNotMatch(source, /@xenova\/transformers@2\.17\.2/);
+  assert.match(source, /wasmPaths = '\/assets\/ort\/'/);
   assert.match(source, /device: 'wasm'/);
   assert.match(source, /decoder_model_merged: 'q8'/);
 });
@@ -24,4 +25,13 @@ test('ONNX-compatible multilingual model and diagnostic failures are configured'
   assert.ok(source.includes('onnx-community/whisper-tiny'));
   assert.ok(source.includes('Recognition runtime could not load'));
   assert.ok(source.includes('Recognition model failed to load'));
+});
+
+test('build bundles recognition runtime and local ONNX binaries', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const script = await readFile(new URL('../scripts/build.mjs', import.meta.url), 'utf8');
+  assert.ok(script.includes("recognition-runtime.js"));
+  assert.ok(script.includes("node_modules/onnxruntime-web/dist"));
+  const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(pkg.dependencies['@huggingface/transformers'], '3.8.1');
 });
