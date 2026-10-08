@@ -246,3 +246,40 @@
   .video-editor-route .studio-v2-seek-label input { min-height:36px; }
   .video-editor-route .studio-v3-zoom button { width:34px; }
 }
+
+/* Mobile editor workspace v4: preview, playback, ribbon, scrolling timeline. */
+@media(max-width:759px) {
+  .video-editor-route .studio-v2-root { height:100dvh; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
+  .video-editor-route .studio-v2-header { flex:0 0 54px; height:54px; }
+  .video-editor-route .studio-v2-layout { flex:1 1 auto; min-height:0; height:auto; overflow:hidden; }
+  .video-editor-route .studio-v2-main { height:100%; min-height:0; overflow:hidden; display:flex; flex-direction:column; padding:5px 8px calc(8px + env(safe-area-inset-bottom)); gap:5px; }
+  .video-editor-route .studio-v2-preview { flex:1 1 auto; min-height:0; overflow:hidden; border:0; border-radius:0; background:#080d16; }
+  .video-editor-route .studio-v2-preview .source-stage { height:100%; justify-content:center; padding:0; }
+  .video-editor-route .studio-v2-preview .source-player-wrap { width:100%; height:100%; max-height:none; aspect-ratio:auto; display:flex; align-items:center; justify-content:center; }
+  .video-editor-route .studio-v2-preview .source-player-wrap video { width:100%; height:100%; max-height:100%; object-fit:contain; }
+  .video-editor-route .studio-v2-preview .video-empty-workspace { padding:0; }
+  .video-editor-route .studio-v2-preview .video-empty-preview { min-height:0; height:100%; }
+  .video-editor-route .studio-v2-transport { flex:0 0 42px; min-height:42px; }
+  .video-editor-route .studio-v2-transport-buttons { gap:4px; }
+  .video-editor-route .studio-v2-transport button { min-width:44px; min-height:44px; border:0; background:transparent; font-size:17px; }
+  .video-editor-route .studio-v2-tools { flex:0 0 68px; overflow:hidden; padding:0; }
+  .video-editor-route .studio-v2-tool-grid { gap:2px; height:68px; padding:0; }
+  .video-editor-route .studio-v2-tool-grid button { flex:0 0 68px; min-height:64px; border:0; border-radius:5px; background:transparent; font-size:11px; color:#dbe7f8; }
+  .video-editor-route .studio-v2-tool-grid button.active { background:#1d3556; color:#fff; border:0; }
+  .video-editor-route .studio-v2-tool-grid button span { font-size:22px; }
+  .video-editor-route .studio-v2-timeline { flex:0 0 176px; height:176px; min-height:0; overflow:hidden; }
+  .video-editor-route .studio-v2-timeline .timeline-shell { height:100%; overflow:hidden; padding:5px 2px; background:transparent !important; border:0 !important; border-radius:0; }
+  .video-editor-route .studio-v2-timeline .timeline-toolbar { display:none !important; }
+  .video-editor-route .studio-v2-track-system { gap:4px; height:100%; display:flex; flex-direction:column; justify-content:center; }
+  .video-editor-route .studio-v2-track { grid-template-columns:34px minmax(0,1fr); gap:3px; font-size:10px; }
+  .video-editor-route .studio-v2-track-content { min-height:24px; }
+  .video-editor-route .studio-v2-video-track, .video-editor-route .studio-v2-thumb { min-height:50px; height:50px; }
+  .video-editor-route .studio-v2-segments { display:none; }
+  .video-editor-route .studio-v3-timeline-control { margin:0; }
+  .video-editor-route .studio-v3-zoom { display:none; }
+  .video-editor-route .studio-v2-seek-label { margin:0; }
+  .video-editor-route .studio-v2-seek-label input { min-height:30px; }
+  .video-editor-route .studio-v3-edit-actions { flex:0 0 44px; gap:3px; padding:0; }
+  .video-editor-route .studio-v3-edit-actions button { min-height:44px; background:transparent; border:0; font-size:11px; }
+  .video-editor-route .studio-v2-inspector { z-index:200; }
+}
