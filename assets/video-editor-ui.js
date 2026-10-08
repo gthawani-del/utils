@@ -126,7 +126,7 @@ async function runRecognition(mode) {
     const { recognizeLocalAudio } = await import('/lib/media/video/local-transcription.js');
     const words = await recognizeLocalAudio(file, { onStatus: text => { status.textContent = text; } });
     if (!words.length) throw new Error('No words recognized. Try clearer audio or a timed lyrics file.');
-    document.dispatchEvent(new CustomEvent('utilityos:recognized-words', { detail: { mode, words, sourceId: source.sourceId, segmentStart: source.segmentStart } }));
+    document.dispatchEvent(new CustomEvent('utilityos:recognized-words', { detail: { mode, words, sourceId: source.sourceId, segmentStart: source.segmentStart, segmentEnd: source.segmentEnd, timelineOffset: source.timelineOffset } }));
     status.textContent = 'Recognition complete. Review the words and timing before export.';
   } catch (error) {
     status.textContent = 'Recognition unavailable: ' + (error.message || String(error));
