@@ -1,0 +1,20 @@
+{
+  "name": "utilityos-lyric-motion-renderer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate": "node scripts/validate.mjs examples/project.json",
+    "studio": "remotion studio src/index.ts",
+    "render": "node scripts/render.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "npm run test && npm run validate"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.332",
+    "remotion": "4.0.332",
+    "@remotion/google-fonts": "4.0.332",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  }
+}

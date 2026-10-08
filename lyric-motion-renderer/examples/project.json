@@ -1,0 +1,38 @@
+{
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "durationSeconds": 5,
+  "title": "A QUESTION",
+  "background": "#101018",
+  "accent": "#f75b56",
+  "words": [
+    {
+      "word": "WHAT",
+      "start": 0.3,
+      "end": 0.9
+    },
+    {
+      "word": "DOES",
+      "start": 0.95,
+      "end": 1.5
+    },
+    {
+      "word": "LOVE",
+      "start": 1.6,
+      "end": 2.55
+    },
+    {
+      "word": "MEAN?",
+      "start": 2.65,
+      "end": 4.5
+    }
+  ],
+  "beats": [
+    0.3,
+    1.1,
+    2,
+    3.2,
+    4.2
+  ]
+}
