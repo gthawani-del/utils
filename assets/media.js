@@ -734,10 +734,16 @@ if (document.querySelector('#video-lyrics-import')) document.querySelector('#vid
 document.addEventListener('utilityos:recognized-words', event => {
   if (!hasEditableVideo()) return;
   const words = Array.isArray(event.detail?.words) ? event.detail.words : [];
-  const duration = Number(project.source.duration);
+  const duration = timelineDuration(videoSegments) || Number(project.source.duration);
+  const selected = videoSegments[selectedVideoSegment];
+  const sourceStart = Number(event.detail?.segmentStart || 0);
+  const sourceEnd = Number(event.detail?.segmentEnd || Number.MAX_SAFE_INTEGER);
+  const offset = Number(event.detail?.timelineOffset || 0);
+  const relevantWords = words.filter(word => word.end > sourceStart && word.start < sourceEnd)
+    .map(word => ({ ...word, start: offset + Math.max(sourceStart, word.start) - sourceStart, end: offset + Math.min(sourceEnd, word.end) - sourceStart }));
   let count = 0;
-  for (let i = 0; i < words.length && count < 100 && videoTextCues.length < 100; i += 5) {
-    const group = words.slice(i, i + 5);
+  for (let i = 0; i < relevantWords.length && count < 100 && videoTextCues.length < 100; i += 5) {
+    const group = relevantWords.slice(i, i + 5);
     if (!group.length) continue;
     try {
       const text = group.map(word => word.text).join(' ').trim();
@@ -785,6 +791,8 @@ document.addEventListener('utilityos:request-recognition-source', event => {
     file,
     sourceId: selected?.sourceId || 'active-video',
     segmentStart: selected?.start ?? 0,
+    timelineOffset: selected ? videoSegments.slice(0, selectedVideoSegment).reduce((sum, segment) => sum + segment.end - segment.start, 0) : 0,
+    segmentEnd: selected?.end ?? source?.duration ?? 0,
     duration: source?.duration ?? 0
   });
 });
