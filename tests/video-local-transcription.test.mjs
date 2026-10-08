@@ -15,7 +15,7 @@ test('recognizer uses supported Transformers.js v3 Whisper browser runtime', asy
   assert.match(source, /@huggingface\/transformers@3\.8\.1/);
   assert.doesNotMatch(source, /@xenova\/transformers@2\.17\.2/);
   assert.match(source, /device: 'wasm'/);
-  assert.match(source, /dtype: 'q8'/);
+  assert.match(source, /decoder_model_merged: 'q8'/);
 });
 
 test('ONNX-compatible multilingual model and diagnostic failures are configured', async () => {
