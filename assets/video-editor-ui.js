@@ -41,7 +41,7 @@ shell.innerHTML = `
         <div class="studio-v2-tool-grid">
           <button type="button" data-studio-tool="edit"><span aria-hidden="true">✂</span>Trim</button>
           <button type="button" data-studio-tool="kinetic"><span aria-hidden="true">T</span>Text</button>
-          <button type="button" data-studio-tool="captions"><span aria-hidden="true">▤</span>Captions</button>
+          <button type="button" data-studio-tool="captions"><span aria-hidden="true">▤</span>Lyrics</button>
           <button type="button" data-studio-tool="audio"><span aria-hidden="true">♫</span>Music</button>
           <button type="button" data-studio-tool="effects"><span aria-hidden="true">✧</span>Effects</button>
           <button type="button" data-studio-tool="adjust"><span aria-hidden="true">☷</span>Adjust</button>
@@ -65,8 +65,22 @@ if (toolSection && timelineSection) timelineSection.before(toolSection);
 $('.studio-v2-inspector').append(inspector);
 const recognition = document.createElement('section');
 recognition.className = 'studio-v4-recognition';
-recognition.innerHTML = '<strong>Automatic captions & lyrics</strong><p>Runs locally after downloading a speech model. Spoken dialogue works best; singing may require correction.</p><button type="button" id="studio-v4-captions">Generate captions</button><button type="button" id="studio-v4-lyrics">Detect sung lyrics (experimental)</button><p id="studio-v4-status" role="status"></p>';
-$('.studio-v2-inspector').append(recognition);
+recognition.hidden = true;
+recognition.innerHTML = `
+  <div class="studio-lyrics-heading"><strong>Auto Lyrics</strong><button type="button" id="studio-lyrics-close" aria-label="Close lyrics dialog">×</button></div>
+  <label class="studio-lyrics-language">Language<select id="studio-lyrics-language">
+    <option value="auto">Auto detect</option><option value="english">English</option>
+    <option value="hindi">हिन्दी — Hindi</option><option value="marathi">मराठी — Marathi</option>
+    <option value="tamil">தமிழ் — Tamil</option><option value="telugu">తెలుగు — Telugu</option>
+    <option value="bengali">বাংলা — Bengali</option><option value="gujarati">ગુજરાતી — Gujarati</option>
+    <option value="punjabi">ਪੰਜਾਬੀ — Punjabi</option><option value="kannada">ಕನ್ನಡ — Kannada</option>
+    <option value="malayalam">മലയാളം — Malayalam</option><option value="urdu">اردو — Urdu</option>
+    <option value="spanish">Español</option><option value="portuguese">Português</option>
+  </select></label>
+  <div class="studio-lyrics-source" aria-label="Selected source"><span aria-hidden="true">▣</span><strong>VIDEO</strong><small id="studio-lyrics-source-name">Current video</small></div>
+  <button type="button" id="studio-v4-lyrics" class="studio-lyrics-start">Start</button>
+  <p id="studio-v4-status" role="status" aria-live="polite"></p>`;
+shell.append(recognition);
 const timelineDisplay = document.createElement('div');
 timelineDisplay.className = 'studio-v2-track-system';
 timelineDisplay.innerHTML = `
@@ -83,7 +97,7 @@ const showPanel = (tab, title, focusSelector) => {
   if (shell.classList.contains('studio-v2-inspector-open')) document.dispatchEvent(new Event('utilityos:edit-commit'));
   document.dispatchEvent(new Event('utilityos:edit-begin'));
   shell.dataset.activeTool = currentTool;
-  recognition.hidden = !['captions','kinetic'].includes(currentTool);
+  recognition.hidden = true;
   shell.classList.add('studio-v2-inspector-open');
   const inspectorBody = $('#studio-v2-inspector');
   inspectorBody.scrollTop = 0;
@@ -94,7 +108,7 @@ let currentTool = 'edit';
 const toolTargets = {
   edit: ['edit', 'Edit clip', '.video-segments'],
   kinetic: ['text', 'Kinetic typography', '.video-kinetic-panel'],
-  captions: ['text', 'Captions & word timing', '.video-word-editor'],
+  captions: ['text', 'Lyrics', '.video-word-editor'],
   audio: ['edit', 'Audio & silence', '.video-smart-panel'],
   effects: ['export', 'Motion effects', '.video-repair-controls'],
   adjust: ['export', 'Color & audio adjustment', '.video-repair-controls'],
@@ -104,41 +118,55 @@ const toolTargets = {
 document.querySelectorAll('[data-studio-tool]').forEach(button => button.addEventListener('click', () => {
   currentTool = button.dataset.studioTool;
   const [tab, title, focus] = toolTargets[currentTool];
+  if (currentTool === 'captions') { openLyricsDialog(); return; }
   showPanel(tab, title, focus);
 }));
 let recognitionBusy = false;
-async function runRecognition(mode) {
+function getRecognitionSource() {
+  let result = null;
+  document.dispatchEvent(new CustomEvent('utilityos:request-recognition-source', { detail: { resolve: source => { result = source; } } }));
+  return result;
+}
+function openLyricsDialog() {
+  const source = getRecognitionSource();
+  $('#studio-lyrics-source-name').textContent = source?.file?.name || 'No video selected';
+  $('#studio-v4-status').textContent = source?.file ? '' : 'Import a video first.';
+  recognition.hidden = false;
+  $('#studio-lyrics-language').focus();
+}
+function closeLyricsDialog() { if (!recognitionBusy) recognition.hidden = true; }
+$('#studio-lyrics-close').addEventListener('click', closeLyricsDialog);
+async function runRecognition() {
   const status = $('#studio-v4-status');
   if (recognitionBusy) return;
-  const source = await new Promise(resolve => {
-    let answered = false;
-    document.dispatchEvent(new CustomEvent('utilityos:request-recognition-source', {
-      detail: { resolve: value => { if (!answered) { answered = true; resolve(value); } } }
-    }));
-    if (!answered) resolve(null);
-  });
+  const source = getRecognitionSource();
   const file = source?.file;
-  if (!file) { status.textContent = 'No locally retained video file found. Reimport the video to enable recognition.'; return; }
+  if (!file) { status.textContent = 'Import a video first.'; return; }
   recognitionBusy = true;
-  $('#studio-v4-captions').disabled = true;
-  $('#studio-v4-lyrics').disabled = true;
+  const startButton = $('#studio-v4-lyrics');
+  startButton.disabled = true;
   try {
     const { recognizeLocalAudio } = await import('/lib/media/video/local-transcription.js');
-    const words = await recognizeLocalAudio(file, { onStatus: text => { status.textContent = text; } });
-    if (!words.length) throw new Error('No words recognized. Try clearer audio or a timed lyrics file.');
-    document.dispatchEvent(new CustomEvent('utilityos:recognized-words', { detail: { mode, words, sourceId: source.sourceId, segmentStart: source.segmentStart, segmentEnd: source.segmentEnd, timelineOffset: source.timelineOffset } }));
-    status.textContent = 'Recognition complete. Review the words and timing before export.';
+    const words = await recognizeLocalAudio(file, {
+      language: $('#studio-lyrics-language').value,
+      onStatus: message => { status.textContent = message; }
+    });
+    if (!words.length) { status.textContent = 'No lyrics detected'; return; }
+    const count = await new Promise(resolve => {
+      const listener = event => { document.removeEventListener('utilityos:captions-ready', listener); resolve(event.detail?.count || 0); };
+      document.addEventListener('utilityos:captions-ready', listener, { once: true });
+      document.dispatchEvent(new CustomEvent('utilityos:recognized-words', { detail: {
+        mode: 'lyrics', words, sourceId: source.sourceId,
+        segmentStart: source.segmentStart, segmentEnd: source.segmentEnd, timelineOffset: source.timelineOffset
+      } }));
+    });
+    status.textContent = count ? count + ' kinetic lyric lines added. Review accuracy and timing.' : 'No lyrics detected';
+    if (count) setTimeout(() => { recognition.hidden = true; }, 900);
   } catch (error) {
-    status.textContent = 'Recognition unavailable: ' + (error.message || String(error));
-  } finally {
-    recognitionBusy = false;
-    $('#studio-v4-captions').disabled = false;
-    $('#studio-v4-lyrics').disabled = false;
-  }
+    status.textContent = 'Lyrics unavailable: ' + (error?.message || String(error));
+  } finally { recognitionBusy = false; startButton.disabled = false; }
 }
-$('#studio-v4-captions').addEventListener('click', () => runRecognition('captions'));
-$('#studio-v4-lyrics').addEventListener('click', () => runRecognition('lyrics'));
-recognition.hidden = true;
+$('#studio-v4-lyrics').addEventListener('click', runRecognition);
 $('#studio-v2-close').addEventListener('click', () => { document.dispatchEvent(new Event('utilityos:edit-rollback')); shell.classList.remove('studio-v2-inspector-open'); });
 const closeTool = () => shell.classList.remove('studio-v2-inspector-open');
 $('#studio-v3-apply').addEventListener('click', () => { document.dispatchEvent(new Event('utilityos:edit-commit')); closeTool(); });
