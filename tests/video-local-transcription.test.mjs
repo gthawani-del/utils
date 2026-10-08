@@ -12,7 +12,7 @@ test('invalid recognition timestamps are discarded', () => {
 test('recognizer uses supported Transformers.js v3 Whisper browser runtime', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../lib/media/video/local-transcription.js', import.meta.url), 'utf8');
-  assert.match(source, /@huggingface\/transformers@3\.8\.1/);
+  assert.ok(source.includes('/assets/recognition-runtime.js'));
   assert.doesNotMatch(source, /@xenova\/transformers@2\.17\.2/);
   assert.match(source, /wasmPaths = '\/assets\/ort\/'/);
   assert.match(source, /device: 'wasm'/);
@@ -23,8 +23,8 @@ test('ONNX-compatible multilingual model and diagnostic failures are configured'
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../lib/media/video/local-transcription.js', import.meta.url), 'utf8');
   assert.ok(source.includes('onnx-community/whisper-tiny'));
-  assert.ok(source.includes('Recognition runtime could not load'));
-  assert.ok(source.includes('Recognition model failed to load'));
+  assert.ok(source.includes('RUNTIME_LOAD_FAILED'));
+  assert.ok(source.includes('MODEL_LOAD_FAILED'));
 });
 
 test('build bundles recognition runtime and local ONNX binaries', async () => {
