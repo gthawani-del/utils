@@ -37,15 +37,15 @@ shell.innerHTML = `
       <section class="studio-v2-timeline" aria-label="Video timeline"></section>
       <div class="studio-v3-edit-actions"><button type="button" id="studio-v3-undo" aria-label="Undo edit">↶ Undo</button><button type="button" id="studio-v3-redo" aria-label="Redo edit">↷ Redo</button><button type="button" id="studio-v3-split">Split</button><button type="button" id="studio-v3-delete">Delete</button></div>
       <section class="studio-v2-tools" aria-label="Editing tools">
-        <h3>Editing tools</h3>
+        <h3 class="studio-v2-visually-hidden">Editing tools</h3>
         <div class="studio-v2-tool-grid">
-          <button type="button" data-studio-tool="edit"><span aria-hidden="true">✂</span>Edit</button>
-          <button type="button" data-studio-tool="kinetic"><span aria-hidden="true">T</span>Kinetic Text</button>
+          <button type="button" data-studio-tool="edit"><span aria-hidden="true">✂</span>Trim</button>
+          <button type="button" data-studio-tool="kinetic"><span aria-hidden="true">T</span>Text</button>
           <button type="button" data-studio-tool="captions"><span aria-hidden="true">▤</span>Captions</button>
-          <button type="button" data-studio-tool="audio"><span aria-hidden="true">♫</span>Audio</button>
+          <button type="button" data-studio-tool="audio"><span aria-hidden="true">♫</span>Music</button>
           <button type="button" data-studio-tool="effects"><span aria-hidden="true">✧</span>Effects</button>
           <button type="button" data-studio-tool="adjust"><span aria-hidden="true">☷</span>Adjust</button>
-          <button type="button" data-studio-tool="reframe"><span aria-hidden="true">⛶</span>Reframe</button>
+          <button type="button" data-studio-tool="reframe"><span aria-hidden="true">⛶</span>Fit</button>
           <button type="button" data-studio-tool="more"><span aria-hidden="true">•••</span>More</button>
         </div>
       </section>
@@ -58,6 +58,10 @@ root.append(shell);
 const preview = $('.studio-v2-preview');
 preview.append(empty, stage);
 $('.studio-v2-timeline').append(timeline);
+// Editing actions remain available in the inspector; mobile uses one persistent ribbon.
+const toolSection = $('.studio-v2-tools');
+const timelineSection = $('.studio-v2-timeline');
+if (toolSection && timelineSection) timelineSection.before(toolSection);
 $('.studio-v2-inspector').append(inspector);
 const recognition = document.createElement('section');
 recognition.className = 'studio-v4-recognition';
