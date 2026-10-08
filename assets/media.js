@@ -511,7 +511,17 @@ extraClipsInput.addEventListener('change', async () => {
     added++;
   }
   extraClipsInput.value = '';
-  note.textContent = added + ' clips added locally. All will be fitted to the selected output canvas.';
+  if (added) {
+    // Normalize mixed footage to one consistent output canvas and frame cadence.
+    const fps = document.querySelector('#video-export-fps');
+    const fit = document.querySelector('#video-export-fit');
+    const stabilization = document.querySelector('#video-stabilization');
+    if (fps) fps.value = '30';
+    if (fit) fit.value = 'contain';
+    if (stabilization) stabilization.value = '0.5';
+    videoSegments.forEach(segment => { segment.fit ||= 'contain'; });
+  }
+  note.textContent = added + ' clips added. Smooth & Match enabled: common canvas, 30 fps and light stabilization on export. Severe dropped frames cannot be reconstructed automatically.';
   renderVideoSegments();
 });
 document.querySelector('#video-split').addEventListener('click', () => {
