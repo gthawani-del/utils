@@ -1,4 +1,5 @@
-import { access, cp, mkdir, readFile, rm } from 'node:fs/promises';
+import { access, cp, mkdir, readFile, rm, readdir } from 'node:fs/promises';
+import { build as bundle } from 'esbuild';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,4 +27,17 @@ for (const entry of productionEntries) {
   await cp(resolve(root, entry), resolve(dist, entry), { recursive: true });
 }
 
-console.log('Production build emitted dist/ with local-processing application assets and verified security headers.');
+// Build a pinned same-origin runtime, avoiding cross-origin JavaScript module imports.
+await bundle({
+  entryPoints: [resolve(root, 'lib/media/video/recognition-runtime-entry.js')],
+  outfile: resolve(dist, 'assets/recognition-runtime.js'),
+  bundle: true, format: 'esm', platform: 'browser', target: 'es2022',
+  logLevel: 'warning'
+});
+// Copy the exact ONNX WASM binaries belonging to the installed runtime.
+const ortDir = resolve(root, 'node_modules/onnxruntime-web/dist');
+const ortAssets = (await readdir(ortDir)).filter(name => /^ort-.*\\.(wasm|mjs)$/.test(name));
+if (!ortAssets.some(name => name.endsWith('.wasm'))) throw new Error('ONNX WASM assets missing');
+await mkdir(resolve(dist, 'assets/ort'), { recursive: true });
+for (const name of ortAssets) await cp(resolve(ortDir, name), resolve(dist, 'assets/ort', name));
+console.log('Production build emitted dist/ with bundled recognition runtime and local ONNX WASM assets.');
