@@ -776,6 +776,18 @@ document.addEventListener('utilityos:edit-rollback', () => {
   editorTransaction = null;
   renderVideoSegments(); renderKineticCues(); syncKineticPreview();
 });
+// Active source registry for the standalone editor. File inputs are cleared after import.
+document.addEventListener('utilityos:request-recognition-source', event => {
+  const selected = videoSegments[selectedVideoSegment];
+  const source = (selected && videoSources[selected.sourceId]) || project.source;
+  const file = source?.file || null;
+  event.detail.resolve({
+    file,
+    sourceId: selected?.sourceId || 'active-video',
+    segmentStart: selected?.start ?? 0,
+    duration: source?.duration ?? 0
+  });
+});
 let videoRenderBusy = false;
 document.querySelector('#video-export-render').addEventListener('click', async () => {
   const status = document.querySelector('#video-export-status');
