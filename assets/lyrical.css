@@ -168,42 +168,24 @@
   font-size: 12px;
   line-height: 1.55 !important;
 }
-.intro-card {
-  padding: 34px;
-  background: #f0f3ef;
-  border-color: transparent;
+.intro-details {
+  padding: 0 4px;
 }
-.intro-card h2 {
-  font-size: 27px;
+.intro-details summary {
+  min-height: 44px;
+  color: #445b4c;
 }
-.intro-card ol {
-  padding: 0;
-  list-style: none;
-  counter-reset: intro;
+.intro-details ol {
+  margin: 8px 0 16px;
+  padding-left: 22px;
   display: grid;
-  gap: 22px;
-  margin: 28px 0;
+  gap: 12px;
 }
-.intro-card li {
-  counter-increment: intro;
-  display: grid;
-  grid-template-columns: 27px 1fr;
-  column-gap: 10px;
-}
-.intro-card li:before {
-  content: counter(intro);
-  grid-row: 1/3;
-  color: #718676;
-  font-size: 13px;
-  padding-top: 2px;
-}
-.intro-card strong {
+.intro-details li span {
+  display: block;
+  margin-top: 3px;
+  color: #5d6862;
   font-size: 14px;
-}
-.intro-card li span {
-  font-size: 13px;
-  color: #647066;
-  padding-top: 4px;
 }
 .song-ready {
   margin-top: 22px;
@@ -812,15 +794,6 @@
   .upload-card {
     min-height: 330px;
   }
-  .intro-card {
-    padding: 24px;
-  }
-  .intro-card h2 {
-    font-size: 23px;
-  }
-  .intro-card ol {
-    margin: 22px 0;
-  }
   .song-ready {
     grid-template-columns: 1fr;
     gap: 18px;
@@ -1000,54 +973,100 @@
   display: none;
 }
 .processing-panel {
-  position: fixed;
-  inset: auto 16px 16px;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  max-width: 1000px;
-  margin: auto;
-  padding: 18px;
-  border: 1px solid #b4c5ba;
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 4px 28px #233c3626;
+  max-width: 720px;
+  margin: 0 auto 24px;
+  padding: 28px;
   cursor: default;
 }
-.processing-copy {
-  flex: 1;
-  min-width: 0;
+.processing-panel > p:first-of-type {
+  margin: 0 0 20px;
+  color: #233c36;
+  font-size: 17px;
+  font-weight: 650;
 }
-.processing-copy strong {
-  font-size: 15px;
+.processing-panel progress {
+  display: block;
+  width: 100%;
+  height: 8px;
+  accent-color: #345448;
 }
-.processing-copy p {
-  font-size: 12px;
-  margin: 6px 0 0;
+.processing-meta {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+  color: #5d6862;
+  font-size: 13px;
 }
 .processing-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
+  margin-top: 24px;
 }
-.transcribing .lyrical-shell {
-  padding-bottom: 220px;
+.processing-actions button { flex: 1; }
+.transcribing .lyrical-shell { max-width: 784px; }
+.lyrical-body [data-step],
+#song-bar,
+#app-message,
+#processing-panel,
+#page-heading {
+  scroll-margin-top: 84px;
 }
-.transcribing .step-actions {
-  visibility: hidden;
-}
+.lyrical-body [tabindex="-1"]:focus { outline: none; }
+.lyrical-body[data-lyrical-step="0"] .lyrical-shell { max-width: 784px; }
+.lyrical-body .site-header { min-height: 60px; padding-block: 8px; }
+#start-over { font-size: 13px; color: #44524a; font-weight: 600; }
+.lyrical-shell { padding-top: 28px; }
+.lyrical-heading { gap: 16px; margin-bottom: 18px; }
+.lyrical-body h1 { font-size: clamp(28px, 3vw, 38px); margin-bottom: 8px; }
+.lyrical-heading p { font-size: 15px; }
+.lyrical-heading .save-status { font-size: 12px; }
+.lyrical-steps { margin-bottom: 20px; scroll-margin-top: 76px; }
+.lyrical-steps button { white-space: nowrap; padding-block: 12px; }
+.song-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.upload-card { min-height: 280px; padding: 28px; }
+.song-bar { display: block; margin-bottom: 16px; padding: 14px 20px; }
+.song-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.song-info > div { min-width: 0; }
+.song-info strong { max-width: 100%; font-size: 15px; }
+#change-song { flex-shrink: 0; color: #345448; font-size: 13px; }
+.song-bar audio { display: block; width: 100%; height: 36px; margin-top: 8px; }
+.song-ready { margin-top: 0; gap: 16px 20px; padding: 24px; }
+.song-ready label { font-size: 13px; font-weight: 600; color: #44524a; }
+.song-ready select { font-size: 16px; }
+.song-ready .small-copy { font-weight: 400; font-size: 12px; }
+.setup-note { grid-column: 1/-1; margin: 0; }
+.transcribe-actions { gap: 8px; }
+.transcribe-actions > button { width: 100%; min-height: 48px; font-size: 16px; }
+#review-existing { order: -1; }
+#transcription-status:empty { display: none; }
+#transcription-status { order: 2; }
+#retry-transcription { order: 3; }
+.paste-details { padding-top: 12px; }
+.lyrical-footer { padding: 22px 0; }
 @media (max-width: 640px) {
-  .processing-panel {
-    inset: auto 10px calc(10px + env(safe-area-inset-bottom));
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    padding: 14px;
-  }
-  .processing-actions button {
-    flex: 1;
-    font-size: 13px;
-    padding: 10px;
-  }
+  .lyrical-body .site-header { gap: 10px; padding: 6px 16px; }
+  .product-name { margin-left: 4px; padding-left: 12px; }
+  #start-over { font-size: 12px; padding-inline: 4px; }
+  .lyrical-shell { padding: 20px 16px 0; }
+  .lyrical-heading { margin-bottom: 12px; }
+  .lyrical-heading > div > p:last-child { font-size: 14px; }
+  .save-status { margin-top: 6px; }
+  .lyrical-steps { margin-bottom: 16px; }
+  .lyrical-steps button { font-size: 12px; gap: 5px; }
+  .song-ready, .processing-panel { padding: 18px; }
+  .song-ready { gap: 14px; }
+  .song-bar { padding: 12px 16px; }
+  .upload-card { min-height: 260px; padding: 24px 18px; }
+  .upload-card .primary-button { width: 100%; }
+  .processing-actions { margin-top: 20px; }
+}
+@media (max-width: 360px) {
+  .lyrical-body .site-header { padding-inline: 12px; gap: 6px; }
+  .product-name { padding-left: 8px; margin-left: 0; }
+  .lyrical-steps button { gap: 3px; font-size: 11px; }
+  .lyrical-shell { padding-inline: 12px; }
+  #start-over { font-size: 11px; }
 }

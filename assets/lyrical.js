@@ -74,6 +74,8 @@ let audioBuffer = null,
   stopAt = null,
   downloadUrl = "",
   transcriptionController = null,
+  processingActive = false,
+  retryTranscription = null,
   exportController = null,
   probeRevision = 0;
 let stockPage = 1,
@@ -140,6 +142,51 @@ function syncNavigation() {
     else b.removeAttribute("aria-current");
   });
 }
+function renderWorkflowView() {
+  const hasSong = Boolean(audioBuffer);
+  document.body.classList.toggle("has-song", hasSong);
+  document.body.classList.toggle("transcribing", processingActive);
+  document.body.dataset.lyricalStep = String(project.step);
+  panels.forEach((name, i) => {
+    $("#step-" + name).hidden = processingActive || i !== project.step;
+  });
+  $("#song-empty").hidden = hasSong;
+  $("#song-ready").hidden = !hasSong;
+  $("#song-bar").hidden = !hasSong;
+  $("#change-song").hidden = project.step !== 0 || processingActive;
+  $("#processing-panel").hidden = !processingActive;
+  $(".lyrical-heading").hidden = project.step !== 0 && !processingActive;
+  $("#page-heading").textContent = processingActive
+    ? "Creating your lyrics."
+    : hasSong ? "Get your lyrics." : "Create your lyric video.";
+  $("#page-description").textContent = processingActive
+    ? "Your words will appear here when they’re ready."
+    : hasSong ? "Check the language, then generate and sync your lyrics."
+      : "Add a song, check the lyrics and bring your images.";
+  $("#review-existing").hidden = !project.lines.length;
+  $("#transcribe").hidden = Boolean(retryTranscription);
+  $("#retry-transcription").hidden = !retryTranscription;
+  $("#retry-transcription").className = project.lines.length ? "secondary-button" : "primary-button";
+  $("#transcribe").className = project.lines.length ? "secondary-button" : "primary-button";
+  $("#transcribe").textContent = project.lines.length ? "Transcribe again" : "Generate lyrics";
+  updateQualityHint();
+}
+function updateQualityHint() {
+  $("#quality-hint").textContent = $("#transcription-quality").value === "base"
+    ? "Smaller download and lighter processing. Recommended on phones."
+    : "Needs more time and memory. On a phone, consider Faster.";
+}
+function clearTranscriptionFeedback() {
+  retryTranscription = null;
+  $("#transcription-status").textContent = "";
+  $("#retry-transcription").hidden = true;
+  $("#transcribe").hidden = false;
+}
+function focusHeading(selector) {
+  const heading = $(selector);
+  heading.setAttribute("tabindex", "-1");
+  heading.focus({ preventScroll: true });
+}
 function setBusy(value, cancelId) {
   busy = value;
   document.body.classList.toggle("busy", value);
@@ -165,13 +212,9 @@ function showStep(step, { scroll = true } = {}) {
   player.pause();
   stopAt = null;
   project.step = step;
-  panels.forEach((name, i) => ($("#step-" + name).hidden = i !== step));
+  renderWorkflowView();
   syncNavigation();
   message("");
-  $("#review-existing").hidden = !project.lines.length;
-  $("#transcribe").textContent = project.lines.length
-    ? "Transcribe again"
-    : "Transcribe & sync";
   if (step === 1) renderLyrics();
   if (step === 2) {
     renderImages();
@@ -187,7 +230,10 @@ function showStep(step, { scroll = true } = {}) {
     checkExport();
   }
   persist();
-  if (scroll) $(".lyrical-steps").scrollIntoView({ block: "start" });
+  if (scroll) {
+    $(".lyrical-steps").scrollIntoView({ block: "start" });
+    focusHeading(step === 0 ? "#page-heading" : "#step-" + panels[step] + " h2");
+  }
 }
 document
   .querySelectorAll("[data-step]")
@@ -253,6 +299,7 @@ async function selectSong(file, { restore = false } = {}) {
   if (busy || !file || (restoring && !restore)) return;
   setBusy(true);
   message("Reading your song on this device…");
+  let selected = false;
   try {
     const decoded = await decodeSong(file);
     if (
@@ -295,12 +342,14 @@ async function selectSong(file, { restore = false } = {}) {
     }
     $("#song-name").textContent = project.name;
     $("#song-meta").textContent =
-      timeLabel(audioBuffer.duration) + " · Local audio";
-    $("#song-bar").hidden = false;
-    $("#song-ready").hidden = false;
+      timeLabel(audioBuffer.duration);
     $("#song-language").value = project.language || "";
     $("#transcription-quality").value = project.transcriptionQuality || "small";
     $("#recovery").hidden = true;
+    clearTranscriptionFeedback();
+    $("#song-language").removeAttribute("aria-invalid");
+    if (!restore) $("#paste-lyrics").value = "";
+    renderWorkflowView();
     try {
       await assetStore("put", "song", file);
     } catch {
@@ -309,17 +358,34 @@ async function selectSong(file, { restore = false } = {}) {
     }
     message("");
     persist();
+    selected = true;
   } catch (error) {
     message(error.message, true);
   } finally {
     if (!restore) setBusy(false);
     $("#song-input").value = "";
+    if (selected && !restore) showStep(0);
   }
 }
 $("#choose-song").addEventListener("click", () => $("#song-input").click());
+$("#change-song").addEventListener("click", () => $("#song-input").click());
 $("#song-input").addEventListener("change", () =>
   selectSong($("#song-input").files[0]),
 );
+for (const selector of ["#song-language", "#transcription-quality"]) {
+  $(selector).addEventListener("change", () => {
+    if (project.lines.length && !project.timingLanguage)
+      project.timingLanguage = project.language;
+    project.language = $("#song-language").value;
+    project.transcriptionQuality = $("#transcription-quality").value;
+    $("#song-language").removeAttribute("aria-invalid");
+    clearTranscriptionFeedback();
+    message("");
+    updateQualityHint();
+    persist();
+  });
+}
+$("#paste-lyrics").addEventListener("input", clearTranscriptionFeedback);
 function dropTarget(el, handler) {
   el.addEventListener("dragover", (e) => {
     e.preventDefault();
@@ -337,7 +403,10 @@ async function syncLyrics(texts = null, { savedOnly = false } = {}) {
   if (!mono || busy) return;
   const language = $("#song-language").value;
   if (!language) {
-    message("Choose the song language in the Song step before syncing.", true);
+    if (project.step !== 0) showStep(0);
+    message("Choose your song’s language to continue.", true);
+    $("#song-language").setAttribute("aria-invalid", "true");
+    $("#song-language").focus();
     return;
   }
   if (
@@ -367,12 +436,15 @@ async function syncLyrics(texts = null, { savedOnly = false } = {}) {
   project.transcriptionQuality = $("#transcription-quality").value;
   persist();
   transcriptionController = new AbortController();
-  setBusy(true);
+  clearTranscriptionFeedback();
+  setBusy(true, "#cancel-processing");
   player.pause();
   message("");
   const needsRecognition = !saved.length;
   const started = performance.now();
   let keepCurrent = false;
+  let completed = false;
+  let failed = false;
   const elapsed = () => {
     $("#processing-elapsed").textContent =
       timeLabel((performance.now() - started) / 1000) + " elapsed";
@@ -382,15 +454,29 @@ async function syncLyrics(texts = null, { savedOnly = false } = {}) {
     transcriptionController?.abort();
   };
   $("#keep-current-lyrics").hidden = !project.lines.length;
+  $("#keep-current-lyrics").disabled = false;
   $("#keep-current-lyrics").addEventListener("click", keep);
-  $("#processing-panel").hidden = !needsRecognition;
-  document.body.classList.toggle("transcribing", needsRecognition);
+  processingActive = needsRecognition;
+  renderWorkflowView();
+  if (processingActive) {
+    $("#song-bar").scrollIntoView({ block: "start" });
+    focusHeading("#processing-heading");
+  }
   elapsed();
   const clock = needsRecognition ? setInterval(elapsed, 1000) : null;
   const status = (text) => {
     $("#transcription-status").textContent = text;
     $("#timing-status").textContent = text;
     $("#processing-status").textContent = text;
+    const part = /^Downloading speech model part · (\d+)%$/.exec(text);
+    const progress = $("#processing-progress");
+    if (part) {
+      progress.value = Math.min(100, Number(part[1]));
+      progress.setAttribute("aria-label", "Current speech engine download part");
+    } else {
+      progress.removeAttribute("value");
+      progress.setAttribute("aria-label", "Transcription activity");
+    }
   };
   status(
     needsRecognition ? "Preparing transcription…" : "Using saved vocal timing…",
@@ -433,6 +519,8 @@ async function syncLyrics(texts = null, { savedOnly = false } = {}) {
     status(
       "Lyrics synced automatically. Review the words and play any line to check it.",
     );
+    completed = true;
+    processingActive = false;
     setBusy(false);
     showStep(1);
     message(
@@ -445,18 +533,30 @@ async function syncLyrics(texts = null, { savedOnly = false } = {}) {
     if (error.name === "AbortError")
       status("Sync cancelled. Your song and existing lyrics are safe.");
     else {
+      failed = true;
+      if (needsRecognition) retryTranscription = () => syncLyrics(texts?.slice() || null);
       status(error.message);
+      $("#transcription-status").textContent = "";
+      $("#timing-status").textContent = "";
       message(error.message, true);
-      $("#app-message").scrollIntoView({ block: "center" });
     }
   } finally {
     clearInterval(clock);
     $("#keep-current-lyrics").removeEventListener("click", keep);
-    $("#processing-panel").hidden = true;
-    document.body.classList.remove("transcribing");
+    processingActive = false;
     if (busy) setBusy(false);
     transcriptionController = null;
+    renderWorkflowView();
     if (keepCurrent) showStep(1);
+    else if (!completed) {
+      if (failed) {
+        $("#app-message").scrollIntoView({ block: "center" });
+        focusHeading("#app-message");
+      } else {
+        const control = project.step === 0 ? $("#transcribe") : $("#auto-sync");
+        control.focus();
+      }
+    }
   }
 }
 $("#transcribe").addEventListener("click", () => syncLyrics());
@@ -464,6 +564,7 @@ $("#cancel-processing").addEventListener("click", () =>
   transcriptionController?.abort(),
 );
 $("#review-existing").addEventListener("click", () => showStep(1));
+$("#retry-transcription").addEventListener("click", () => retryTranscription?.());
 $("#use-pasted").addEventListener("click", () => {
   const lines = $("#paste-lyrics")
     .value.split(/\r?\n/)
