@@ -87,7 +87,7 @@ let stockPage = 1,
   stockController = null,
   restoring = false;
 const imageCache = createImageCache();
-let previewLoading = false, previewResume = false, previewEpoch = 0, replaceImageId = null;
+let previewLoading = false, previewResume = false, previewEpoch = 0, replaceImageId = null, selectedImageId = null, activeLyricId = null;
 const initialDraft = readDraft();
 const node = (tag, text, className) => {
   const n = document.createElement(tag);
@@ -151,6 +151,7 @@ function syncNavigation() {
 }
 function renderWorkflowView() {
   const hasSong = Boolean(audioBuffer);
+  if (hasSong) $(".song-info > div").append($("#save-status"));
   document.body.classList.toggle("has-song", hasSong);
   document.body.classList.toggle("transcribing", processingActive);
   document.body.dataset.lyricalStep = String(project.step);
@@ -159,13 +160,14 @@ function renderWorkflowView() {
   });
   $("#song-empty").hidden = hasSong;
   $("#song-ready").hidden = !hasSong;
-  $("#song-bar").hidden = !hasSong;
+  $("#song-bar").hidden = !hasSong || project.step >= 2;
+  document.body.classList.toggle("has-draft", !$("#recovery").hidden && !hasSong);
   $("#change-song").hidden = project.step !== 0 || processingActive;
   $("#processing-panel").hidden = !processingActive;
   $(".lyrical-heading").hidden = project.step !== 0 && !processingActive;
   $("#page-heading").textContent = processingActive
     ? "Creating your lyrics."
-    : hasSong ? "Get your lyrics." : "Create your lyric video.";
+    : hasSong ? "Get your lyrics" : "Create your lyric video";
   $("#page-description").textContent = processingActive
     ? "Your words will appear here when they’re ready."
     : hasSong ? "Check the language, then generate and sync your lyrics."
@@ -220,6 +222,7 @@ function setBusy(value, cancelId) {
     });
   if (value && cancelId) $(cancelId).disabled = false;
   syncNavigation();
+  if (!value && project.step >= 2) drawPreview();
 }
 function showStep(step, { scroll = true } = {}) {
   if (step > project.maxStep || busy) return;
@@ -234,9 +237,16 @@ function showStep(step, { scroll = true } = {}) {
   syncNavigation();
   message("");
   if (step === 1) renderLyrics();
+  if (step >= 2) {
+    $(step === 2 ? "#visual-preview-slot" : "#video-preview-slot").append($("#preview-player"));
+    $("#preview-player").hidden = step === 2 && !images.length && !project.textOnly;
+  }
   if (step === 2) {
+    player.currentTime = Math.min(project.duration, (project.lines[0]?.start || 0) + 0.2);
     renderImages();
     renderDirection();
+    const epoch = previewEpoch;
+    loadLyricalFonts().then(() => { if (epoch === previewEpoch) drawPreview(); }).catch(error => message(error.message, true));
   }
   if (step === 3) {
     $("#export-visual-summary").textContent = visualSummary(
@@ -270,6 +280,7 @@ function remember() {
   $("#undo-lyrics").disabled = false;
 }
 function invalidateVideo() {
+  if (project.step >= 2) player.pause();
   previewEpoch++;
   previewLoading = previewResume = false;
   imageCache.clear();
@@ -285,7 +296,6 @@ function invalidateLyrics() {
   invalidateVideo();
   project.confirmed = false;
   project.maxStep = Math.min(project.maxStep, 1);
-  $("#review-confirm").checked = false;
   syncNavigation();
   persist();
 }
@@ -304,11 +314,7 @@ function applyDirection() {
   renderDirection();
 }
 function renderDirection() {
-  const suggested = STYLES[project.direction?.style] || STYLES.clean;
   const current = STYLES[project.settings.style] || STYLES.clean;
-  $("#review-direction-name").textContent = suggested.name;
-  $("#review-direction-reason").textContent = project.direction?.reason || "";
-  $("#review-style-swatch").dataset.style = project.direction?.style || "clean";
   $("#direction-name").textContent = current.name;
   $("#direction-reason").textContent = project.customStyle
     ? "Your adjustments are applied. You can return to the system direction below."
@@ -317,6 +323,8 @@ function renderDirection() {
     $("#" + key).value = project.settings[key];
   $("#text-size").value = project.settings.textSize;
   for (const key of Object.keys(visualDefaults)) $("#" + key).value = project.settings[key] || visualDefaults[key];
+  renderVisualPlan();
+  if (project.step >= 2) drawPreview();
 }
 async function selectSong(file, { restore = false } = {}) {
   if (busy || !file || (restoring && !restore)) return;
@@ -623,6 +631,8 @@ function editTiming(index, key, value) {
 }
 function renderLyrics() {
   const list = $("#lyrics-list");
+  const restoreFocus = list.contains(document.activeElement);
+  const previousIndex = [...list.children].findIndex(row => row.dataset.lineId === activeLyricId);
   list.replaceChildren();
   const longHolds = longHoldLines(project.lines);
   $("#timing-quality-note").hidden = !longHolds.length;
@@ -634,6 +644,12 @@ function renderLyrics() {
   project.lines.forEach((line, index) => {
     const row = node("article", undefined, "lyric-row");
     row.dataset.lineId = line.id;
+    row.classList.toggle("is-selected", line.id === activeLyricId);
+    row.addEventListener("focusin", () => {
+      activeLyricId = line.id;
+      list.querySelectorAll(".is-selected").forEach(item => item.classList.remove("is-selected"));
+      row.classList.add("is-selected");
+    });
     const play = button(
       "▶",
       () => {
@@ -671,6 +687,8 @@ function renderLyrics() {
       }
       project.lines[index] = reviseLine(project.lines[index], input.value);
       invalidateLyrics();
+      syncNote.hidden = project.lines[index].timingQuality !== "estimated";
+      if (!syncNote.isConnected) row.append(syncNote);
       syncNote.textContent =
         project.lines[index].timingQuality === "estimated"
           ? "Estimated sync · listen"
@@ -689,7 +707,9 @@ function renderLyrics() {
       "line-note",
     );
     syncNote.classList.toggle("estimated", line.timingQuality === "estimated");
-    meta.append(syncNote);
+    const warning = longHolds.includes(index) || line.timingQuality === "estimated";
+    syncNote.hidden = !warning;
+    if (warning) row.append(syncNote);
     const details = node("details");
     const summary = node(
       "summary",
@@ -699,6 +719,7 @@ function renderLyrics() {
     );
     details.append(summary);
     details.hidden = !$("#fine-tune-timing").checked;
+    row.classList.toggle("show-timing", !details.hidden);
     const controls = node("div", undefined, "timing-controls");
     for (const key of ["start", "end"]) {
       const label = node(
@@ -790,7 +811,10 @@ function renderLyrics() {
     fitLyricInput(input);
   });
   $("#undo-lyrics").disabled = !history.length;
-  $("#review-confirm").checked = project.confirmed;
+  if (restoreFocus) {
+    const row = [...list.children].find(item => item.dataset.lineId === activeLyricId) || list.children[Math.max(0, Math.min(previousIndex, list.children.length - 1))];
+    row?.querySelector("textarea")?.focus({ preventScroll: true });
+  }
   renderDirection();
 }
 function fitLyricInput(input) {
@@ -836,17 +860,28 @@ $("#confirm-lyrics").addEventListener("click", () => {
     );
     return;
   }
-  if (!$("#review-confirm").checked) {
-    message(
-      "Listen through and tick the review confirmation before continuing.",
-      true,
-    );
-    return;
-  }
   project.confirmed = true;
   project.maxStep = 2;
   if (!project.customStyle) applyDirection();
   showStep(2);
+});
+
+function openDialog(id) {
+  if (busy) return;
+  player.pause();
+  previewResume = false;
+  const dialog = document.getElementById(id);
+  if (!dialog.open) dialog.showModal();
+}
+document.querySelectorAll("[data-open-dialog]").forEach(control => {
+  control.addEventListener("click", () => openDialog(control.dataset.openDialog));
+});
+document.querySelectorAll("[data-close-dialog]").forEach(control => {
+  control.addEventListener("click", () => control.closest("dialog").close());
+});
+$("#image-editor-dialog").addEventListener("close", () => {
+  const thumbnail = [...$("#selected-images").querySelectorAll("button")].find(button => button.dataset.imageId === selectedImageId);
+  (thumbnail || $("#step-images [data-open-dialog='image-source-dialog']"))?.focus({ preventScroll: true });
 });
 
 function imageTab(stock) {
@@ -911,13 +946,42 @@ function renderImages() {
   invalidateVideo();
   renderVisualPlan();
   const scenes = storyboardFor(project, images.length);
-  $("#image-count").textContent = images.length + " / " + LIMITS.images;
+  $("#image-count").textContent = images.length
+    ? images.length + (images.length === 1 ? " image" : " images") + " · " + scenes.length + " auto-timed scenes"
+    : "No images yet. One is enough to begin.";
   $("#text-only").checked = project.textOnly;
   $("#image-readiness").textContent = visualSummary(project.textOnly, images);
   $("#image-mode-note").textContent = visualSummary(project.textOnly, images);
+  $("#visual-empty").hidden = Boolean(images.length || project.textOnly);
+  if (project.step === 2) $("#preview-player").hidden = !images.length && !project.textOnly;
   const list = $("#selected-images");
   list.replaceChildren();
   images.forEach((image, index) => {
+    const thumbnail = button("", () => {
+      selectedImageId = image.id;
+      renderImageEditor();
+      openDialog("image-editor-dialog");
+    }, "image-thumbnail");
+    thumbnail.dataset.imageId = image.id;
+    thumbnail.setAttribute("aria-label", "Edit image " + (index + 1) + ": " + image.name);
+    const preview = node("img");
+    preview.src = image.url;
+    preview.alt = "";
+    preview.style.objectPosition = image.cropX + "% " + image.cropY + "%";
+    thumbnail.append(preview);
+    list.append(thumbnail);
+  });
+  renderStoryboard(scenes);
+  if ($("#image-editor-dialog").open) renderImageEditor();
+  drawPreview();
+}
+function renderImageEditor() {
+  const index = images.findIndex(image => image.id === selectedImageId);
+  const list = $("#image-editor");
+  list.replaceChildren();
+  if (index < 0) { $("#image-editor-dialog").close(); return; }
+  const image = images[index];
+  const scenes = storyboardFor(project, images.length);
     const card = node("article", undefined, "selected-image");
     const preview = node("img");
     preview.src = image.url;
@@ -985,6 +1049,7 @@ function renderImages() {
         image[key] = Number(slider.value);
         preview.style.objectPosition = image.cropX + "% " + image.cropY + "%";
         renderStoryboard(storyboardFor(project, images.length));
+        drawPreview();
         persist();
       });
       label.append(slider);
@@ -996,8 +1061,6 @@ function renderImages() {
         node("p", "Limited resolution: 720p is recommended.", "small-copy"),
       );
     list.append(card);
-  });
-  renderStoryboard(scenes);
 }
 function renderVisualPlan() {
   const plan = visualPlan(project);
@@ -1006,7 +1069,11 @@ function renderVisualPlan() {
   $("#visual-plan-palette").textContent = plan.palette;
   $("#visual-plan-basis").textContent = plan.basis + ". Adjust the theme to match your story.";
   $("#scene-recommendation").textContent = plan.count + " suggested scenes";
-  $("#scene-recommendation-note").textContent = "For your " + timeLabel(project.duration) + " song. Start with " + plan.count + " images, or use fewer and we’ll repeat them. One image can stay throughout.";
+  $("#scene-recommendation-note").textContent = "Start with one or more images. We’ll arrange them across your song; fewer images repeat automatically.";
+  const current = STYLES[project.settings.style] || STYLES.clean;
+  const movement = $("#imageMovement").selectedOptions[0]?.textContent || "Gentle movement";
+  $("#visual-style-summary").textContent = current.name + " · " + movement.replace("Auto · ", "");
+  $("#transition-summary").textContent = project.settings.transition === "auto" ? "Auto" : TRANSITIONS[project.settings.transition];
   const ideas = $("#photo-ideas");
   ideas.replaceChildren();
   for (const query of plan.searches) ideas.append(button(query, () => {
@@ -1021,7 +1088,8 @@ function renderStoryboard(scenes) {
   const list = $("#storyboard-scenes");
   list.replaceChildren();
   $("#storyboard-panel").hidden = project.textOnly;
-  $("#scene-count").textContent = scenes.length + " auto-timed scenes";
+  $("#scene-count").textContent = String(scenes.length);
+  if (!$("#storyboard-panel").open) return;
   for (const scene of scenes) {
     const card = node("article", undefined, "storyboard-scene");
     const image = images[scene.imageIndex];
@@ -1048,6 +1116,7 @@ function renderStoryboard(scenes) {
     list.append(card);
   }
 }
+$("#storyboard-panel").addEventListener("toggle", () => renderStoryboard(storyboardFor(project, images.length)));
 $("#replace-image-input").addEventListener("change", async () => {
   const input = $("#replace-image-input");
   const file = input.files[0];
@@ -1188,6 +1257,7 @@ $("#text-size").addEventListener("input", () => {
   invalidateVideo();
   project.settings.textSize = Number($("#text-size").value);
   project.customStyle = true;
+  drawPreview();
   persist();
 });
 $("#reset-direction").addEventListener("click", () => {
@@ -1214,7 +1284,7 @@ $("#create-video").addEventListener("click", async () => {
     stopAt = window.end;
     const epoch = previewEpoch;
     await preparePreviewImages();
-    if (epoch !== previewEpoch || project.step !== 3 || busy) return;
+    if (epoch !== previewEpoch || project.step < 2 || busy) return;
     player
       .play()
       .catch(() =>
@@ -1235,7 +1305,7 @@ async function preparePreviewImages() {
   await imageCache.prepare(images, previewIndices());
 }
 function drawPreview() {
-  if (!audioBuffer || project.step !== 3 || busy) return;
+  if (!audioBuffer || project.step < 2 || busy || (project.step === 2 && !images.length && !project.textOnly)) return;
   const needed = previewIndices();
   if (!imageCache.ready(images, needed)) {
     if (previewLoading) return;
@@ -1251,7 +1321,7 @@ function drawPreview() {
       $("#preview-buffering").hidden = true;
       const resume = previewResume;
       drawPreview();
-      if (resume && !previewLoading && project.step === 3 && !busy) {
+      if (resume && !previewLoading && project.step >= 2 && !busy) {
         previewResume = false;
         player.play().catch(() => {});
       }
@@ -1291,11 +1361,13 @@ function animate() {
 }
 player.addEventListener("play", () => {
   $("#preview-play").textContent = "Pause";
+  $("#preview-highlight").textContent = "Pause preview";
   cancelAnimationFrame(raf);
   animate();
 });
 player.addEventListener("pause", () => {
-  $("#preview-play").textContent = "Play preview";
+  $("#preview-play").textContent = "Play full song";
+  $("#preview-highlight").textContent = "Play 15-second preview";
   cancelAnimationFrame(raf);
   drawPreview();
 });
@@ -1325,6 +1397,7 @@ $("#preview-seek").addEventListener("input", () => {
 });
 $("#preview-highlight").addEventListener("click", async () => {
   if (busy) return;
+  if (!player.paused) { player.pause(); stopAt = null; return; }
   player.pause();
   previewResume = false;
   const window = previewWindow(storyboardFor(project, images.length), project.duration);
@@ -1332,8 +1405,9 @@ $("#preview-highlight").addEventListener("click", async () => {
   stopAt = window.end;
   const epoch = previewEpoch;
   try {
+    await loadLyricalFonts();
     await preparePreviewImages();
-    if (epoch === previewEpoch && project.step === 3 && !busy) await player.play();
+    if (epoch === previewEpoch && project.step >= 2 && !busy) await player.play();
   }
   catch (error) { if (error.name !== "AbortError") message(error.message, true); }
 });
@@ -1358,6 +1432,9 @@ async function checkExport() {
       o.value = f.format;
       $("#export-format").append(o);
     }
+    $("#export-format-field").hidden = formats.length === 1;
+    $("#export-format-note").hidden = formats.length !== 1;
+    $("#export-format-note").textContent = formats.length === 1 ? "File format: " + formats[0].format.toUpperCase() : "";
     $("#export-video").disabled = busy || !formats.length;
     $("#export-support").textContent = formats.length
       ? "Export is available on this device."
@@ -1493,10 +1570,11 @@ if (initialDraft) {
     "Continue “" +
     initialDraft.name +
     "”? Your previous draft is saved on this device.";
+  document.body.classList.add("has-draft");
 }
 $("#dismiss-draft").addEventListener(
   "click",
-  () => ($("#recovery").hidden = true),
+  () => { $("#recovery").hidden = true; document.body.classList.remove("has-draft"); },
 );
 $("#resume").addEventListener("click", async () => {
   if (!initialDraft || busy || restoring) return;

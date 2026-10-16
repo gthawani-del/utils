@@ -2,36 +2,41 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Utility OS — useful browser-native tools with local processing wherever possible.">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="Simple tools to create lyric videos, edit clips, work with images and transcribe audio in your browser.">
   <title>Utility OS</title>
   <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="/assets/home.css">
 </head>
-<body>
-  <header class="site-header">
+<body class="home-body">
+  <header class="home-header">
     <a class="brand" href="/" aria-label="Utility OS home"><span class="brand-mark">U</span><span>Utility OS</span></a>
-    <button class="ghost-button" id="clear-workspace" type="button">Clear workspace</button>
+    <button class="text-button home-menu" type="button" data-open="home-settings" aria-label="Help and storage options">•••</button>
   </header>
-  <main class="home-shell">
-    <section class="hero" aria-labelledby="hero-title">
-      <p class="eyebrow">Browser-native utility layer</p>
-      <h1 id="hero-title">Useful tools. Running locally. No unnecessary uploads.</h1>
-      <p class="hero-copy">A modular toolbox built for fast, private work in the browser. Core utilities stay on your device wherever technically possible.</p>
-      <div class="privacy-pill"><span class="privacy-dot" aria-hidden="true"></span> No account · No analytics · No backend processor</div>
-    </section>
-    <section aria-labelledby="tools-title">
-      <div class="section-heading">
-        <div><p class="eyebrow">Utilities</p><h2 id="tools-title">Your local toolbox</h2></div>
-        <p>Each utility loads independently, so the homepage stays lightweight.</p>
-      </div>
-      <div class="tool-grid" id="tool-grid"></div>
-    </section>
-    <section class="security-strip" aria-labelledby="security-title">
-      <div><p class="eyebrow">Security kernel</p><h2 id="security-title">One security layer for every tool.</h2></div>
-      <p>Hostile-file assumptions, signature checks, worker isolation, resource budgets, safe exports, strict CSP, and controlled failures are shared infrastructure—not optional per-tool code.</p>
-    </section>
+  <main class="home-main">
+    <h1>What would you like<br class="home-title-break"> to create?</h1>
+    <p class="home-intro">Simple tools, right in your browser.</p>
+    <nav class="home-tools" id="tool-grid" aria-label="Choose a tool"></nav>
+    <footer class="home-footer"><span>No account needed.</span><button class="text-button" type="button" data-open="home-help">Help</button><button class="text-button" type="button" data-open="home-settings">Storage</button></footer>
   </main>
-  <footer class="site-footer">Utility OS · Local-first by architecture</footer>
+  <dialog id="home-help" class="home-dialog" aria-labelledby="help-title">
+    <div class="dialog-heading"><h2 id="help-title">Choose your starting point</h2><button class="text-button" type="button" data-close aria-label="Close help">✕</button></div>
+    <p>Open a tool, then choose a file from your device. Each tool guides you through its own steps.</p>
+    <p>Lyrical turns a song into a lyric video. You check the words, add images and preview before exporting.</p>
+    <p>Audio, image and video processing happens on your device. Speech models and stock photo search need an internet connection.</p>
+    <a class="primary-button" href="/lyrical">Open Lyrical</a>
+  </dialog>
+  <dialog id="home-settings" class="home-dialog" aria-labelledby="storage-title">
+    <div class="dialog-heading"><h2 id="storage-title">Device storage</h2><button class="text-button" type="button" data-close aria-label="Close storage settings">✕</button></div>
+    <p>Drafts are stored in this browser on this device. They are not backed up to an account.</p>
+    <p>Clearing the workspace removes saved drafts and local preferences. Download any work you want to keep first.</p>
+    <button class="secondary-button" id="clear-workspace" type="button">Clear saved workspace…</button>
+    <p id="storage-status" role="status"></p>
+  </dialog>
+  <template id="icon-lyrical"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="34" height="34" rx="4"/><path d="M17 27V13l13-3v14M17 15l13-3"/><ellipse cx="13" cy="28" rx="4" ry="3"/><ellipse cx="26" cy="25" rx="4" ry="3"/></svg></template>
+  <template id="icon-video"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="8" width="25" height="25" rx="4"/><path d="m27 16 11-7v23l-11-7z"/></svg></template>
+  <template id="icon-image"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="34" height="34" rx="4"/><circle cx="27" cy="12" r="3"/><path d="m4 31 11-13 9 10 5-5 8 9"/></svg></template>
+  <template id="icon-media"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M25 3H8a3 3 0 0 0-3 3v29a3 3 0 0 0 3 3h24a3 3 0 0 0 3-3V13zM25 3v10h10M12 22v8m5-12v16m6-19v19m5-12v8"/></svg></template>
   <script type="module" src="/assets/home.js"></script>
 </body>
 </html>

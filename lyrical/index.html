@@ -16,12 +16,10 @@
   </head>
   <body class="lyrical-body" data-lyrical-step="0">
     <header class="site-header">
-      <a class="brand" href="/" aria-label="Utility OS home"
-        ><span class="brand-mark">U</span><span>Utility OS</span></a
-      ><span class="product-name">Lyrical</span
-      ><button id="start-over" class="text-button" type="button">
-        New project
-      </button>
+      <a class="home-back" href="/" aria-label="Back to Utility OS">‹</a>
+      <a class="brand" href="/" aria-label="Utility OS home"><span class="brand-mark">U</span></a>
+      <span class="product-name">Lyrical</span>
+      <details class="project-menu"><summary aria-label="Project options">•••</summary><div><button id="start-over" class="text-button" type="button">New project</button></div></details>
     </header>
     <main class="lyrical-shell">
       <div class="lyrical-heading">
@@ -39,17 +37,17 @@
         ><button type="button" data-step="1" disabled>
           <span>2</span>Lyrics</button
         ><button type="button" data-step="2" disabled>
-          <span>3</span>Images</button
+          <span>3</span>Visuals</button
         ><button type="button" data-step="3" disabled>
           <span>4</span>Video
         </button>
       </nav>
       <div id="recovery" class="recovery" hidden>
         <p id="recovery-copy"></p>
-        <button id="resume" class="secondary-button" type="button">
-          Resume draft</button
+        <button id="resume" class="primary-button" type="button">
+          Continue project</button
         ><button id="dismiss-draft" class="text-button" type="button">
-          Dismiss
+          Start another song
         </button>
       </div>
       <div
@@ -228,6 +226,7 @@
               </optgroup>
             </select></label
           >
+          <details class="transcription-options"><summary>Transcription options</summary>
           <label for="transcription-quality"
             >Transcription engine<select id="transcription-quality">
               <option value="tiny">Standard · recommended</option>
@@ -235,6 +234,7 @@
               <option value="vosk" disabled>Vosk · experimental · English / Hindi</option></select
             ><span class="small-copy" id="quality-hint">Uses a compact speech engine and processes short sections. Best for phones.</span></label
           >
+          </details>
           <p class="small-copy setup-note">First use downloads the speech engine and can take several minutes on a phone. Keep this tab open while your lyrics are created.</p>
           <div class="transcribe-actions">
             <button id="transcribe" class="primary-button" type="button">
@@ -278,11 +278,10 @@
       >
         <div class="section-top">
           <div>
-            <p class="eyebrow">LISTEN & REVIEW</p>
-            <h2 id="lyrics-heading">Get the words right.</h2>
+
+            <h2 id="lyrics-heading">Check your lyrics</h2>
             <p>
-              Timing is automatic. Correct the words and play any line to hear
-              it.
+              Tap a line to edit. Timing is automatic.
             </p>
           </div>
           <button
@@ -291,7 +290,7 @@
             type="button"
             disabled
           >
-            Undo edit
+            Undo
           </button>
         </div>
         <details class="timing-options">
@@ -329,70 +328,51 @@
               + Add line
             </button>
           </div>
-          <aside class="lyrical-card direction-card">
-            <p class="eyebrow">CHOSEN FOR YOUR SONG</p>
-            <h3 id="review-direction-name">Finding your direction</h3>
-            <p id="review-direction-reason"></p>
-            <div id="review-style-swatch" class="direction-swatch">
-              <span>Words<br />in motion.</span>
-            </div>
-            <p class="small-copy">
-              Based on audio energy and lyric timing. You can change the
-              direction in the next step.
-            </p>
-            <p class="small-copy">
-              Edits keep the line’s timing. Splits and merges update timing
-              automatically. Estimated matches use phrase animation.
-            </p>
-          </aside>
+
         </div>
         <div class="step-actions">
           <button data-back="0" class="secondary-button" type="button">
             Back</button
-          ><label class="review-check"
-            ><input id="review-confirm" type="checkbox" />I’ve checked the
-            lyrics.</label
           ><button id="confirm-lyrics" class="primary-button" type="button">
-            Continue to images
+            Confirm lyrics
           </button>
         </div>
       </section>
 
-      <section
-        id="step-images"
-        class="step-panel"
-        aria-labelledby="images-heading"
-        hidden
-      >
-        <div class="section-top">
-          <div>
-            <p class="eyebrow">MAKE IT VISUAL</p>
-            <h2 id="images-heading">Give your song a visual story.</h2>
-            <p>
-              Start with our suggested direction, then add your images. We’ll handle the scene timing.
-            </p>
+      <section id="step-images" class="step-panel" aria-labelledby="images-heading" hidden>
+        <div class="section-top"><h2 id="images-heading">Your suggested look</h2></div>
+        <div class="visual-workspace">
+          <div class="visual-main">
+            <div class="look-summary"><div><h3 id="visual-plan-name"></h3><p id="visual-style-summary"></p></div><button class="secondary-button" type="button" data-open-dialog="style-dialog">Adjust style</button></div>
+            <div id="visual-empty" class="visual-empty"><span class="upload-symbol" aria-hidden="true">＋</span><h3>Bring your song to life</h3><p>Start with one or more images.<br>We’ll arrange them across your song.</p><button class="primary-button" type="button" data-open-dialog="image-source-dialog">Add images</button></div>
+            <div id="visual-preview-slot"></div>
+          </div>
+          <div class="visual-controls">
+            <div class="selected-heading"><h3>Your images</h3><button class="text-button" type="button" data-open-dialog="image-source-dialog">Add images</button></div>
+            <div id="selected-images" class="selected-images" aria-label="Selected images"></div>
+            <p id="image-count" class="small-copy"></p>
+            <input id="replace-image-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            <details class="visual-disclosure"><summary>Transitions <span id="transition-summary">Auto</span></summary><label for="transition">Image transition<select id="transition">
+              <option value="auto">Auto · follows the song</option>
+              <option value="dissolve">Soft dissolve</option>
+              <option value="cut">Clean cut</option>
+              <option value="slide">Gentle slide</option>
+              <option value="fade">Fade through black</option>
+            </select></label>
+            <p class="small-copy">Play the preview to see your changes.</p></details>
+            <details id="storyboard-panel" class="visual-disclosure"><summary>View scenes <span id="scene-count"></span></summary><p class="small-copy">Scene timing follows your lyrics automatically.</p><div id="storyboard-scenes" class="storyboard-scenes" aria-label="Automatically timed scenes" tabindex="0"></div></details>
+            <details class="visual-disclosure"><summary>Background options</summary><label class="review-check text-only"><input id="text-only" type="checkbox">Use lyrics only, without images</label><p id="image-mode-note" class="small-copy" role="status"></p></details>
           </div>
         </div>
-        <div class="lyrical-card visual-plan">
-          <div>
-            <p class="eyebrow">A STARTING POINT FOR YOUR SONG</p>
-            <h3 id="visual-plan-name"></h3>
-            <p id="visual-plan-description"></p>
-            <p id="visual-plan-palette" class="small-copy"></p>
-            <p id="visual-plan-basis" class="small-copy"></p>
-          </div>
-          <div class="scene-recommendation">
-            <strong id="scene-recommendation"></strong>
-            <p id="scene-recommendation-note"></p>
-            <p class="small-copy">Use a consistent look, a mix of wide scenes and details, and space for the lyrics. Avoid images with built-in text.</p>
-          </div>
-          <div class="visual-quick-settings">
-            <label for="aspect">Video shape<select id="aspect">
+        <div class="step-actions"><button data-back="1" class="text-button" type="button">Back</button><span id="image-readiness" class="visually-hidden"></span><button id="create-video" class="primary-button" type="button">Continue to video</button></div>
+      </section>
+      <dialog id="style-dialog" class="lyrical-dialog" aria-labelledby="style-dialog-heading">
+        <div class="dialog-heading"><h2 id="style-dialog-heading">Adjust style</h2><button class="text-button" type="button" data-close-dialog aria-label="Close style settings">✕</button></div>
+        <div class="style-settings"><label for="aspect">Video shape<select id="aspect">
               <option value="9:16">Vertical · 9:16</option>
               <option value="16:9">Landscape · 16:9</option>
               <option value="1:1">Square · 1:1</option>
-            </select></label>
-            <label for="visualTheme">Visual theme<select id="visualTheme">
+            </select></label><label for="visualTheme">Visual theme<select id="visualTheme">
               <option value="auto">Suggested for this song</option>
               <option value="reflective">Quiet reflections</option>
               <option value="connection">Warm connections</option>
@@ -400,133 +380,7 @@
               <option value="celebration">Colour in motion</option>
               <option value="journey">Open horizons</option>
             </select></label>
-            <label for="transition">Image transition<select id="transition">
-              <option value="auto">Auto · follows the song</option>
-              <option value="dissolve">Soft dissolve</option>
-              <option value="cut">Clean cut</option>
-              <option value="slide">Gentle slide</option>
-              <option value="fade">Fade through black</option>
-            </select></label>
-          </div>
-          <div class="suggested-searches"><span>Photo ideas</span><div id="photo-ideas"></div></div>
-        </div>
-        <div class="images-layout">
-          <div class="lyrical-card image-picker">
-            <div class="image-tabs" role="tablist" aria-label="Image source">
-              <button
-                id="tab-upload"
-                type="button"
-                role="tab"
-                aria-selected="true"
-                aria-controls="upload-images"
-              >
-                Upload images</button
-              ><button
-                id="tab-stock"
-                type="button"
-                role="tab"
-                aria-selected="false"
-                aria-controls="stock-images"
-                tabindex="-1"
-              >
-                Find free photos
-              </button>
-            </div>
-            <div
-              id="upload-images"
-              role="tabpanel"
-              aria-labelledby="tab-upload"
-            >
-              <div class="image-upload" id="image-drop">
-                <span aria-hidden="true">＋</span>
-                <h3>Your images, your story.</h3>
-                <p>
-                  Add up to 24 JPG, PNG or WebP images.<br />12 MB per image.
-                </p>
-                <button
-                  id="choose-images"
-                  class="secondary-button"
-                  type="button"
-                >
-                  Add images</button
-                ><input
-                  id="images-input"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  multiple
-                  hidden
-                />
-              </div>
-            </div>
-            <div
-              id="stock-images"
-              role="tabpanel"
-              aria-labelledby="tab-stock"
-              hidden
-            >
-              <form id="stock-form" class="stock-search">
-                <label for="stock-query" class="visually-hidden"
-                  >Search free photos</label
-                ><input
-                  id="stock-query"
-                  type="search"
-                  maxlength="100"
-                  placeholder="Try ocean, city lights, chess…"
-                  required
-                /><button class="primary-button" type="submit">Search</button>
-              </form>
-              <p class="small-copy">
-                Photos provided by
-                <a
-                  href="https://pixabay.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  >Pixabay</a
-                >. Try English keywords for the widest results. Use photos under
-                the
-                <a
-                  href="https://pixabay.com/service/license-summary/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  >Pixabay Content License</a
-                >.
-              </p>
-              <p id="stock-status" role="status" aria-live="polite">
-                Search for a place, object or feeling.
-              </p>
-              <div id="stock-results" class="stock-results"></div>
-              <button
-                id="stock-more"
-                type="button"
-                class="secondary-button"
-                hidden
-              >
-                Load more
-              </button>
-            </div>
-            <div class="selected-heading">
-              <h3>Your images <span id="image-count">0 / 24</span></h3>
-              <p>
-                Reorder, replace or crop. If you use fewer images than scenes, they repeat in this order.
-              </p>
-            </div>
-            <div id="selected-images" class="selected-images"></div>
-            <input id="replace-image-input" type="file" accept="image/jpeg,image/png,image/webp" hidden />
-            <div id="storyboard-panel" class="storyboard-panel">
-              <h3>Your storyboard <span id="scene-count"></span></h3>
-              <p class="small-copy">Scene changes follow nearby lyric starts. All timings are automatic.</p>
-              <div id="storyboard-scenes" class="storyboard-scenes" aria-label="Automatically timed scenes" tabindex="0"></div>
-            </div>
-            <label class="review-check text-only"
-              ><input id="text-only" type="checkbox" />Continue without images —
-              typography only</label
-            >
-            <p id="image-mode-note" class="image-mode-note" role="status">
-              Add images to include them in your video.
-            </p>
-          </div>
-          <aside class="lyrical-card style-settings">
-            <p class="eyebrow">YOUR VIDEO DIRECTION</p>
+
             <h3 id="direction-name"></h3>
             <p id="direction-reason"></p>
             <label for="imageMovement">Image movement<select id="imageMovement">
@@ -589,19 +443,114 @@
             <p class="small-copy">
               Your original audio is preserved. Image movement and lyric animation can be adjusted independently.
             </p>
-          </aside>
-        </div>
-        <div class="step-actions">
-          <button data-back="1" class="secondary-button" type="button">
-            Back to lyrics</button
-          ><span id="image-readiness"
-            >Add an image or choose typography only.</span
-          ><button id="create-video" class="primary-button" type="button">
-            Preview video
-          </button>
-        </div>
-      </section>
 
+          <details><summary>About the suggestion</summary><p id="visual-plan-description"></p><p id="visual-plan-palette"></p><p id="visual-plan-basis"></p><p id="scene-recommendation"></p><p id="scene-recommendation-note"></p></details>
+        </div>
+        <button class="primary-button dialog-done" type="button" data-close-dialog>Done</button>
+      </dialog>
+      <dialog id="image-source-dialog" class="lyrical-dialog" aria-labelledby="image-source-heading">
+        <div class="dialog-heading"><h2 id="image-source-heading">Add images</h2><button class="text-button" type="button" data-close-dialog aria-label="Close image sources">✕</button></div>
+        <p class="small-copy">Upload your photos or choose free stock images.</p>
+        <div class="suggested-searches"><span>Photo ideas</span><div id="photo-ideas"></div></div>
+            <div class="image-tabs" role="tablist" aria-label="Image source">
+              <button
+                id="tab-upload"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="upload-images"
+              >
+                Upload images</button
+              ><button
+                id="tab-stock"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="stock-images"
+                tabindex="-1"
+              >
+                Find free photos
+              </button>
+            </div>
+            <div
+              id="upload-images"
+              role="tabpanel"
+              aria-labelledby="tab-upload"
+            >
+              <div class="image-upload" id="image-drop">
+                <span aria-hidden="true">＋</span>
+                <h3>Start with one or more images</h3>
+                <p>
+                  Add up to 24 JPG, PNG or WebP images.<br />12 MB per image.
+                </p>
+                <button
+                  id="choose-images"
+                  class="secondary-button"
+                  type="button"
+                >
+                  Upload images</button
+                ><input
+                  id="images-input"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  hidden
+                />
+              </div>
+            </div>
+            <div
+              id="stock-images"
+              role="tabpanel"
+              aria-labelledby="tab-stock"
+              hidden
+            >
+              <form id="stock-form" class="stock-search">
+                <label for="stock-query" class="visually-hidden"
+                  >Search free photos</label
+                ><input
+                  id="stock-query"
+                  type="search"
+                  maxlength="100"
+                  placeholder="Try ocean, city lights, chess…"
+                  required
+                /><button class="primary-button" type="submit">Search</button>
+              </form>
+              <p class="small-copy">
+                Photos provided by
+                <a
+                  href="https://pixabay.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Pixabay</a
+                >. Try English keywords for the widest results. Use photos under
+                the
+                <a
+                  href="https://pixabay.com/service/license-summary/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Pixabay Content License</a
+                >.
+              </p>
+              <p id="stock-status" role="status" aria-live="polite">
+                Search for a place, object or feeling.
+              </p>
+              <div id="stock-results" class="stock-results"></div>
+              <button
+                id="stock-more"
+                type="button"
+                class="secondary-button"
+                hidden
+              >
+                Load more
+              </button>
+            </div>
+
+        <button class="primary-button dialog-done" type="button" data-close-dialog>Done</button>
+      </dialog>
+      <dialog id="image-editor-dialog" class="lyrical-dialog" aria-labelledby="image-editor-heading">
+        <div class="dialog-heading"><h2 id="image-editor-heading">Edit image</h2><button class="text-button" type="button" data-close-dialog aria-label="Close image editor">✕</button></div>
+        <div id="image-editor"></div><button class="primary-button dialog-done" type="button" data-close-dialog>Done</button>
+      </dialog>
       <section
         id="step-video"
         class="step-panel"
@@ -610,20 +559,20 @@
       >
         <div class="section-top">
           <div>
-            <p class="eyebrow">YOUR SONG, IN MOTION</p>
-            <h2 id="video-heading">Ready for a first look.</h2>
-            <p>Check a short preview, or play the full song before downloading.</p>
+
+            <h2 id="video-heading">Your video</h2>
+            <p>Review your video, then create the file to save.</p>
           </div>
         </div>
         <div class="video-layout">
-          <div class="lyrical-card player-card">
+          <div id="video-preview-slot"><div id="preview-player" class="lyrical-card player-card">
             <canvas
               id="video-canvas"
               width="720"
               height="1280"
               aria-label="Lyric video preview"
             ></canvas>
-            <button id="preview-highlight" class="secondary-button" type="button">Preview 15 seconds</button>
+            <button id="preview-highlight" class="secondary-button" type="button">Play 15-second preview</button>
             <p id="preview-buffering" class="small-copy" role="status" hidden></p>
             <div class="preview-transport">
               <button id="preview-play" class="secondary-button" type="button">
@@ -646,13 +595,13 @@
               aria-label="Current motion"
             ></p>
           </div>
-          <aside class="lyrical-card export-card">
-            <h3>Make it yours.</h3>
+          </div><aside class="lyrical-card export-card">
+            <h3>Ready to save?</h3>
             <p>Change the words or images without starting over.</p>
             <button data-back="1" class="secondary-button" type="button">
               Edit lyrics</button
             ><button data-back="2" class="secondary-button" type="button">
-              Images & style
+              Edit visuals
             </button>
             <hr />
             <p id="export-visual-summary" class="visual-summary"></p>
@@ -666,11 +615,12 @@
                 <option value="720">720p · smaller file</option>
                 <option value="1080">1080p · more detail</option>
               </select></label
-            ><label for="export-format"
+            ><label id="export-format-field" for="export-format"
               >File format<select id="export-format">
                 <option>Checking your browser…</option>
               </select></label
             >
+            <p id="export-format-note" class="small-copy" hidden></p>
             <p id="export-support" class="small-copy" role="status"></p>
             <button
               id="export-video"
@@ -678,7 +628,7 @@
               type="button"
               disabled
             >
-              Download video</button
+              Create video file</button
             ><button
               id="cancel-export"
               class="secondary-button"

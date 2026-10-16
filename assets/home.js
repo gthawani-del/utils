@@ -1,38 +1,48 @@
 import { clearWorkspace } from '/lib/security/workspace.js';
 
 const tools = [
-  ['Lyrical', 'Turn a song into a kinetic lyric video with automatic style direction, your images and local export.', '/lyrical', true, 'LYR'],
-  ['Video Editor', 'Edit clips, kinetic typography, Smooth & Match and local export in a dedicated workspace.', '/media/video-editor', true, 'VID'],
-  ['Image Studio', 'Resize, crop, convert, compress, rotate, strip metadata, and batch export images.', '/image', true, 'IMG'],
-  ['Media Editor + Transcriber', 'Local media editing and transcription workflows.', '/media', true, 'MED'],
-  ['Docs Reader', 'Inspect and work with documents locally.', '#', false, 'DOC'],
-  ['Decision Room', 'Structured decision analysis without unnecessary services.', '#', false, 'DEC'],
-  ['Data Analyst', 'Explore and transform datasets in-browser.', '#', false, 'DAT'],
-  ['Data Room Inspector', 'Inspect folders and document sets with local-first controls.', '#', false, 'DRI'],
-  ['OCR + Scanner', 'Scan, clean, and extract text locally where supported.', '#', false, 'OCR'],
-  ['Offline Research', 'Organize research material without cloud dependency.', '#', false, 'RES'],
-  ['Workflow Builder', 'Compose repeatable utility workflows.', '#', false, 'FLW'],
-  ['Game / Simulation Lab', 'Small simulations, probability tools, and interactive experiments.', '#', false, 'LAB']
+  ['Lyrical', 'Turn your song into a lyric video.', '/lyrical', 'lyrical'],
+  ['Video Editor', 'Cut and arrange your video clips.', '/media/video-editor', 'video'],
+  ['Image Studio', 'Resize, crop and compress images.', '/image', 'image'],
+  ['Media & Transcription', 'Edit media and turn speech into text.', '/media', 'media'],
 ];
-
-const grid = document.querySelector('#tool-grid');
-for (const [name, description, href, active, code] of tools) {
-  const article = document.createElement('article');
-  article.className = `tool-card${active ? ' active-card' : ''}${name === 'Video Editor' ? ' featured-video-card' : ''}`;
-  const icon = document.createElement('div'); icon.className = 'tool-icon'; icon.textContent = code;
-  const meta = document.createElement('div'); meta.className = 'tool-meta';
-  const title = document.createElement('h3'); title.textContent = name;
-  const copy = document.createElement('p'); copy.textContent = description;
-  const badge = document.createElement(active ? 'a' : 'span');
-  badge.className = active ? 'tool-action' : 'coming-badge';
-  badge.textContent = active ? 'Open tool →' : 'Coming Soon';
-  if (active) { badge.href = href; badge.setAttribute('aria-label', `Open ${name}`); }
-  meta.append(title, copy, badge); article.append(icon, meta); grid.append(article);
+for (const [name, description, href, symbol] of tools) {
+  const link = document.createElement('a');
+  link.className = 'home-tool' + (name === 'Lyrical' ? ' home-tool-featured' : '');
+  link.href = href;
+  const icon = document.createElement('span');
+  icon.className = 'home-tool-icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.append(document.getElementById('icon-' + symbol).content.cloneNode(true));
+  const copy = document.createElement('span');
+  const title = document.createElement('strong');
+  title.textContent = name;
+  const detail = document.createElement('span');
+  detail.textContent = description;
+  copy.append(title, detail);
+  const arrow = document.createElement('span');
+  arrow.className = 'home-tool-arrow';
+  arrow.textContent = '›';
+  arrow.setAttribute('aria-hidden', 'true');
+  link.append(icon, copy, arrow);
+  document.querySelector('#tool-grid').append(link);
 }
-
-document.querySelector('#clear-workspace').addEventListener('click', async () => {
-  await clearWorkspace();
-  const button = document.querySelector('#clear-workspace');
-  button.textContent = 'Workspace cleared';
-  setTimeout(() => { button.textContent = 'Clear workspace'; }, 1600);
+document.querySelectorAll('[data-open]').forEach(button => {
+  button.addEventListener('click', () => document.getElementById(button.dataset.open).showModal());
+});
+document.querySelectorAll('[data-close]').forEach(button => {
+  button.addEventListener('click', () => button.closest('dialog').close());
+});
+document.querySelector('#clear-workspace').addEventListener('click', async event => {
+  if (!confirm('Delete saved drafts and local preferences from this browser? Download any work you want to keep first. This cannot be undone.')) return;
+  event.currentTarget.disabled = true;
+  const status = document.querySelector('#storage-status');
+  try {
+    await clearWorkspace();
+    status.textContent = 'Saved workspace cleared.';
+  } catch {
+    status.textContent = 'Some saved data could not be cleared. You can try again.';
+  } finally {
+    document.querySelector('#clear-workspace').disabled = false;
+  }
 });
