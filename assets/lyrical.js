@@ -7,6 +7,7 @@ import {
   chooseDirection,
   dimensions,
   timeLabel,
+  scriptReviewNote,
 } from "/lib/lyrical/project.js";
 import { decodeSong, transcribeSong } from "/lib/lyrical/audio.js";
 import { drawLyricalFrame, loadLyricalFonts } from "/lib/lyrical/renderer.js";
@@ -269,6 +270,7 @@ async function selectSong(file, { restore = false } = {}) {
     $("#song-bar").hidden = false;
     $("#song-ready").hidden = false;
     $("#song-language").value = project.language || "";
+    $("#transcription-quality").value = project.transcriptionQuality || "small";
     $("#recovery").hidden = true;
     try {
       await assetStore("put", "song", file);
@@ -281,7 +283,7 @@ async function selectSong(file, { restore = false } = {}) {
   } catch (error) {
     message(error.message, true);
   } finally {
-    setBusy(false);
+    if (!restore) setBusy(false);
     $("#song-input").value = "";
   }
 }
@@ -310,6 +312,7 @@ $("#transcribe").addEventListener("click", async () => {
     return;
   }
   project.language = language;
+  project.transcriptionQuality = $("#transcription-quality").value;
   persist();
   transcriptionController = new AbortController();
   $("#cancel-transcription").hidden = false;
@@ -318,6 +321,7 @@ $("#transcribe").addEventListener("click", async () => {
   try {
     const chunks = await transcribeSong(mono, {
       language,
+      quality: project.transcriptionQuality,
       signal: transcriptionController.signal,
       onStatus: (text) => ($("#transcription-status").textContent = text),
     });
@@ -336,7 +340,8 @@ $("#transcribe").addEventListener("click", async () => {
     setBusy(false);
     showStep(1);
     message(
-      "Transcription is a draft. Singing, overlapping voices and repeated phrases can need correction.",
+      scriptReviewNote(language, lines) ||
+        "Transcription is a draft. Singing, overlapping voices and repeated phrases can need correction.",
     );
   } catch (error) {
     if (error.name === "AbortError")

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {linesFromWords,reviseLine,validateLines,chooseDirection,analyzeAudio,imageSceneAt} from '../lib/lyrical/project.js';
+import {linesFromWords,reviseLine,validateLines,chooseDirection,analyzeAudio,imageSceneAt,scriptReviewNote} from '../lib/lyrical/project.js';
 import {fitLines} from '../lib/lyrical/renderer.js';
 test('only actual bounded word timestamps become lines; mixed scripts survive',()=>{
  const lines=linesFromWords([{text:' तूने',timestamp:[1,1.3]},{text:'game',timestamp:[1.3,1.6]},{text:'खेली।',timestamp:[1.6,2]},{text:'missing',timestamp:[3,null]},{text:'end',timestamp:[4,8]}],5);
@@ -29,4 +29,10 @@ test('long unbroken text wraps without splitting a Devanagari grapheme',()=>{
  const ctx={font:'',measureText(text){const size=Number(this.font.match(/([\d.]+)px/)?.[1]||24);return {width:[...text].length*size*.5};}};
  const word='क्षि'.repeat(40);const result=fitLines(ctx,word,300,'sans-serif',40,600);
  assert.ok(result.lines.every(l=>ctx.measureText(l).width<=300));assert.equal(result.lines.join(''),word);assert.ok(result.lines.every(l=>l.length%4===0));
+});
+
+test('wrong-script recognition is flagged while mixed-language text remains allowed',()=>{
+ assert.match(scriptReviewNote('hi',[{text:'میں نے دیکھا'}]),/different script/);
+ assert.equal(scriptReviewNote('hi',[{text:'तूने game खेली'}]),'');
+ assert.equal(scriptReviewNote('en',[{text:'My next move'}]),'');
 });

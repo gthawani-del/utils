@@ -943,3 +943,15 @@
     scroll-behavior: auto !important;
   }
 }
+
+.song-ready {
+  grid-template-columns: minmax(180px, 1fr) minmax(200px, 1fr);
+}
+.song-ready .transcribe-actions {
+  grid-column: 1/-1;
+}
+@media (max-width: 640px) {
+  .song-ready {
+    grid-template-columns: 1fr;
+  }
+}
