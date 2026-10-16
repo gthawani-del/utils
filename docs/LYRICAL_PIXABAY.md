@@ -87,3 +87,7 @@ Run `node --test tests/lyrical-pixabay.test.mjs`. Tests use fake fetch responses
 Before release, verify a real keyword search, one selected image, attribution links, crop dimensions, a provider failure and a refresh after deployment. Confirm the environment variable exists in the intended production/preview environment. API access from this development environment has not established whether the account has full-resolution approval.
 
 Provider reference: [Pixabay API documentation](https://pixabay.com/api/docs/). Pixabay requests 24-hour request caching, forbids permanent image hotlinking, and asks applications to identify the source in search results. Images remain subject to the [Pixabay Content License](https://pixabay.com/service/license-summary/).
+
+### Preview check (2026-10-16)
+
+The deployed Preview search route returned `PHOTO_SEARCH_NOT_CONFIGURED`, and the UI correctly kept image uploads available. The key needs Preview environment scope in Vercel for preview searches. Production configuration and a successful real-provider search/download were not verified in this check.
