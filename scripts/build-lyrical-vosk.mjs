@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 import { unzipSync } from "fflate";
+import { patchVoskCsp } from "./lyrical-vosk-csp.mjs";
 
 const sha256 = (data) => createHash("sha256").update(data).digest("hex");
 const models = [
@@ -44,17 +45,9 @@ export async function buildLyricalVosk(root, dist) {
   let worker = Buffer.from(encoded[1], "base64").toString("utf8");
   if (sha256(worker) !== "7ba6b482f49ff3d49290b85f4ca13d5c6a5787b237cac1c6d15129668d36f529")
     throw new Error("Vosk worker changed: review the adapter and CSP patch before upgrading");
-  // Emscripten's name-only wrapper uses new Function. An ordinary function has
-  // the same call/this semantics without weakening the site's script CSP.
-  const start = worker.indexOf("function createNamedFunction(name,body){");
-  const end = worker.indexOf("var emval_free_list=", start);
-  if (start < 0 || end < 0) throw new Error("Vosk function wrapper not found");
-  worker = worker.slice(0, start) +
-    'function createNamedFunction(name,body){var fn=function(){return body.apply(this,arguments)};Object.defineProperty(fn,"name",{value:makeLegalFunctionName(name),configurable:true});return fn}' +
-    worker.slice(end);
-  if (/\bnew\s+Function\b|\beval\s*\(/.test(worker)) throw new Error("Vosk runtime violates script CSP");
+  worker = patchVoskCsp(worker);
   await writeFile(resolve(dist, "assets/lyrical-vosk-engine.js"),
-    "/*! Vosk Browser 0.0.8 / Vosk (Apache-2.0). Modified function naming for CSP; see /assets/vendor/lyrical-vosk-NOTICE.txt */\n" + worker);
+    "/*! Vosk Browser 0.0.8 / Vosk (Apache-2.0). Modified Embind wrappers for CSP; see /assets/vendor/lyrical-vosk-NOTICE.txt */\n" + worker);
 
   const cache = resolve(root, "node_modules/.cache/lyrical-vosk");
   const output = resolve(dist, "assets/models");

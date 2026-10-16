@@ -20,13 +20,13 @@ Official Alpha Cephei ZIPs are downloaded at build time, SHA-256 checked, and re
 | `vosk-model-small-en-us-0.15` | `30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498` |
 | `vosk-model-small-hi-0.22` | `7c50a10866889f0ac21d912c20537a055a597ed09fc1d3e5bcd798f9f0017e48` |
 
-The build verifies the pinned worker source hash before replacing Emscripten's dynamically named function wrapper with an ordinary function and `Object.defineProperty`. This removes its sole `new Function` use without adding `unsafe-eval` or changing the shared site CSP. An upstream worker change fails the build until reviewed. License and modification notices are shipped under `assets/vendor/lyrical-vosk-*`.
+The build verifies the pinned worker source hash before replacing Emscripten's three dynamic Embind wrappers (function naming, C++ invocation and JavaScript method calls) with ordinary functions. This removes direct and indirect Function construction without adding `unsafe-eval` or changing the shared site CSP. The initial browser check caught indirect `new_(Function, ...)` calls missed by a direct-constructor scan; regression coverage now executes all wrappers with string code generation disabled. An upstream worker change fails the build until reviewed. License and modification notices are shipped under `assets/vendor/lyrical-vosk-*`.
 
 No external transcription API or server-side inference is used. Model hosting consumes normal static-hosting bandwidth; this is not a promise of zero hosting cost. Download size is not runtime RAM usage: Vosk documents about 300 MB runtime memory for typical small models, before app/browser overhead. Physical-device verification is required before promoting the engine from experimental.
 
 ## Verification
 
-Automated coverage includes language gating, sample normalization, bounded in-flight work, final-flush ordering, final-only words, late/duplicate cleanup events, cancellation, model failures, a simulated three-minute job with four non-overlapping workers, checkpoint identity and resume. The full 203-test suite, security lint, syntax checks and production build pass locally.
+Automated coverage includes language gating, sample normalization, bounded in-flight work, final-flush ordering, final-only words, late/duplicate cleanup events, cancellation, model failures, a simulated three-minute job with four non-overlapping workers, checkpoint identity and resume. The full 206-test suite, security lint, syntax checks and production build pass locally.
 
 Real-model integration and release verification results are recorded in the pull request. A Node worker harness can verify the same WASM model and protocol, but is not a Safari or browser-memory benchmark. No claim is made that the small Vosk models improve song accuracy without a comparative evaluation.
 

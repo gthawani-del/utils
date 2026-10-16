@@ -9,8 +9,8 @@ Source: https://alphacephei.com/vosk/models (Apache License 2.0).
 
 Modifications by Utility OS:
 - The pinned embedded worker is served as a same-origin standalone worker.
-- Emscripten createNamedFunction uses an ordinary wrapper and defineProperty
-  instead of dynamic Function construction, preserving the site's CSP.
+- Emscripten naming, C++ invocation and JavaScript method-call wrappers use
+  ordinary functions instead of dynamic Function construction, preserving CSP.
 - Official model ZIPs are repackaged as tar.gz without changing model files.
 
 License text: /assets/vendor/lyrical-vosk-LICENSE.txt
