@@ -9,6 +9,13 @@ import {
   timeLabel,
   scriptReviewNote,
 } from "/lib/lyrical/project.js";
+import {
+  alignLyrics,
+  timingWords,
+  splitTimedLine,
+  mergeTimedLines,
+  insertTimedLine,
+} from "/lib/lyrical/timing.js";
 import { decodeSong, transcribeSong } from "/lib/lyrical/audio.js";
 import { drawLyricalFrame, loadLyricalFonts } from "/lib/lyrical/renderer.js";
 import { prepareImage, releaseImage } from "/lib/lyrical/images.js";
@@ -255,6 +262,9 @@ async function selectSong(file, { restore = false } = {}) {
         duration: audioBuffer.duration,
         analysis: decoded.analysis,
         lines: [],
+        timingWords: [],
+        timingLanguage: "",
+        timingModel: "",
         confirmed: false,
         maxStep: 0,
         step: 0,
@@ -304,62 +314,105 @@ function dropTarget(el, handler) {
   });
 }
 dropTarget($("#song-drop"), (files) => selectSong(files[0]));
-$("#transcribe").addEventListener("click", async () => {
+async function syncLyrics(texts = null) {
   if (!mono || busy) return;
   const language = $("#song-language").value;
   if (!language) {
-    message("Choose the song language before transcribing.", true);
+    message("Choose the song language in the Song step before syncing.", true);
+    return;
+  }
+  if (
+    texts &&
+    (!texts.length ||
+      texts.length > LIMITS.lines ||
+      texts.some((text) => !text.trim() || text.length > 500))
+  ) {
+    message(
+      "Use 1–600 non-empty lyric lines, up to 500 characters each.",
+      true,
+    );
     return;
   }
   project.language = language;
   project.transcriptionQuality = $("#transcription-quality").value;
   persist();
+  const cancelId =
+    project.step === 1 ? "#cancel-sync" : "#cancel-transcription";
   transcriptionController = new AbortController();
-  $("#cancel-transcription").hidden = false;
-  setBusy(true, "#cancel-transcription");
+  $(cancelId).hidden = false;
+  setBusy(true, cancelId);
+  player.pause();
   message("");
+  const status = (text) => {
+    $("#transcription-status").textContent = text;
+    $("#timing-status").textContent = text;
+  };
   try {
-    const chunks = await transcribeSong(mono, {
-      language,
-      quality: project.transcriptionQuality,
-      signal: transcriptionController.signal,
-      onStatus: (text) => ($("#transcription-status").textContent = text),
-    });
-    const lines = linesFromWords(chunks, project.duration);
+    const cached =
+      texts &&
+      project.timingLanguage === language &&
+      project.timingModel === project.transcriptionQuality &&
+      project.timingWords?.length;
+    const reference = cached
+      ? project.timingWords
+      : timingWords(
+          await transcribeSong(mono, {
+            language,
+            quality: project.transcriptionQuality,
+            signal: transcriptionController.signal,
+            onStatus: status,
+          }),
+          project.duration,
+        );
+    status("Matching lyrics to the audio timeline…");
+    const lines = texts
+      ? alignLyrics(texts, reference, project.duration)
+      : linesFromWords(reference, project.duration);
     if (!lines.length)
       throw new Error(
-        "No usable lyrics were detected. Try selecting the language, or paste your lyrics below.",
+        "No usable vocal timing was detected. Check the song language and retry.",
       );
+    const error = validateLines(lines, project.duration);
+    if (error)
+      throw new Error(
+        "Automatic sync could not finish. Retry with Higher accuracy.",
+      );
+    if (project.lines.length) remember();
     project.lines = lines;
+    project.timingWords = reference;
+    project.timingLanguage = language;
+    project.timingModel = project.transcriptionQuality;
     project.confirmed = false;
     project.maxStep = 1;
-    project.language = $("#song-language").value;
+    $("#fine-tune-timing").checked = false;
     applyDirection();
-    $("#transcription-status").textContent =
-      "Transcription ready. Check the words and timing before continuing.";
+    status(
+      "Lyrics synced automatically. Review the words and play any line to check it.",
+    );
     setBusy(false);
     showStep(1);
     message(
       scriptReviewNote(language, lines) ||
-        "Transcription is a draft. Singing, overlapping voices and repeated phrases can need correction.",
+        (lines.some((line) => line.timingQuality === "estimated")
+          ? "Lyrics synced. Some matches are estimated — play the marked lines to check them."
+          : "Timing is automatic. Correct any words, then confirm your lyrics."),
     );
   } catch (error) {
     if (error.name === "AbortError")
-      $("#transcription-status").textContent =
-        "Transcription cancelled. Your song is still ready.";
+      status("Sync cancelled. Your song and existing lyrics are safe.");
     else {
-      $("#transcription-status").textContent = error.message;
+      status(error.message);
       message(error.message, true);
     }
   } finally {
     if (busy) setBusy(false);
-    $("#cancel-transcription").hidden = true;
+    $(cancelId).hidden = true;
     transcriptionController = null;
   }
-});
-$("#cancel-transcription").addEventListener("click", () =>
-  transcriptionController?.abort(),
-);
+}
+$("#transcribe").addEventListener("click", () => syncLyrics());
+for (const id of ["#cancel-transcription", "#cancel-sync"])
+  $(id).addEventListener("click", () => transcriptionController?.abort());
 $("#use-pasted").addEventListener("click", () => {
   const lines = $("#paste-lyrics")
     .value.split(/\r?\n/)
@@ -369,33 +422,20 @@ $("#use-pasted").addEventListener("click", () => {
     message("Choose your song and paste some lyrics first.", true);
     return;
   }
-  if (lines.length > LIMITS.lines) {
-    message("Please use fewer than 600 lines.", true);
-    return;
-  }
-  project.lines = lines.map((text, i) => ({
-    id: "manual-" + i,
-    text,
-    start: null,
-    end: null,
-    words: [],
-    timing: "manual",
-  }));
-  project.confirmed = false;
-  project.maxStep = 1;
-  applyDirection();
-  showStep(1);
-  message(
-    "Set each line’s start and end while listening. We have not guessed word timing.",
-  );
+  syncLyrics(lines);
 });
+$("#auto-sync").addEventListener("click", () =>
+  syncLyrics(project.lines.map((line) => line.text)),
+);
+$("#fine-tune-timing").addEventListener("change", renderLyrics);
 function editTiming(index, key, value) {
   remember();
   project.lines[index] = {
     ...project.lines[index],
     [key]: value,
     words: [],
-    timing: "edited",
+    timing: "manual",
+    timingQuality: "estimated",
   };
   invalidateLyrics();
 }
@@ -410,7 +450,7 @@ function renderLyrics() {
       () => {
         const line = project.lines[index];
         if (line.start === null) {
-          message("Set a start time for this line first.", true);
+          message("Choose Auto-sync lyrics to sync this saved draft.", true);
           return;
         }
         stopAt = line.end;
@@ -441,19 +481,32 @@ function renderLyrics() {
       }
       project.lines[index] = reviseLine(project.lines[index], input.value);
       invalidateLyrics();
-      if (!meta.querySelector(".line-note"))
-        meta.append(node("span", "Check timing", "line-note"));
+      syncNote.textContent =
+        project.lines[index].timingQuality === "estimated"
+          ? "Estimated sync · listen"
+          : "Timing kept";
     });
     const meta = node("div", undefined, "line-meta");
+    const syncNote = node(
+      "span",
+      line.timingQuality === "estimated"
+        ? "Estimated sync · listen"
+        : line.timing === "edited"
+          ? "Timing kept"
+          : "Auto-synced",
+      "line-note",
+    );
+    syncNote.classList.toggle("estimated", line.timingQuality === "estimated");
+    meta.append(syncNote);
     const details = node("details");
     const summary = node(
       "summary",
       line.start === null
-        ? "Set line timing"
+        ? "Sync needed"
         : timeLabel(line.start) + " – " + timeLabel(line.end) + " · Timing",
     );
     details.append(summary);
-    if (line.start === null) details.open = true;
+    details.hidden = !$("#fine-tune-timing").checked;
     const controls = node("div", undefined, "timing-controls");
     for (const key of ["start", "end"]) {
       const label = node(
@@ -487,8 +540,6 @@ function renderLyrics() {
     }
     details.append(controls);
     meta.append(details);
-    if (line.timing === "edited" || line.timing === "manual")
-      meta.append(node("span", "Check timing", "line-note"));
     meta.append(
       button("Split", () => {
         const text = input.value;
@@ -505,19 +556,16 @@ function renderLyrics() {
         const left = text.slice(0, at).trim(),
           right = text.slice(at).trim();
         if (!left || !right) return;
-        project.lines.splice(
-          index,
-          1,
-          { ...line, text: left, end: null, words: [], timing: "edited" },
-          {
-            ...line,
-            id: crypto.randomUUID(),
-            text: right,
-            start: null,
-            words: [],
-            timing: "edited",
-          },
-        );
+        try {
+          project.lines.splice(
+            index,
+            1,
+            ...splitTimedLine(line, at, crypto.randomUUID()),
+          );
+        } catch (error) {
+          message(error.message, true);
+          return;
+        }
         invalidateLyrics();
         renderLyrics();
       }),
@@ -528,13 +576,11 @@ function renderLyrics() {
           remember();
           const line = project.lines[index];
           const next = project.lines[index + 1];
-          project.lines.splice(index, 2, {
-            ...line,
-            text: line.text + " " + next.text,
-            end: next.end,
-            words: [],
-            timing: "edited",
-          });
+          if ((line.text + " " + next.text).length > 500) {
+            message("Keep each lyric line under 500 characters.", true);
+            return;
+          }
+          project.lines.splice(index, 2, mergeTimedLines(line, next));
           invalidateLyrics();
           renderLyrics();
         }),
@@ -564,22 +610,26 @@ $("#undo-lyrics").addEventListener("click", () => {
 $("#add-line").addEventListener("click", () => {
   if (project.lines.length >= LIMITS.lines) return;
   remember();
-  project.lines.push({
-    id: crypto.randomUUID(),
-    text: "",
-    start: Math.round(player.currentTime * 100) / 100,
-    end: null,
-    words: [],
-    timing: "manual",
-  });
+  const inserted = insertTimedLine(
+    project.lines,
+    player.currentTime,
+    project.duration,
+    crypto.randomUUID(),
+  );
+  project.lines = inserted.lines;
   invalidateLyrics();
   renderLyrics();
-  $("#lyrics-list").lastElementChild?.querySelector("textarea")?.focus();
+  $("#lyrics-list")
+    .children[inserted.index]?.querySelector("textarea")
+    ?.focus();
 });
 $("#confirm-lyrics").addEventListener("click", () => {
   const error = validateLines(project.lines, project.duration);
   if (error) {
-    message(error, true);
+    message(
+      error + " Use Auto-sync lyrics to refresh timing automatically.",
+      true,
+    );
     return;
   }
   if (!$("#review-confirm").checked) {

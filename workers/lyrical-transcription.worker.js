@@ -1,4 +1,4 @@
-// Model download is initiated only by the user's Transcribe action. Audio never leaves this worker.
+// Model download is initiated only by the user's Transcribe or Sync action. Audio never leaves this worker.
 import { transcriptionOptions } from "/lib/lyrical/transcription-options.js";
 import { pipeline, env } from "/assets/recognition-runtime.js";
 env.allowLocalModels = false;
@@ -59,7 +59,7 @@ self.onmessage = async ({ data }) => {
       type: "error",
       diagnostic: error?.message || String(error),
       message:
-        "Local transcription could not finish. Check your connection for the model download, then retry. You can also paste lyrics and set line timing.",
+        "Local transcription could not finish. Check your connection for the model download, then retry. Your existing lyrics are safe; retry with the song language selected.",
     });
   }
 };

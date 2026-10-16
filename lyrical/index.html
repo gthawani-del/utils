@@ -231,7 +231,7 @@
           >
           <div class="transcribe-actions">
             <button id="transcribe" class="primary-button" type="button">
-              Transcribe song</button
+              Transcribe &amp; sync</button
             ><button
               id="cancel-transcription"
               class="secondary-button"
@@ -249,14 +249,14 @@
                 id="paste-lyrics"
                 rows="6"
                 maxlength="30000"
-                placeholder="Paste your lyrics here. You can set each line’s timing while listening."
+                placeholder="Paste your lyrics here. We’ll sync them to your song automatically."
               ></textarea></label
             ><button id="use-pasted" class="secondary-button" type="button">
-              Use these lyrics
+              Sync these lyrics
             </button>
             <p class="small-copy">
-              Pasted words are kept exactly as entered. Untimed lines need start
-              and end times before creating a video.
+              Your words stay as entered. We match them to the detected vocals;
+              uncertain matches are marked for a quick listen.
             </p>
           </details>
         </div>
@@ -273,8 +273,8 @@
             <p class="eyebrow">LISTEN & REVIEW</p>
             <h2 id="lyrics-heading">Get the words right.</h2>
             <p>
-              Play any line to hear it. Your edits stay in the original
-              language.
+              Timing is automatic. Correct the words and play any line to hear
+              it.
             </p>
           </div>
           <button
@@ -285,6 +285,29 @@
           >
             Undo edit
           </button>
+        </div>
+        <div class="timing-toolbar">
+          <button id="auto-sync" class="secondary-button" type="button">
+            Auto-sync lyrics
+          </button>
+          <label class="review-check"
+            ><input id="fine-tune-timing" type="checkbox" />Fine-tune timing
+            (optional)</label
+          >
+          <button
+            id="cancel-sync"
+            class="secondary-button"
+            type="button"
+            hidden
+          >
+            Cancel sync
+          </button>
+          <p
+            id="timing-status"
+            class="small-copy"
+            role="status"
+            aria-live="polite"
+          ></p>
         </div>
         <div class="review-layout">
           <div>
@@ -305,8 +328,8 @@
               direction in the next step.
             </p>
             <p class="small-copy">
-              Changed wording uses phrase timing until you review it. Word
-              highlighting is used only where word timestamps remain available.
+              Edits keep the line’s timing. Splits and merges update timing
+              automatically. Estimated matches use phrase animation.
             </p>
           </aside>
         </div>
@@ -315,7 +338,7 @@
             Back</button
           ><label class="review-check"
             ><input id="review-confirm" type="checkbox" />I’ve checked the
-            lyrics and line timing.</label
+            lyrics.</label
           ><button id="confirm-lyrics" class="primary-button" type="button">
             Confirm lyrics & continue
           </button>
