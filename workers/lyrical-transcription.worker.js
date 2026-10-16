@@ -12,7 +12,7 @@ self.onmessage = async ({ data }) => {
     status("Loading speech model. The first download can take a few minutes…");
     const transcriber = await pipeline(
       "automatic-speech-recognition",
-      "onnx-community/whisper-tiny_timestamped",
+      "onnx-community/whisper-base_timestamped",
       {
         device: "wasm",
         dtype: { encoder_model: "fp32", decoder_model_merged: "q8" },
@@ -40,7 +40,7 @@ self.onmessage = async ({ data }) => {
       transcriber.model.generation_config,
     );
     const result = await transcriber(data.audio, options);
-    self.postMessage({ type: "complete", chunks: result.chunks || [] });
+    self.postMessage({ type: "complete", chunks: result.chunks || [], language: data.language, prompt: options.decoder_input_ids });
     await transcriber.dispose();
   } catch (error) {
     // Public model/runtime diagnostics only; never log audio or recognized text.
