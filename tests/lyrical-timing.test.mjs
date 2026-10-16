@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   alignLyrics,
   timingWords,
+  savedTimingReference,
   splitTimedLine,
   mergeTimedLines,
   insertTimedLine,
@@ -10,6 +11,75 @@ import {
 import { reviseLine, validateLines } from "../lib/lyrical/project.js";
 
 const word = (text, start, end) => ({ text, start, end });
+test("changing recognition quality reuses the same song's saved timeline", () => {
+  const project = {
+    duration: 20,
+    language: "hi",
+    timingLanguage: "hi",
+    timingModel: "base",
+    transcriptionQuality: "small",
+    timingWords: [word("तूने", 3, 4)],
+    lines: [],
+  };
+  assert.deepEqual(savedTimingReference(project, "hi"), project.timingWords);
+  assert.deepEqual(savedTimingReference(project, "en"), []);
+});
+test("legacy drafts recover phrase timing without inventing exact word evidence", () => {
+  const project = {
+    duration: 20,
+    language: "en",
+    lines: [
+      { text: "Hello", start: 3, end: 5, words: [] },
+      { text: "come home", start: 12, end: 15, words: [] },
+    ],
+  };
+  const original = structuredClone(project);
+  const reference = savedTimingReference(project, "en");
+  const aligned = alignLyrics(
+    project.lines.map((l) => l.text),
+    reference,
+    20,
+  );
+  assert.deepEqual(
+    aligned.map((l) => [l.start, l.end]),
+    [
+      [3, 5],
+      [12, 15],
+    ],
+  );
+  assert.ok(
+    aligned.every((l) => l.timingQuality === "estimated" && !l.words.length),
+  );
+  // Persisting and reusing the recovered cache cannot upgrade estimates.
+  assert.ok(
+    alignLyrics(["Hello", "come home"], timingWords(reference, 20), 20).every(
+      (l) => l.timingQuality === "estimated",
+    ),
+  );
+  assert.deepEqual(project, original);
+});
+test("legacy detected words remain precise while unsynced drafts have no reference", () => {
+  const project = {
+    duration: 10,
+    language: "en",
+    lines: [
+      {
+        text: "hello world",
+        start: 2,
+        end: 5,
+        words: [word("hello", 2, 3), word("world", 4, 5)],
+      },
+    ],
+  };
+  assert.equal(
+    alignLyrics(["hello world"], savedTimingReference(project, "en"), 10)[0]
+      .words.length,
+    2,
+  );
+  project.lines = [{ text: "hello", start: null, end: null }];
+  assert.deepEqual(savedTimingReference(project, "en"), []);
+  assert.deepEqual(savedTimingReference({ duration: 10 }, "en"), []);
+});
 test("pasted lyrics follow detected vocals and preserve instrumental gaps", () => {
   const source = [
     word("Hello", 8, 8.5),
