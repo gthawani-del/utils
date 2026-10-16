@@ -20,6 +20,7 @@ import {
   insertTimedLine,
 } from "/lib/lyrical/timing.js";
 import { decodeSong, transcribeSong } from "/lib/lyrical/audio.js";
+import { limitedTranscriptionDevice, transcriptionQuality, transcriptionDevice } from "/lib/lyrical/transcription-policy.js";
 import {
   drawLyricalFrame,
   loadLyricalFonts,
@@ -172,9 +173,13 @@ function renderWorkflowView() {
   updateQualityHint();
 }
 function updateQualityHint() {
-  $("#quality-hint").textContent = $("#transcription-quality").value === "base"
-    ? "Smaller download and lighter processing. Recommended on phones."
-    : "Needs more time and memory. On a phone, consider Faster.";
+  const device = transcriptionDevice();
+  const select = $("#transcription-quality");
+  select.querySelector('[value="base"]').disabled = limitedTranscriptionDevice(device);
+  select.value = transcriptionQuality(select.value, device);
+  $("#quality-hint").textContent = select.value === "base"
+    ? "Larger speech engine for desktops. Words may still need corrections."
+    : "Uses a compact speech engine and processes short sections. Best for phones.";
 }
 function clearTranscriptionFeedback() {
   retryTranscription = null;
@@ -331,6 +336,7 @@ async function selectSong(file, { restore = false } = {}) {
         timingWords: [],
         timingLanguage: "",
         timingModel: "",
+        transcriptionCheckpoint: null,
         confirmed: false,
         maxStep: 0,
         step: 0,
@@ -344,7 +350,8 @@ async function selectSong(file, { restore = false } = {}) {
     $("#song-meta").textContent =
       timeLabel(audioBuffer.duration);
     $("#song-language").value = project.language || "";
-    $("#transcription-quality").value = project.transcriptionQuality || "small";
+    project.transcriptionQuality = transcriptionQuality(project.transcriptionQuality, transcriptionDevice());
+    $("#transcription-quality").value = project.transcriptionQuality;
     $("#recovery").hidden = true;
     clearTranscriptionFeedback();
     $("#song-language").removeAttribute("aria-invalid");
@@ -377,7 +384,8 @@ for (const selector of ["#song-language", "#transcription-quality"]) {
     if (project.lines.length && !project.timingLanguage)
       project.timingLanguage = project.language;
     project.language = $("#song-language").value;
-    project.transcriptionQuality = $("#transcription-quality").value;
+    project.transcriptionQuality = transcriptionQuality($("#transcription-quality").value, transcriptionDevice());
+    project.transcriptionCheckpoint = null;
     $("#song-language").removeAttribute("aria-invalid");
     clearTranscriptionFeedback();
     message("");
@@ -433,7 +441,7 @@ async function syncLyrics(texts = null, { savedOnly = false } = {}) {
   if (project.lines.length && !project.timingLanguage)
     project.timingLanguage = project.language;
   project.language = language;
-  project.transcriptionQuality = $("#transcription-quality").value;
+  project.transcriptionQuality = transcriptionQuality($("#transcription-quality").value, transcriptionDevice());
   persist();
   transcriptionController = new AbortController();
   clearTranscriptionFeedback();
@@ -480,11 +488,20 @@ async function syncLyrics(texts = null, { savedOnly = false } = {}) {
             language,
             languageName: $("#song-language").selectedOptions[0].textContent,
             quality: project.transcriptionQuality,
+            checkpoint: project.transcriptionCheckpoint,
+            onCheckpoint: (checkpoint) => {
+              project.transcriptionCheckpoint = checkpoint;
+              persist();
+            },
             signal: transcriptionController.signal,
             onStatus: status,
           }),
           project.duration,
         );
+    if (needsRecognition) {
+      project.transcriptionCheckpoint = null;
+      persist();
+    }
     status("Matching lyrics to the audio timeline…");
     const lines = texts
       ? alignLyrics(texts, reference, project.duration)
@@ -496,7 +513,7 @@ async function syncLyrics(texts = null, { savedOnly = false } = {}) {
     const error = validateLines(lines, project.duration);
     if (error)
       throw new Error(
-        "Automatic sync could not finish. Retry with Higher accuracy.",
+        "Automatic sync could not finish. Check the song language and retry.",
       );
     if (project.lines.length) remember();
     project.lines = lines;
