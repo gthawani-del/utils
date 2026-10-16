@@ -1086,7 +1086,7 @@
 #photo-ideas button { border-radius: 24px; padding: 8px 13px; min-height: 44px; font-size: 13px; }
 .selected-images { display: flex; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 18px; }
 .selected-image { flex: 0 0 190px; scroll-snap-align: start; }
-.selected-image img { height: 150px; max-width: 100%; }
+.selected-image img { height: auto; max-width: 126px; }
 .selected-image .image-caption { white-space: normal; line-height: 1.45; min-height: 32px; }
 .selected-image details label { margin-top: 10px; }
 .selected-image details summary { font-size: 12px; }
