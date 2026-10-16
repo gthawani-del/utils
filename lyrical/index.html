@@ -367,12 +367,48 @@
         <div class="section-top">
           <div>
             <p class="eyebrow">MAKE IT VISUAL</p>
-            <h2 id="images-heading">Choose the images behind your words.</h2>
+            <h2 id="images-heading">Give your song a visual story.</h2>
             <p>
-              Use one image throughout, or add a sequence. You can mix uploads
-              and stock photos.
+              Start with our suggested direction, then add your images. We’ll handle the scene timing.
             </p>
           </div>
+        </div>
+        <div class="lyrical-card visual-plan">
+          <div>
+            <p class="eyebrow">A STARTING POINT FOR YOUR SONG</p>
+            <h3 id="visual-plan-name"></h3>
+            <p id="visual-plan-description"></p>
+            <p id="visual-plan-palette" class="small-copy"></p>
+            <p id="visual-plan-basis" class="small-copy"></p>
+          </div>
+          <div class="scene-recommendation">
+            <strong id="scene-recommendation"></strong>
+            <p id="scene-recommendation-note"></p>
+            <p class="small-copy">Use a consistent look, a mix of wide scenes and details, and space for the lyrics. Avoid images with built-in text.</p>
+          </div>
+          <div class="visual-quick-settings">
+            <label for="aspect">Video shape<select id="aspect">
+              <option value="9:16">Vertical · 9:16</option>
+              <option value="16:9">Landscape · 16:9</option>
+              <option value="1:1">Square · 1:1</option>
+            </select></label>
+            <label for="visualTheme">Visual theme<select id="visualTheme">
+              <option value="auto">Suggested for this song</option>
+              <option value="reflective">Quiet reflections</option>
+              <option value="connection">Warm connections</option>
+              <option value="resolve">After dark</option>
+              <option value="celebration">Colour in motion</option>
+              <option value="journey">Open horizons</option>
+            </select></label>
+            <label for="transition">Image transition<select id="transition">
+              <option value="auto">Auto · follows the song</option>
+              <option value="dissolve">Soft dissolve</option>
+              <option value="cut">Clean cut</option>
+              <option value="slide">Gentle slide</option>
+              <option value="fade">Fade through black</option>
+            </select></label>
+          </div>
+          <div class="suggested-searches"><span>Photo ideas</span><div id="photo-ideas"></div></div>
         </div>
         <div class="images-layout">
           <div class="lyrical-card image-picker">
@@ -405,7 +441,7 @@
                 <span aria-hidden="true">＋</span>
                 <h3>Your images, your story.</h3>
                 <p>
-                  Add up to 8 JPG, PNG or WebP images.<br />12 MB per image.
+                  Add up to 24 JPG, PNG or WebP images.<br />12 MB per image.
                 </p>
                 <button
                   id="choose-images"
@@ -469,13 +505,18 @@
               </button>
             </div>
             <div class="selected-heading">
-              <h3>Your sequence <span id="image-count">0 / 8</span></h3>
+              <h3>Your images <span id="image-count">0 / 24</span></h3>
               <p>
-                Reorder images and check each crop. Scene changes follow nearby
-                lyric starts.
+                Reorder, replace or crop. If you use fewer images than scenes, they repeat in this order.
               </p>
             </div>
             <div id="selected-images" class="selected-images"></div>
+            <input id="replace-image-input" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+            <div id="storyboard-panel" class="storyboard-panel">
+              <h3>Your storyboard <span id="scene-count"></span></h3>
+              <p class="small-copy">Scene changes follow nearby lyric starts. All timings are automatic.</p>
+              <div id="storyboard-scenes" class="storyboard-scenes" aria-label="Automatically timed scenes" tabindex="0"></div>
+            </div>
             <label class="review-check text-only"
               ><input id="text-only" type="checkbox" />Continue without images —
               typography only</label
@@ -488,23 +529,37 @@
             <p class="eyebrow">YOUR VIDEO DIRECTION</p>
             <h3 id="direction-name"></h3>
             <p id="direction-reason"></p>
-            <label for="aspect"
-              >Video shape<select id="aspect">
-                <option value="9:16">Vertical · 9:16</option>
-                <option value="16:9">Landscape · 16:9</option>
-                <option value="1:1">Square · 1:1</option>
-              </select></label
-            >
+            <label for="imageMovement">Image movement<select id="imageMovement">
+              <option value="auto">Auto · gentle movement</option>
+              <option value="pan">Slow pan</option>
+              <option value="zoom">Slow zoom</option>
+              <option value="still">Still images</option>
+            </select></label>
             <details>
-              <summary>Adjust the suggested style</summary>
+              <summary>Scene pace &amp; transition speed</summary>
+              <label for="scenePacing">Scene pace<select id="scenePacing">
+                <option value="auto">Suggested for this song</option>
+                <option value="slow">Unhurried · fewer scenes</option>
+                <option value="balanced">Balanced</option>
+                <option value="energetic">Energetic · more scenes</option>
+              </select></label>
+              <label for="transitionSpeed">Transition speed<select id="transitionSpeed">
+                <option value="slow">Slow</option>
+                <option value="normal">Normal</option>
+                <option value="quick">Quick</option>
+              </select></label>
+              <p class="small-copy">Clean cuts are instant. Image changes do not alter lyric timing.</p>
+            </details>
+            <details>
+              <summary>Lyric animation &amp; colour</summary>
               <label for="style"
-                >Visual style<select id="style">
+                >Lyric animation style<select id="style">
                   <option value="bold">Bold rhythm</option>
                   <option value="cinematic">Quiet cinema</option>
                   <option value="clean">Clear type</option>
                 </select></label
               ><label for="intensity"
-                >Motion strength<select id="intensity">
+                >Lyric motion strength<select id="intensity">
                   <option value="subtle">Gentle movement</option>
                   <option value="balanced">Kinetic · recommended</option>
                   <option value="energetic">Expressive</option>
@@ -528,7 +583,7 @@
                   step="0.05"
                   value="1" /></label
               ><button id="reset-direction" class="text-button" type="button">
-                Use system direction
+                Reset lyric animation
               </button>
             </details>
             <p class="small-copy">
@@ -543,7 +598,7 @@
           ><span id="image-readiness"
             >Add an image or choose typography only.</span
           ><button id="create-video" class="primary-button" type="button">
-            Create video
+            Preview video
           </button>
         </div>
       </section>
@@ -558,7 +613,7 @@
           <div>
             <p class="eyebrow">YOUR SONG, IN MOTION</p>
             <h2 id="video-heading">Ready for a first look.</h2>
-            <p>Play through the video, then download when it feels right.</p>
+            <p>Check a short preview, or play the full song before downloading.</p>
           </div>
         </div>
         <div class="video-layout">
@@ -569,6 +624,8 @@
               height="1280"
               aria-label="Lyric video preview"
             ></canvas>
+            <button id="preview-highlight" class="secondary-button" type="button">Preview 15 seconds</button>
+            <p id="preview-buffering" class="small-copy" role="status" hidden></p>
             <div class="preview-transport">
               <button id="preview-play" class="secondary-button" type="button">
                 Play preview</button
@@ -600,6 +657,7 @@
             </button>
             <hr />
             <p id="export-visual-summary" class="visual-summary"></p>
+            <p id="export-transition-summary" class="small-copy"></p>
             <p id="export-timing-note" class="small-copy" hidden>
               A lyric has an unusually long hold. Check its timing in Edit
               lyrics before exporting.

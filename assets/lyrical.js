@@ -27,8 +27,9 @@ import {
   invalidateLyricalRender,
   lyricalMotionLabel,
 } from "/lib/lyrical/renderer.js";
+import { visualPlan, storyboardFor, sceneImageIndices, sceneTransition, TRANSITIONS, previewWindow } from "/lib/lyrical/storyboard.js";
 import { longHoldLines } from "/lib/lyrical/motion.js";
-import { prepareImage, releaseImage } from "/lib/lyrical/images.js";
+import { prepareImage, releaseImage, createImageCache } from "/lib/lyrical/images.js";
 import {
   saveDraft,
   readDraft,
@@ -43,6 +44,7 @@ const player = $("#song-player"),
   canvas = $("#video-canvas"),
   ctx = canvas.getContext("2d");
 const panels = ["song", "lyrics", "images", "video"];
+const visualDefaults = { visualTheme: "auto", scenePacing: "auto", transition: "auto", transitionSpeed: "normal", imageMovement: "auto" };
 let project = {
   version: 1,
   name: "",
@@ -50,6 +52,7 @@ let project = {
   lines: [],
   analysis: {},
   settings: {
+    ...visualDefaults,
     style: "clean",
     aspect: "9:16",
     intensity: "subtle",
@@ -83,6 +86,8 @@ let stockPage = 1,
   stockQuery = "",
   stockController = null,
   restoring = false;
+const imageCache = createImageCache();
+let previewLoading = false, previewResume = false, previewEpoch = 0, replaceImageId = null;
 const initialDraft = readDraft();
 const node = (tag, text, className) => {
   const n = document.createElement(tag);
@@ -108,7 +113,7 @@ function snapshot() {
   return {
     ...project,
     images: images.map(
-      ({ id, name, width, height, cropX, cropY, sourceUrl, author }) => ({
+      ({ id, name, width, height, cropX, cropY, sourceUrl, author, prepared }) => ({
         id,
         name,
         width,
@@ -117,6 +122,7 @@ function snapshot() {
         cropY,
         sourceUrl,
         author,
+        prepared,
       }),
     ),
     updatedAt: Date.now(),
@@ -219,6 +225,10 @@ function showStep(step, { scroll = true } = {}) {
   if (step > project.maxStep || busy) return;
   player.pause();
   stopAt = null;
+  previewEpoch++;
+  previewLoading = previewResume = false;
+  imageCache.clear();
+  $("#preview-buffering").hidden = true;
   project.step = step;
   renderWorkflowView();
   syncNavigation();
@@ -233,6 +243,7 @@ function showStep(step, { scroll = true } = {}) {
       project.textOnly,
       images,
     );
+    $("#export-transition-summary").textContent = project.textOnly ? "Lyric animation only" : storyboardFor(project, images.length).length + " scenes · " + TRANSITIONS[project.settings.transition || "auto"];
     $("#export-timing-note").hidden = !longHoldLines(project.lines).length;
     drawPreview();
     checkExport();
@@ -259,6 +270,9 @@ function remember() {
   $("#undo-lyrics").disabled = false;
 }
 function invalidateVideo() {
+  previewEpoch++;
+  previewLoading = previewResume = false;
+  imageCache.clear();
   invalidateLyricalRender(project);
   if (downloadUrl) {
     URL.revokeObjectURL(downloadUrl);
@@ -302,6 +316,7 @@ function renderDirection() {
   for (const key of ["aspect", "style", "intensity", "presentation", "accent"])
     $("#" + key).value = project.settings[key];
   $("#text-size").value = project.settings.textSize;
+  for (const key of Object.keys(visualDefaults)) $("#" + key).value = project.settings[key] || visualDefaults[key];
 }
 async function selectSong(file, { restore = false } = {}) {
   if (busy || !file || (restoring && !restore)) return;
@@ -346,6 +361,7 @@ async function selectSong(file, { restore = false } = {}) {
         images: [],
         textOnly: false,
         customStyle: false,
+        settings: { ...project.settings, ...visualDefaults },
       };
       await assetStore("clear").catch(() => {});
     }
@@ -855,7 +871,7 @@ $(".image-tabs").addEventListener("keydown", (e) => {
 async function addImage(blob, meta = {}) {
   invalidateVideo();
   if (images.length >= LIMITS.images)
-    throw new Error("Use up to 8 images. Remove one to add another.");
+    throw new Error("Use up to " + LIMITS.images + " images. Remove one to add another.");
   const image = await prepareImage(blob, meta);
   images.push(image);
   project.textOnly = false;
@@ -893,6 +909,8 @@ $("#images-input").addEventListener("change", () =>
 dropTarget($("#image-drop"), uploadImages);
 function renderImages() {
   invalidateVideo();
+  renderVisualPlan();
+  const scenes = storyboardFor(project, images.length);
   $("#image-count").textContent = images.length + " / " + LIMITS.images;
   $("#text-only").checked = project.textOnly;
   $("#image-readiness").textContent = visualSummary(project.textOnly, images);
@@ -904,9 +922,12 @@ function renderImages() {
     const preview = node("img");
     preview.src = image.url;
     preview.alt = "Crop preview for " + image.name;
+    preview.loading = "lazy";
     preview.style.aspectRatio = project.settings.aspect.replace(":", "/");
     preview.style.objectPosition = image.cropX + "% " + image.cropY + "%";
     card.append(preview, node("p", index + 1 + ". " + image.name));
+    const uses = scenes.filter((scene) => scene.imageIndex === index);
+    card.append(node("p", uses.length + (uses.length === 1 ? " scene" : " scenes") + " · first at " + timeLabel(uses[0]?.start || 0), "image-caption"));
     const actions = node("div", undefined, "image-buttons");
     const prev = button(
       "←",
@@ -933,6 +954,10 @@ function renderImages() {
     actions.append(
       prev,
       next,
+      button("Replace", () => {
+        replaceImageId = image.id;
+        $("#replace-image-input").click();
+      }),
       button("Remove", () => {
         images.splice(index, 1);
         releaseImage(image);
@@ -942,6 +967,8 @@ function renderImages() {
       }),
     );
     card.append(actions);
+    const crop = node("details");
+    crop.append(node("summary", "Adjust crop"));
     for (const [key, title] of [
       ["cropX", "Crop left / right"],
       ["cropY", "Crop up / down"],
@@ -957,18 +984,91 @@ function renderImages() {
         invalidateVideo();
         image[key] = Number(slider.value);
         preview.style.objectPosition = image.cropX + "% " + image.cropY + "%";
+        renderStoryboard(storyboardFor(project, images.length));
         persist();
       });
       label.append(slider);
-      card.append(label);
+      crop.append(label);
     }
+    card.append(crop);
     if (Math.max(image.width, image.height) < 1600)
       card.append(
         node("p", "Limited resolution: 720p is recommended.", "small-copy"),
       );
     list.append(card);
   });
+  renderStoryboard(scenes);
 }
+function renderVisualPlan() {
+  const plan = visualPlan(project);
+  $("#visual-plan-name").textContent = plan.name;
+  $("#visual-plan-description").textContent = plan.description;
+  $("#visual-plan-palette").textContent = plan.palette;
+  $("#visual-plan-basis").textContent = plan.basis + ". Adjust the theme to match your story.";
+  $("#scene-recommendation").textContent = plan.count + " suggested scenes";
+  $("#scene-recommendation-note").textContent = "For your " + timeLabel(project.duration) + " song. Start with " + plan.count + " images, or use fewer and we’ll repeat them. One image can stay throughout.";
+  const ideas = $("#photo-ideas");
+  ideas.replaceChildren();
+  for (const query of plan.searches) ideas.append(button(query, () => {
+    imageTab(true);
+    $("#stock-query").value = query;
+    searchPhotos();
+    $("#stock-form").scrollIntoView({ block: "center" });
+    $("#stock-query").focus({ preventScroll: true });
+  }, "secondary-button"));
+}
+function renderStoryboard(scenes) {
+  const list = $("#storyboard-scenes");
+  list.replaceChildren();
+  $("#storyboard-panel").hidden = project.textOnly;
+  $("#scene-count").textContent = scenes.length + " auto-timed scenes";
+  for (const scene of scenes) {
+    const card = node("article", undefined, "storyboard-scene");
+    const image = images[scene.imageIndex];
+    if (image) {
+      const thumbnail = node("img");
+      thumbnail.src = image.url;
+      thumbnail.alt = "Scene " + (scene.index + 1) + ": " + image.name;
+      thumbnail.loading = "lazy";
+      thumbnail.style.objectPosition = image.cropX + "% " + image.cropY + "%";
+      card.append(thumbnail);
+    } else card.append(node("div", String(scene.index + 1).padStart(2, "0"), "scene-placeholder"));
+    card.append(
+      node("p", timeLabel(scene.start) + "–" + timeLabel(scene.end), "scene-time"),
+      node("p", scene.label),
+      node("p", scene.excerpt, "scene-excerpt"),
+      node("p", scene.index ? TRANSITIONS[sceneTransition(project, scene).type] : "Opening image", "small-copy"),
+    );
+    if (!image) card.append(button("Find " + scene.search, () => {
+      imageTab(true);
+      $("#stock-query").value = scene.search;
+      searchPhotos();
+      $("#stock-form").scrollIntoView({ block: "center" });
+    }));
+    list.append(card);
+  }
+}
+$("#replace-image-input").addEventListener("change", async () => {
+  const input = $("#replace-image-input");
+  const file = input.files[0];
+  const index = images.findIndex((image) => image.id === replaceImageId);
+  input.value = "";
+  if (busy || !file || index < 0) return;
+  setBusy(true);
+  invalidateVideo();
+  message("Preparing your replacement image…");
+  try {
+    const previous = images[index];
+    const replacement = await prepareImage(file, { id: previous.id, name: file.name });
+    images[index] = replacement;
+    releaseImage(previous);
+    await assetStore("put", "image:" + replacement.id, replacement.blob).catch(() => message("Image replaced, but this change could not be saved. Keep this page open.", true));
+    renderImages();
+    persist();
+    if (!$("#app-message").classList.contains("error")) message("Image replaced. Scene timing is unchanged.");
+  } catch (error) { message(error.message, true); }
+  finally { setBusy(false); replaceImageId = null; }
+});
 $("#text-only").addEventListener("change", () => {
   project.textOnly = $("#text-only").checked;
   renderImages();
@@ -1073,15 +1173,15 @@ $("#stock-more").addEventListener("click", () => {
   stockPage++;
   searchPhotos(true);
 });
-for (const key of ["aspect", "style", "intensity", "presentation", "accent"])
+for (const key of ["aspect", "style", "intensity", "presentation", "accent", ...Object.keys(visualDefaults)])
   $("#" + key).addEventListener("change", () => {
     invalidateVideo();
     project.settings[key] = $("#" + key).value;
     if (key === "style")
       project.settings.accent = STYLES[project.settings.style].accent;
-    if (key !== "aspect") project.customStyle = true;
+    if (["style", "intensity", "presentation", "accent"].includes(key)) project.customStyle = true;
     renderDirection();
-    if (key === "aspect") renderImages();
+    if (["aspect", ...Object.keys(visualDefaults)].includes(key)) renderImages();
     persist();
   });
 $("#text-size").addEventListener("input", () => {
@@ -1108,24 +1208,61 @@ $("#create-video").addEventListener("click", async () => {
   try {
     await loadLyricalFonts();
     project.maxStep = 3;
-    const first = project.lines[0];
-    player.currentTime = first ? first.start : 0;
+    const window = previewWindow(storyboardFor(project, images.length), project.duration);
+    player.currentTime = window.start;
     showStep(3);
-    stopAt = null;
+    stopAt = window.end;
+    const epoch = previewEpoch;
+    await preparePreviewImages();
+    if (epoch !== previewEpoch || project.step !== 3 || busy) return;
     player
       .play()
       .catch(() =>
         message("Tap Play preview to see the motion before downloading."),
       );
-  } catch {
+  } catch (error) {
+    if (error.name === "AbortError") return;
     message(
-      "The video fonts could not load. Check your connection and retry.",
+      error.message || "The preview could not load. Check your connection and retry.",
       true,
     );
   }
 });
+function previewIndices() {
+  return project.textOnly ? [] : sceneImageIndices(project, storyboardFor(project, images.length), player.currentTime);
+}
+async function preparePreviewImages() {
+  await imageCache.prepare(images, previewIndices());
+}
 function drawPreview() {
-  if (!audioBuffer || project.step !== 3) return;
+  if (!audioBuffer || project.step !== 3 || busy) return;
+  const needed = previewIndices();
+  if (!imageCache.ready(images, needed)) {
+    if (previewLoading) return;
+    const epoch = previewEpoch;
+    previewLoading = true;
+    previewResume = !player.paused;
+    player.pause();
+    $("#preview-buffering").hidden = false;
+    $("#preview-buffering").textContent = "Preparing this scene…";
+    imageCache.prepare(images, needed).then(() => {
+      if (epoch !== previewEpoch) return;
+      previewLoading = false;
+      $("#preview-buffering").hidden = true;
+      const resume = previewResume;
+      drawPreview();
+      if (resume && !previewLoading && project.step === 3 && !busy) {
+        previewResume = false;
+        player.play().catch(() => {});
+      }
+    }).catch((error) => {
+      if (epoch !== previewEpoch) return;
+      previewLoading = previewResume = false;
+      $("#preview-buffering").textContent = error.message;
+      message(error.message, true);
+    });
+    return;
+  }
   const size = dimensions(project.settings.aspect, "720");
   if (canvas.width !== size.width || canvas.height !== size.height) {
     canvas.width = size.width;
@@ -1171,6 +1308,7 @@ player.addEventListener("timeupdate", () => {
   if (player.paused) drawPreview();
 });
 $("#preview-play").addEventListener("click", () => {
+  previewResume = false;
   stopAt = null;
   if (player.paused) {
     if (player.currentTime >= project.duration - 0.05) player.currentTime = 0;
@@ -1180,9 +1318,24 @@ $("#preview-play").addEventListener("click", () => {
   } else player.pause();
 });
 $("#preview-seek").addEventListener("input", () => {
+  previewResume = false;
   stopAt = null;
   player.currentTime = Number($("#preview-seek").value);
   drawPreview();
+});
+$("#preview-highlight").addEventListener("click", async () => {
+  if (busy) return;
+  player.pause();
+  previewResume = false;
+  const window = previewWindow(storyboardFor(project, images.length), project.duration);
+  player.currentTime = window.start;
+  stopAt = window.end;
+  const epoch = previewEpoch;
+  try {
+    await preparePreviewImages();
+    if (epoch === previewEpoch && project.step === 3 && !busy) await player.play();
+  }
+  catch (error) { if (error.name !== "AbortError") message(error.message, true); }
 });
 async function checkExport() {
   const revision = ++probeRevision;
@@ -1223,6 +1376,9 @@ $("#export-video").addEventListener("click", async () => {
     return;
   }
   player.pause();
+  previewEpoch++;
+  previewLoading = previewResume = false;
+  imageCache.clear();
   exportController = new AbortController();
   $("#cancel-export").hidden = false;
   $("#export-progress").hidden = false;
@@ -1247,15 +1403,18 @@ $("#export-video").addEventListener("click", async () => {
     const format = $("#export-format").value;
     const blob = await exportLyrical({
       canvas: output,
-      drawFrame: (time) =>
+      drawFrame: async (time) => {
+        const needed = frozen.textOnly ? [] : sceneImageIndices(frozen, storyboardFor(frozen, images.length), time);
+        if (!imageCache.ready(images, needed)) await imageCache.prepare(images, needed, exportController.signal);
         drawLyricalFrame(
           context,
           frozen,
-          project.textOnly ? [] : images,
+          frozen.textOnly ? [] : images,
           time,
           size.width,
           size.height,
-        ),
+        );
+      },
       audioBuffer,
       duration: project.duration,
       fps: 30,
@@ -1291,6 +1450,8 @@ $("#export-video").addEventListener("click", async () => {
     setBusy(false);
     $("#cancel-export").hidden = true;
     exportController = null;
+    imageCache.clear();
+    drawPreview();
     checkExport();
   }
 });
@@ -1349,7 +1510,7 @@ $("#resume").addEventListener("click", async () => {
       throw new Error(
         "The saved audio is no longer available. Start a new project with your original song.",
       );
-    project = initialDraft;
+    project = { ...initialDraft, settings: { ...visualDefaults, ...initialDraft.settings } };
     await selectSong(file, { restore: true });
     if (!audioBuffer) return;
     setBusy(true);
