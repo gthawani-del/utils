@@ -20,7 +20,7 @@ import {
   insertTimedLine,
 } from "/lib/lyrical/timing.js";
 import { decodeSong, transcribeSong } from "/lib/lyrical/audio.js";
-import { limitedTranscriptionDevice, transcriptionQuality, transcriptionDevice } from "/lib/lyrical/transcription-policy.js";
+import { limitedTranscriptionDevice, transcriptionQuality, transcriptionDevice, voskLanguage } from "/lib/lyrical/transcription-policy.js";
 import {
   drawLyricalFrame,
   loadLyricalFonts,
@@ -176,8 +176,11 @@ function updateQualityHint() {
   const device = transcriptionDevice();
   const select = $("#transcription-quality");
   select.querySelector('[value="base"]').disabled = limitedTranscriptionDevice(device);
-  select.value = transcriptionQuality(select.value, device);
-  $("#quality-hint").textContent = select.value === "base"
+  select.querySelector('[value="vosk"]').disabled = !voskLanguage($("#song-language").value);
+  select.value = transcriptionQuality(select.value, device, $("#song-language").value);
+  $("#quality-hint").textContent = select.value === "vosk"
+    ? "Experimental alternative for English or Hindi. Downloads about 40–45 MB on first use. Review the lyrics carefully; singing and mixed languages may be inaccurate."
+    : select.value === "base"
     ? "Larger speech engine for desktops. Words may still need corrections."
     : "Uses a compact speech engine and processes short sections. Best for phones.";
 }
@@ -350,7 +353,7 @@ async function selectSong(file, { restore = false } = {}) {
     $("#song-meta").textContent =
       timeLabel(audioBuffer.duration);
     $("#song-language").value = project.language || "";
-    project.transcriptionQuality = transcriptionQuality(project.transcriptionQuality, transcriptionDevice());
+    project.transcriptionQuality = transcriptionQuality(project.transcriptionQuality, transcriptionDevice(), project.language);
     $("#transcription-quality").value = project.transcriptionQuality;
     $("#recovery").hidden = true;
     clearTranscriptionFeedback();
@@ -384,7 +387,7 @@ for (const selector of ["#song-language", "#transcription-quality"]) {
     if (project.lines.length && !project.timingLanguage)
       project.timingLanguage = project.language;
     project.language = $("#song-language").value;
-    project.transcriptionQuality = transcriptionQuality($("#transcription-quality").value, transcriptionDevice());
+    project.transcriptionQuality = transcriptionQuality($("#transcription-quality").value, transcriptionDevice(), project.language);
     project.transcriptionCheckpoint = null;
     $("#song-language").removeAttribute("aria-invalid");
     clearTranscriptionFeedback();
@@ -441,7 +444,7 @@ async function syncLyrics(texts = null, { savedOnly = false } = {}) {
   if (project.lines.length && !project.timingLanguage)
     project.timingLanguage = project.language;
   project.language = language;
-  project.transcriptionQuality = transcriptionQuality($("#transcription-quality").value, transcriptionDevice());
+  project.transcriptionQuality = transcriptionQuality($("#transcription-quality").value, transcriptionDevice(), project.language);
   persist();
   transcriptionController = new AbortController();
   clearTranscriptionFeedback();

@@ -2,6 +2,7 @@ import { access, cp, mkdir, readFile, rm, readdir } from 'node:fs/promises';
 import { build as bundle } from 'esbuild';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildLyricalVosk } from './build-lyrical-vosk.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = resolve(root, 'dist');
@@ -53,4 +54,5 @@ const ortAssets = (await readdir(ortDir)).filter(name => /^ort-.*\.(wasm|mjs)$/.
 if (!ortAssets.some(name => name.endsWith('.wasm'))) throw new Error('ONNX WASM assets missing');
 await mkdir(resolve(dist, 'assets/ort'), { recursive: true });
 for (const name of ortAssets) await cp(resolve(ortDir, name), resolve(dist, 'assets/ort', name));
+await buildLyricalVosk(root, dist);
 console.log('Production build emitted dist/ with bundled recognition runtime and local ONNX WASM assets.');
