@@ -12,6 +12,7 @@ import {
 import {
   alignLyrics,
   timingWords,
+  savedTimingReference,
   splitTimedLine,
   mergeTimedLines,
   insertTimedLine,
@@ -159,6 +160,10 @@ function showStep(step, { scroll = true } = {}) {
   panels.forEach((name, i) => ($("#step-" + name).hidden = i !== step));
   syncNavigation();
   message("");
+  $("#review-existing").hidden = !project.lines.length;
+  $("#transcribe").textContent = project.lines.length
+    ? "Transcribe again"
+    : "Transcribe & sync";
   if (step === 1) renderLyrics();
   if (step === 2) {
     renderImages();
@@ -314,7 +319,7 @@ function dropTarget(el, handler) {
   });
 }
 dropTarget($("#song-drop"), (files) => selectSong(files[0]));
-async function syncLyrics(texts = null) {
+async function syncLyrics(texts = null, { savedOnly = false } = {}) {
   if (!mono || busy) return;
   const language = $("#song-language").value;
   if (!language) {
@@ -333,31 +338,56 @@ async function syncLyrics(texts = null) {
     );
     return;
   }
+  const saved = texts ? savedTimingReference(project, language) : [];
+  if (savedOnly && !saved.length) {
+    message(
+      "No saved transcript is available. Your current timing is kept. To detect vocals again, open Song and choose Transcribe again.",
+      true,
+    );
+    $("#app-message").scrollIntoView({ block: "center" });
+    return;
+  }
+  if (project.lines.length && !project.timingLanguage)
+    project.timingLanguage = project.language;
   project.language = language;
   project.transcriptionQuality = $("#transcription-quality").value;
   persist();
-  const cancelId =
-    project.step === 1 ? "#cancel-sync" : "#cancel-transcription";
   transcriptionController = new AbortController();
-  $(cancelId).hidden = false;
-  setBusy(true, cancelId);
+  setBusy(true);
   player.pause();
   message("");
+  const needsRecognition = !saved.length;
+  const started = performance.now();
+  let keepCurrent = false;
+  const elapsed = () => {
+    $("#processing-elapsed").textContent =
+      timeLabel((performance.now() - started) / 1000) + " elapsed";
+  };
+  const keep = () => {
+    keepCurrent = true;
+    transcriptionController?.abort();
+  };
+  $("#keep-current-lyrics").hidden = !project.lines.length;
+  $("#keep-current-lyrics").addEventListener("click", keep);
+  $("#processing-panel").hidden = !needsRecognition;
+  document.body.classList.toggle("transcribing", needsRecognition);
+  elapsed();
+  const clock = needsRecognition ? setInterval(elapsed, 1000) : null;
   const status = (text) => {
     $("#transcription-status").textContent = text;
     $("#timing-status").textContent = text;
+    $("#processing-status").textContent = text;
   };
+  status(
+    needsRecognition ? "Preparing transcription…" : "Using saved vocal timing…",
+  );
   try {
-    const cached =
-      texts &&
-      project.timingLanguage === language &&
-      project.timingModel === project.transcriptionQuality &&
-      project.timingWords?.length;
-    const reference = cached
-      ? project.timingWords
+    const reference = saved.length
+      ? saved
       : timingWords(
           await transcribeSong(mono, {
             language,
+            languageName: $("#song-language").selectedOptions[0].textContent,
             quality: project.transcriptionQuality,
             signal: transcriptionController.signal,
             onStatus: status,
@@ -381,7 +411,7 @@ async function syncLyrics(texts = null) {
     project.lines = lines;
     project.timingWords = reference;
     project.timingLanguage = language;
-    project.timingModel = project.transcriptionQuality;
+    if (needsRecognition) project.timingModel = project.transcriptionQuality;
     project.confirmed = false;
     project.maxStep = 1;
     $("#fine-tune-timing").checked = false;
@@ -403,16 +433,23 @@ async function syncLyrics(texts = null) {
     else {
       status(error.message);
       message(error.message, true);
+      $("#app-message").scrollIntoView({ block: "center" });
     }
   } finally {
+    clearInterval(clock);
+    $("#keep-current-lyrics").removeEventListener("click", keep);
+    $("#processing-panel").hidden = true;
+    document.body.classList.remove("transcribing");
     if (busy) setBusy(false);
-    $(cancelId).hidden = true;
     transcriptionController = null;
+    if (keepCurrent) showStep(1);
   }
 }
 $("#transcribe").addEventListener("click", () => syncLyrics());
-for (const id of ["#cancel-transcription", "#cancel-sync"])
-  $(id).addEventListener("click", () => transcriptionController?.abort());
+$("#cancel-processing").addEventListener("click", () =>
+  transcriptionController?.abort(),
+);
+$("#review-existing").addEventListener("click", () => showStep(1));
 $("#use-pasted").addEventListener("click", () => {
   const lines = $("#paste-lyrics")
     .value.split(/\r?\n/)
@@ -425,7 +462,10 @@ $("#use-pasted").addEventListener("click", () => {
   syncLyrics(lines);
 });
 $("#auto-sync").addEventListener("click", () =>
-  syncLyrics(project.lines.map((line) => line.text)),
+  syncLyrics(
+    project.lines.map((line) => line.text),
+    { savedOnly: true },
+  ),
 );
 $("#fine-tune-timing").addEventListener("change", renderLyrics);
 function editTiming(index, key, value) {
@@ -450,7 +490,7 @@ function renderLyrics() {
       () => {
         const line = project.lines[index];
         if (line.start === null) {
-          message("Choose Auto-sync lyrics to sync this saved draft.", true);
+          message("Open Timing options to re-sync this saved draft.", true);
           return;
         }
         stopAt = line.end;
@@ -465,7 +505,7 @@ function renderLyrics() {
     );
     play.setAttribute("aria-label", "Play line " + (index + 1));
     const input = node("textarea");
-    input.rows = 2;
+    input.rows = 1;
     input.maxLength = 500;
     input.value = line.text;
     input.dir = "auto";
@@ -475,6 +515,7 @@ function renderLyrics() {
       editRemembered = false;
     });
     input.addEventListener("input", () => {
+      fitLyricInput(input);
       if (!editRemembered) {
         remember();
         editRemembered = true;
@@ -595,11 +636,23 @@ function renderLyrics() {
     );
     row.append(play, input, meta);
     list.append(row);
+    fitLyricInput(input);
   });
   $("#undo-lyrics").disabled = !history.length;
   $("#review-confirm").checked = project.confirmed;
   renderDirection();
 }
+function fitLyricInput(input) {
+  input.style.height = "auto";
+  input.style.height = input.scrollHeight + 2 + "px";
+}
+let lyricsWidth = 0;
+new ResizeObserver(([entry]) => {
+  if (entry.contentRect.width === lyricsWidth) return;
+  lyricsWidth = entry.contentRect.width;
+  if (!$("#step-lyrics").hidden)
+    $("#lyrics-list").querySelectorAll("textarea").forEach(fitLyricInput);
+}).observe($("#lyrics-list"));
 $("#undo-lyrics").addEventListener("click", () => {
   if (history.length) {
     project.lines = history.pop();
@@ -627,7 +680,7 @@ $("#confirm-lyrics").addEventListener("click", () => {
   const error = validateLines(project.lines, project.duration);
   if (error) {
     message(
-      error + " Use Auto-sync lyrics to refresh timing automatically.",
+      error + " Open Timing options to re-sync from the saved transcript.",
       true,
     );
     return;

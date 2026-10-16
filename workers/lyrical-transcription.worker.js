@@ -1,4 +1,4 @@
-// Model download is initiated only by the user's Transcribe or Sync action. Audio never leaves this worker.
+// Model download is initiated only for fresh transcription, never review edits.
 import { transcriptionOptions } from "/lib/lyrical/transcription-options.js";
 import { pipeline, env } from "/assets/recognition-runtime.js";
 env.allowLocalModels = false;
@@ -21,21 +21,15 @@ self.onmessage = async ({ data }) => {
         progress_callback: (p) => {
           if (p.status === "progress" && Number.isFinite(p.progress))
             status(
-              "Downloading " +
-                String(p.file || "speech model")
-                  .split("/")
-                  .at(-1) +
-                " · " +
-                Math.round(p.progress) +
-                "%",
+              "Downloading speech model part · " + Math.round(p.progress) + "%",
             );
         },
       },
     );
     status(
       "Transcribing in " +
-        data.language +
-        " on your device. Singing may need corrections…",
+        (data.languageName || data.language) +
+        " on your device…",
     );
     const options = transcriptionOptions(
       data.language,

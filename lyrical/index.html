@@ -233,12 +233,12 @@
             <button id="transcribe" class="primary-button" type="button">
               Transcribe &amp; sync</button
             ><button
-              id="cancel-transcription"
+              id="review-existing"
               class="secondary-button"
               type="button"
               hidden
             >
-              Cancel
+              Continue with saved lyrics
             </button>
             <p id="transcription-status" role="status" aria-live="polite"></p>
           </div>
@@ -286,29 +286,28 @@
             Undo edit
           </button>
         </div>
-        <div class="timing-toolbar">
-          <button id="auto-sync" class="secondary-button" type="button">
-            Auto-sync lyrics
-          </button>
-          <label class="review-check"
-            ><input id="fine-tune-timing" type="checkbox" />Fine-tune timing
-            (optional)</label
-          >
-          <button
-            id="cancel-sync"
-            class="secondary-button"
-            type="button"
-            hidden
-          >
-            Cancel sync
-          </button>
-          <p
-            id="timing-status"
-            class="small-copy"
-            role="status"
-            aria-live="polite"
-          ></p>
-        </div>
+        <details class="timing-options">
+          <summary>Timing options <span>· optional</span></summary>
+          <p class="small-copy">
+            Your edits keep their timing. Re-sync uses the saved transcript and
+            does not transcribe the song again.
+          </p>
+          <div class="timing-toolbar">
+            <button id="auto-sync" class="secondary-button" type="button">
+              Re-sync from saved transcript
+            </button>
+            <label class="review-check"
+              ><input id="fine-tune-timing" type="checkbox" />Fine-tune timing
+              (optional)</label
+            >
+          </div>
+        </details>
+        <p
+          id="timing-status"
+          class="small-copy"
+          role="status"
+          aria-live="polite"
+        ></p>
         <div class="review-layout">
           <div>
             <div id="lyrics-list" class="lyrics-list"></div>
@@ -340,7 +339,7 @@
             ><input id="review-confirm" type="checkbox" />I’ve checked the
             lyrics.</label
           ><button id="confirm-lyrics" class="primary-button" type="button">
-            Confirm lyrics & continue
+            Continue to images
           </button>
         </div>
       </section>
@@ -632,6 +631,35 @@
         search uses the internet.
       </footer>
     </main>
+    <aside
+      id="processing-panel"
+      class="processing-panel"
+      aria-label="Transcription progress"
+      hidden
+    >
+      <div class="processing-copy">
+        <strong id="processing-status" role="status" aria-live="polite"
+          >Preparing transcription…</strong
+        >
+        <p>
+          <span id="processing-elapsed"></span> · Keep this tab open. First-time
+          transcription can take several minutes on a phone.
+        </p>
+      </div>
+      <div class="processing-actions">
+        <button
+          id="keep-current-lyrics"
+          class="primary-button"
+          type="button"
+          hidden
+        >
+          Keep current lyrics
+        </button>
+        <button id="cancel-processing" class="secondary-button" type="button">
+          Cancel
+        </button>
+      </div>
+    </aside>
     <script type="module" src="/assets/lyrical.js"></script>
   </body>
 </html>
