@@ -47,6 +47,7 @@ self.onmessage = async ({ data }) => {
     console.warn("Lyrical transcription failed:", error?.message || String(error));
     self.postMessage({
       type: "error",
+      diagnostic: error?.message || String(error),
       message:
         "Local transcription could not finish. Check your connection for the model download, then retry. You can also paste lyrics and set line timing.",
     });
