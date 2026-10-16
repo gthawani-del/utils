@@ -378,6 +378,9 @@
 }
 .line-note {
   font-size: 11px;
+  color: #4f6959;
+}
+.line-note.estimated {
   color: #8b6228;
 }
 .direction-card {
@@ -954,4 +957,16 @@
   .song-ready {
     grid-template-columns: 1fr;
   }
+}
+
+.timing-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-bottom: 20px;
+}
+.timing-toolbar p {
+  flex-basis: 100%;
+  margin: 0;
 }

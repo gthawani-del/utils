@@ -5,7 +5,7 @@ Lyrical adds a guided song-to-video workflow at `/lyrical`, linked from the Util
 ## First-use flow
 
 1. **Song:** upload MP3, WAV, M4A, FLAC or OGG (browser decoding required), up to 45 MiB / five minutes. A clearly labelled, locally generated sample lets users explore without downloading the transcription model.
-2. **Lyrics:** choose the song language and explicitly start local multilingual Whisper transcription. Higher accuracy uses the Small model; Faster uses Base. The model downloads on first use and runs in a cancellable worker. Play individual lines; edit, split, merge, remove or add lines. Start/end controls and “Start here / End here” support timing corrections. Pasted lyrics require manual timing; the app never invents word alignment. Confirm both the text and timing before proceeding.
+2. **Lyrics:** choose the song language and explicitly start local multilingual Whisper transcription. Higher accuracy uses the Small model; Faster uses Base. The model downloads on first use and runs in a cancellable worker. Play individual lines; edit, split, merge, remove or add lines. Timing is automatic. Pasted lyrics run local transcription and match the entered text against its word timeline; words stay as entered. Corrections retain phrase timing, and split/merge/add operations allocate boundaries automatically. Optional “Fine-tune timing” reveals advanced controls. Confirm the lyrics before proceeding.
 3. **Images & style:** upload up to eight images, search Pixabay, or explicitly choose typography only. Reorder and position crops. Review the system's direction; optional controls expose aspect ratio, style, motion strength, phrase/word presentation, accent and type size.
 4. **Video:** preview the entire timeline against the original audio, return to earlier steps, and export a supported MP4 or WebM at 720p or 1080p. Exact frame timestamps drive export independently of playback. Cancellation preserves the editable project. A completed file becomes an explicit Save video download.
 
@@ -25,13 +25,16 @@ The initial system direction is available in lyric review before users are asked
 
 The language picker offers the model’s 99 languages. Language selection is required because the pinned runtime does not implement automatic detection. The decoder receives explicit language/task prompt tokens. Text remains Unicode; recognition quality still varies by song and language. English and Devanagari can be mixed. Canvas draws complete shaped strings, wraps with `Intl.Segmenter`, and keeps right-to-left text in visual reading order. Noto Sans Devanagari and Anton are bundled with OFL licenses; other scripts use installed system fonts. Verify glyph coverage on the target device for other scripts. Singing accuracy and mixed-language recognition vary. A selected-language script check flags suspicious drafts (for example, Arabic-script output for a Hindi selection); this is a warning for manual review, not automatic translation. The manual correction path remains available after model/network failures.
 
-Changing a line clears its old word timestamps while retaining phrase boundaries for review. Changing timing, splitting or merging also clears word timestamps. Animated phrases remain available. Word highlighting is only applied where reliable original timestamps survive; RTL and ambiguous repeated words fall back to phrase animation. There is no automatic forced realignment after text edits. Overlapping, missing, negative or out-of-song line timings block confirmation.
+Changing wording clears stale word timestamps while retaining the line’s automatic phrase boundaries. Splits use available detected word boundaries, otherwise estimate within the existing phrase; merges retain the combined span. Added lines receive a bounded window near the playhead. “Auto-sync lyrics” matches the current text against a separately saved audio-derived word timeline; it reuses that timeline for the same language/model instead of repeatedly running inference. Legacy untimed drafts can use the same action.
+
+Pasted-text matching uses monotonic edit-distance alignment, with uncertain words assigned within nearby detected audio windows. This is not acoustic forced alignment. Estimated lines are labelled for a quick listen and use phrase animation, not invented word highlighting. No usable vocal timestamps or no matching words means a retry message, not uniform timing across the song. Matching is bounded to 4,000 tokens per side to limit memory. Normal edits never require entered timestamps. Manual controls remain optional; invalid manual overrides still block export and can be reset through Auto-sync. RTL and ambiguous repeated words use phrase animation.
 
 ## Architecture and privacy
 
 - Static page and native browser modules; no new application framework.
 - `lib/lyrical/project.js`: timing validation, energy analysis, direction and image scene schedule.
 - `workers/lyrical-transcription.worker.js`: local timestamp-capable Whisper Small/Base via the pinned, bundled Transformers.js runtime and same-origin ONNX WASM.
+- `timing.js`: transcript matching, automatic split/merge/add timing, and explicit estimated-span handling.
 - `renderer.js`: deterministic canvas frame composition, shaping, image motion and lyric animation.
 - `export.js` / `export-runtime-entry.js`: lazy MediaBunny/WebCodecs muxing with bounded submission and cancellation. See [export details](LYRICAL_EXPORT.md).
 - `storage.js`: one draft's metadata in localStorage; audio and selected image Blobs in IndexedDB. New project and homepage Clear workspace remove this draft. Browser storage is best effort and is not a cloud backup.
@@ -54,7 +57,7 @@ The integration also fixes existing build gates: a mistyped ONNX asset regex, re
 
 ## Verification and limits
 
-All 156 automated tests pass. They cover timestamp integrity, edits invalidating word timing, confirmation failures, automatic direction, image scene endings, grapheme-safe wrapping, full-song export scheduling, container header writes, memory bounds, unsupported codecs and the Pixabay proxy's validation/error/cache behavior.
+All 167 automated tests pass. They cover timestamp integrity, edits retaining phrase timing, automatic pasted/split/merge/add timing, repeated choruses, instrumental gaps, estimated spans, confirmation failures, automatic direction, image scene endings, grapheme-safe wrapping, full-song export scheduling, container header writes, memory bounds, unsupported codecs and the Pixabay proxy's validation/error/cache behavior.
 
 Local browser launch was blocked by workspace socket restrictions, so browser QA ran on the actual Vercel preview instead.
 
@@ -77,3 +80,9 @@ Before production release, use a real song to verify:
 - Refresh/resume, changed-lyrics confirmation, cancellation/retry and unavailable codecs.
 
 Five-minute stereo songs can still exceed the practical memory of a phone. Format support is probed for the exact dimensions and original audio format; some browsers may offer only WebM or neither format. Closing/discarding the tab interrupts export. No mobile-device compatibility claim is made without testing that device.
+
+## Automatic-timing correction (2026-10-16)
+
+Removed the requirement to enter start/end times for pasted, split or added lines. Timing controls are hidden behind an optional fine-tuning switch. No new dependency, paid API or server worker was introduced. Existing song transcription accuracy limits still apply.
+
+Live preview verification: a real 20-second Hindi excerpt plus seven pasted lyric lines completed local transcription and automatic matching. Splitting and merging a line, editing text, cached re-sync and confirmation all succeeded without entering any timestamps. The optional timing switch remained off. Six lines were correctly labelled estimated because recognition differed from the supplied text; the final line matched detected words.
