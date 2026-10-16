@@ -167,3 +167,30 @@ test("adding a line at beginning, middle, gap and end always allocates valid tim
     assert.equal(original[1].end, 6);
   }
 });
+
+test("unrelated lyrics are rejected instead of silently inventing alignment", () => {
+  assert.throws(
+    () =>
+      alignLyrics(
+        ["different song"],
+        [word("hello", 1, 2), word("world", 2, 3)],
+        10,
+      ),
+    /could not be matched/,
+  );
+});
+test("a split inside a word cannot claim exact word timestamps", () => {
+  const line = {
+    text: "hello world",
+    start: 1,
+    end: 3,
+    words: [word("hello", 1, 2), word("world", 2, 3)],
+  };
+  const result = splitTimedLine(line, 2, "new");
+  assert.ok(
+    result.every(
+      (l) => l.words.length === 0 && l.timingQuality === "estimated",
+    ),
+  );
+  assert.equal(validateLines(result, 4), "");
+});

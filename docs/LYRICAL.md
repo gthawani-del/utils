@@ -27,7 +27,7 @@ The language picker offers the model’s 99 languages. Language selection is req
 
 Changing wording clears stale word timestamps while retaining the line’s automatic phrase boundaries. Splits use available detected word boundaries, otherwise estimate within the existing phrase; merges retain the combined span. Added lines receive a bounded window near the playhead. “Auto-sync lyrics” matches the current text against a separately saved audio-derived word timeline; it reuses that timeline for the same language/model instead of repeatedly running inference. Legacy untimed drafts can use the same action.
 
-Pasted-text matching uses monotonic edit-distance alignment, with uncertain words assigned within nearby detected audio windows. This is not acoustic forced alignment. Estimated lines are labelled for a quick listen and use phrase animation, not invented word highlighting. No usable vocal timestamps means a retry message, not uniform timing across the song. Matching is bounded to 4,000 tokens per side to limit memory. Normal edits never require entered timestamps. Manual controls remain optional; invalid manual overrides still block export and can be reset through Auto-sync. RTL and ambiguous repeated words use phrase animation.
+Pasted-text matching uses monotonic edit-distance alignment, with uncertain words assigned within nearby detected audio windows. This is not acoustic forced alignment. Estimated lines are labelled for a quick listen and use phrase animation, not invented word highlighting. No usable vocal timestamps or no matching words means a retry message, not uniform timing across the song. Matching is bounded to 4,000 tokens per side to limit memory. Normal edits never require entered timestamps. Manual controls remain optional; invalid manual overrides still block export and can be reset through Auto-sync. RTL and ambiguous repeated words use phrase animation.
 
 ## Architecture and privacy
 
@@ -57,7 +57,7 @@ The integration also fixes existing build gates: a mistyped ONNX asset regex, re
 
 ## Verification and limits
 
-All 165 automated tests pass. They cover timestamp integrity, edits retaining phrase timing, automatic pasted/split/merge/add timing, repeated choruses, instrumental gaps, estimated spans, confirmation failures, automatic direction, image scene endings, grapheme-safe wrapping, full-song export scheduling, container header writes, memory bounds, unsupported codecs and the Pixabay proxy's validation/error/cache behavior.
+All 167 automated tests pass. They cover timestamp integrity, edits retaining phrase timing, automatic pasted/split/merge/add timing, repeated choruses, instrumental gaps, estimated spans, confirmation failures, automatic direction, image scene endings, grapheme-safe wrapping, full-song export scheduling, container header writes, memory bounds, unsupported codecs and the Pixabay proxy's validation/error/cache behavior.
 
 Local browser launch was blocked by workspace socket restrictions, so browser QA ran on the actual Vercel preview instead.
 
@@ -84,3 +84,5 @@ Five-minute stereo songs can still exceed the practical memory of a phone. Forma
 ## Automatic-timing correction (2026-10-16)
 
 Removed the requirement to enter start/end times for pasted, split or added lines. Timing controls are hidden behind an optional fine-tuning switch. No new dependency, paid API or server worker was introduced. Existing song transcription accuracy limits still apply.
+
+Live preview verification: a real 20-second Hindi excerpt plus seven pasted lyric lines completed local transcription and automatic matching. Splitting and merging a line, editing text, cached re-sync and confirmation all succeeded without entering any timestamps. The optional timing switch remained off. Six lines were correctly labelled estimated because recognition differed from the supplied text; the final line matched detected words.
