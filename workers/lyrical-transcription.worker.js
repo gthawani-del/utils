@@ -11,7 +11,7 @@ self.onmessage = async ({ data }) => {
     status("Loading speech model. The first download can take a few minutes…");
     const transcriber = await pipeline(
       "automatic-speech-recognition",
-      "onnx-community/whisper-tiny",
+      "onnx-community/whisper-tiny_timestamped",
       {
         device: "wasm",
         dtype: { encoder_model: "fp32", decoder_model_merged: "q8" },
@@ -42,7 +42,9 @@ self.onmessage = async ({ data }) => {
     const result = await transcriber(data.audio, options);
     self.postMessage({ type: "complete", chunks: result.chunks || [] });
     await transcriber.dispose();
-  } catch {
+  } catch (error) {
+    // Public model/runtime diagnostics only; never log audio or recognized text.
+    console.warn("Lyrical transcription failed:", error?.message || String(error));
     self.postMessage({
       type: "error",
       message:
