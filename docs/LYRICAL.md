@@ -6,16 +6,16 @@ Lyrical adds a guided song-to-video workflow at `/lyrical`, linked from the Util
 
 1. **Song:** upload MP3, WAV, M4A, FLAC or OGG (browser decoding required), up to 45 MiB / five minutes. A clearly labelled, locally generated sample lets users explore without downloading the transcription model.
 2. **Lyrics:** choose the song language and explicitly start local multilingual Whisper transcription. Higher accuracy uses the Small model; Faster uses Base. The model downloads on first use and runs in a cancellable worker. Play individual lines; edit, split, merge, remove or add lines. Timing is automatic. Pasted lyrics reuse a saved transcript when available, otherwise run local transcription, and match the entered text against its timeline; words stay as entered. Corrections retain phrase timing, and split/merge/add operations allocate boundaries automatically. Optional “Fine-tune timing” reveals advanced controls. Confirm the lyrics before proceeding.
-3. **Images & style:** upload up to eight images, search Pixabay, or explicitly choose typography only. Reorder and position crops. Review the system's direction; optional controls expose aspect ratio, style, motion strength, phrase/word presentation, accent and type size.
+3. **Images & style:** upload up to eight images, search Pixabay, or explicitly choose typography only. Reorder and position crops. Review the system's direction; optional controls expose aspect ratio, style, motion strength, phrase/measured-word-build presentation, accent and type size.
 4. **Video:** preview the entire timeline against the original audio, return to earlier steps, and export a supported MP4 or WebM at 720p or 1080p. Exact frame timestamps drive export independently of playback. Cancellation preserves the editable project. A completed file becomes an explicit Save video download.
 
 ## System direction
 
 | Direction | Initial rule | Motion |
 |---|---|---|
-| Bold rhythm | At least 2.7 words per voiced second, or frequent detected energy rises | Scale/slide entrances, alternating reveals, restrained audio-onset accents |
-| Quiet cinema | Below 1.5 words per voiced second, or average phrases longer than 3.8 seconds | Slower phrase reveals, generous spacing, gentle image movement |
-| Clear type | Other pacing | Restrained phrase movement and a small accent rule |
+| Bold rhythm | At least 2.7 words per voiced second, or frequent detected energy rises | Impact zoom, directional slide, elastic settle, row stagger, masked reveal and continuing audio-reactive motion |
+| Quiet cinema | Below 1.5 words per voiced second, or average phrases longer than 3.8 seconds | Drift, sway, masked reveal, breathing scale, rise, focus and restrained rotation |
+| Clear type | Other pacing | Rise, slide, masked reveal, stagger, breathe, ripple and focus |
 
 These are transparent heuristics, not semantic genre/mood detection or a measured BPM. Audio onsets are simple RMS energy rises, not a beat tracker. The UI explains the choice. Confirming changed lyrics recalculates the suggestion unless the user has customized it. “Use system direction” restores automatic settings. Image scene boundaries are spaced across the whole song and snapped to nearby lyric starts.
 
@@ -57,7 +57,7 @@ The integration also fixes existing build gates: a mistyped ONNX asset regex, re
 
 ## Verification and limits
 
-All 173 automated tests pass. They cover timestamp integrity, edits retaining phrase timing, automatic pasted/split/merge/add timing, repeated choruses, instrumental gaps, estimated spans, confirmation failures, automatic direction, image scene endings, grapheme-safe wrapping, full-song export scheduling, container header writes, memory bounds, unsupported codecs and the Pixabay proxy's validation/error/cache behavior.
+All 182 automated tests pass. They cover timestamp integrity, edits retaining phrase timing, automatic pasted/split/merge/add timing, repeated choruses, instrumental gaps, estimated spans, confirmation failures, automatic direction, image scene endings, grapheme-safe wrapping, full-song export scheduling, container header writes, memory bounds, unsupported codecs and the Pixabay proxy's validation/error/cache behavior.
 
 Local browser launch was blocked by workspace socket restrictions, so browser QA ran on the actual Vercel preview instead.
 
@@ -96,3 +96,16 @@ During fresh transcription, a fixed panel shows the actual model-download/infere
 Lyric inputs start at one row, grow with their content and respond to width changes. Touch targets remain at least 44 pixels; advanced timing is collapsed by default. The processing panel replaces disabled footer actions while a run is active.
 
 Regression checks cover cache reuse across quality changes, legacy phrase/word recovery, estimate provenance, immediate cancellation, late events and worker-error retry. Physical iPhone/Safari performance remains unverified.
+
+## Kinetic-renderer correction (2026-10-16)
+
+An uploaded 71-second export exposed an implementation gap: the Canvas path had brief phrase entrances and then mostly static holds. The isolated Remotion proof was not wired into the browser route. This correction implements choreography directly in the shared Canvas renderer; it does not add a server renderer or a paid service.
+
+- `motion.js` compiles 12 executable motion presets. Phrase pace, measured RMS energy, visual direction and deterministic rotation choose varied presets. Adjacent phrases do not repeat a preset. Every preset includes motion during the vocal hold, including gentle intensity. New system directions default to balanced kinetic motion; existing settings remain honored.
+- Measured word builds reveal complete shaped text using actual word timestamps; mismatched or edited text and RTL fall back to phrase animation. Grapheme boundaries are checked. No artificial word timing is created.
+- A smoothed audio envelope and continuous onset pulse modulate movement. These are energy measurements, not semantic interpretation, vocal separation or beat tracking.
+- Layout and choreography are cached between frames, invalidated on edits, and used by both preview and export. Row transforms stay within safe margins. Closing punctuation, including the Devanagari danda, stays with its word.
+- Image mode is stated in Images and again before download, including when selected photos are excluded by typography-only mode. Missing/closed image bitmaps block image-mode export. No photos are silently generated or selected.
+- Very long lyric holds are flagged for listening in review and export. This is a diagnostic, not an automatic repair of questionable ASR timestamps. A flattened MP4 cannot recover the original editable project.
+
+Verification: 182 tests plus lint, syntax and production build pass. Two 10-second H.264/AAC proofs were rendered through the same Canvas frame function, with and without existing background images, using the earlier test song and saved phrase timestamps. Independent decoding confirmed 720×1280, 30 fps, 300 video frames, 10 seconds and non-silent original audio. Frames were inspected across drift, slide, masked reveal and an image crossfade. Native Canvas proof is not a physical Safari performance test. Production Pixabay search was also verified returning selectable photos.
