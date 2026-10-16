@@ -36,7 +36,14 @@ The engine remains browser-only and multilingual. No paid transcription API, ser
 
 Automated tests cover a three-minute buffer, maximum transfer size, worker recycling without overlapping model instances, absolute timestamps, boundary duplicates, cancellation, checkpoint resume, invalid checkpoints, stale worker events, startup failures, stalled sections, legacy setting migration, and phone/iPad device policy. The complete security, syntax, test and production-build gates are required before merging.
 
-A real three-minute song must also reach the editable review screen in the deployed browser build. Record the observed result in the release PR. Do not equate a desktop pass with physical iPhone/Safari certification, or an MB download label with a measured RAM profile. A physical-device retest remains necessary to close the exact reported device incident.
+Release verification on the public deployment (PR #16, code commit `2f8f70115dacc290496e46cf44d756ff5683a5a6`):
+
+- All 196 tests, security lint, syntax checks, production build, pull-request CI and main CI passed.
+- A real three-minute Hindi recording completed in Standard mode and reached editable lyric review. Cancellation partway through followed by a page reload resumed from the saved 1:30 position and completed all 12 sections.
+- The same three-minute recording also completed in Enhanced mode in approximately 2:00 of displayed processing time, with no browser crash observed. This is a single desktop Chrome result, not a performance promise.
+- Both smaller models produced unreliable Hindi text on this song; the script-mismatch review warning appeared. The memory correction does not resolve singing-transcription accuracy. A native CPU comparison using the same Tiny model and explicit Hindi prompt also returned largely Latin-script output, so the observed accuracy issue was not unique to browser rendering.
+
+Do not equate these desktop passes with physical iPhone/Safari certification, or an MB loading label with a measured RAM profile. A physical-device retest remains necessary to close the exact reported device incident. No claim is made that every supported song/language transcribes accurately.
 
 ## Primary references
 
