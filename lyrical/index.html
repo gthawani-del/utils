@@ -72,7 +72,7 @@
         <p id="processing-status" role="status" aria-live="polite">Preparing transcription…</p>
         <progress id="processing-progress" aria-label="Transcription activity" max="100"></progress>
         <div class="processing-meta"><span id="processing-elapsed"></span><span>Keep this tab open</span></div>
-        <p class="small-copy">Your song stays on this device. First-time setup can take several minutes on a phone.</p>
+        <p class="small-copy">Your song stays on this device. Completed sections are saved so you can resume if interrupted.</p>
         <div class="processing-actions">
           <button id="keep-current-lyrics" class="primary-button" type="button" hidden>Keep current lyrics</button>
           <button id="cancel-processing" class="secondary-button" type="button">Cancel transcription</button>
@@ -230,9 +230,9 @@
           >
           <label for="transcription-quality"
             >Transcription quality<select id="transcription-quality">
-              <option value="small">Higher accuracy · slower</option>
-              <option value="base">Faster · recommended on phones</option></select
-            ><span class="small-copy" id="quality-hint">Higher accuracy needs more time and memory. On a phone, consider Faster.</span></label
+              <option value="tiny">Standard · recommended</option>
+              <option value="base">Enhanced · desktop</option></select
+            ><span class="small-copy" id="quality-hint">Uses a compact speech engine and processes short sections. Best for phones.</span></label
           >
           <p class="small-copy setup-note">First use downloads the speech engine and can take several minutes on a phone. Keep this tab open while your lyrics are created.</p>
           <div class="transcribe-actions">
