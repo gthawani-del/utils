@@ -15,9 +15,11 @@
   },
   "dependencies": {
     "@huggingface/transformers": "3.8.1",
-    "mediabunny": "1.61.5"
+    "mediabunny": "1.61.5",
+    "vosk-browser": "0.0.8"
   },
   "devDependencies": {
-    "esbuild": "0.25.12"
+    "esbuild": "0.25.12",
+    "fflate": "0.8.2"
   }
 }
