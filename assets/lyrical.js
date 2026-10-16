@@ -73,7 +73,7 @@ const node = (tag, text, className) => {
 const button = (text, fn, className = "text-button") => {
   const b = node("button", text, className);
   b.type = "button";
-  b.addEventListener("click", fn);
+  b.addEventListener("click", (event) => { if (!busy) fn(event); });
   return b;
 };
 function message(text, error = false) {
@@ -130,9 +130,9 @@ function setBusy(value, cancelId) {
     )
     .forEach((el) => {
       if (value) {
-        el.dataset.preBusy = el.disabled ? "1" : "0";
+        if (!("preBusy" in el.dataset)) el.dataset.preBusy = el.disabled ? "1" : "0";
         el.disabled = true;
-      } else {
+      } else if ("preBusy" in el.dataset) {
         el.disabled = el.dataset.preBusy === "1";
         delete el.dataset.preBusy;
       }
@@ -414,8 +414,10 @@ function renderLyrics() {
     input.value = line.text;
     input.dir = "auto";
     input.setAttribute("aria-label", "Lyric line " + (index + 1));
-    input.addEventListener("change", () => {
-      remember();
+    let editRemembered = false;
+    input.addEventListener("focus", () => { editRemembered = false; });
+    input.addEventListener("input", () => {
+      if (!editRemembered) { remember(); editRemembered = true; }
       project.lines[index] = reviseLine(project.lines[index], input.value);
       invalidateLyrics();
       if (!meta.querySelector(".line-note")) meta.append(node("span", "Check timing", "line-note"));
@@ -446,7 +448,7 @@ function renderLyrics() {
         "aria-label",
         (key === "start" ? "Start" : "End") + " of line " + (index + 1),
       );
-      field.addEventListener("change", () => {
+      field.addEventListener("input", () => {
         editTiming(index, key, field.value === "" ? null : Number(field.value));
         summary.textContent = "Timing changed · review audio";
       });
@@ -848,7 +850,8 @@ $("#create-video").addEventListener("click", async () => {
   try {
     await loadLyricalFonts();
     project.maxStep = 3;
-    player.currentTime = project.lines[0]?.start || 0;
+    const first = project.lines[0];
+    player.currentTime = first ? first.start + Math.min(0.8, (first.end - first.start) / 2) : 0;
     showStep(3);
   } catch {
     message(
