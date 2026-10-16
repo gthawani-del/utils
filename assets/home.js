@@ -1,6 +1,7 @@
 import { clearWorkspace } from '/lib/security/workspace.js';
 
 const tools = [
+  ['Lyrical', 'Turn a song into a kinetic lyric video with automatic style direction, your images and local export.', '/lyrical', true, 'LYR'],
   ['Video Editor', 'Edit clips, kinetic typography, Smooth & Match and local export in a dedicated workspace.', '/media/video-editor', true, 'VID'],
   ['Image Studio', 'Resize, crop, convert, compress, rotate, strip metadata, and batch export images.', '/image', true, 'IMG'],
   ['Media Editor + Transcriber', 'Local media editing and transcription workflows.', '/media', true, 'MED'],

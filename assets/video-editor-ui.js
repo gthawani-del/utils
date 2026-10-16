@@ -9,51 +9,7 @@ if (!root || !stage || !timeline || !inspector) throw new Error('Video Editor wo
 
 const shell = document.createElement('div');
 shell.className = 'studio-v2-root';
-shell.innerHTML = `
-  <header class="studio-v2-header">
-    <a href="/media" class="studio-v2-back" aria-label="Back to Media Studio">‹</a>
-    <div class="studio-v2-heading"><strong>Video Editor</strong><span>Local editing workspace</span></div>
-    <button type="button" class="studio-v2-header-button" id="studio-v2-import">+ Add</button>
-    <button type="button" class="studio-v2-export" id="studio-v2-export">Export</button>
-  </header>
-  <p class="studio-v2-preview-error" id="studio-v2-preview-error" role="status"></p>
-  <div class="studio-v2-layout">
-    <aside class="studio-v2-library">
-      <h3>Project media</h3><p>Imported clips and source media</p>
-      <button type="button" id="studio-v2-add-clips">+ Add video clips</button>
-      <div id="studio-v2-library-list" aria-live="polite">Import a video to begin.</div>
-    </aside>
-    <div class="studio-v2-main">
-      <section class="studio-v2-preview" aria-label="Video preview"></section>
-      <div class="studio-v2-transport">
-        <span id="studio-v2-time">00:00 / 00:00</span>
-        <div class="studio-v2-transport-buttons">
-          <button type="button" id="studio-v2-backward" aria-label="Back five seconds">|◀</button>
-          <button type="button" id="studio-v2-play" aria-label="Play or pause">▶</button>
-          <button type="button" id="studio-v2-forward" aria-label="Forward five seconds">▶|</button>
-          <button type="button" id="studio-v3-fullscreen" aria-label="Fullscreen preview">⛶</button>
-        </div>
-      </div>
-      <section class="studio-v2-timeline" aria-label="Video timeline"></section>
-      <div class="studio-v3-edit-actions"><button type="button" id="studio-v3-undo" aria-label="Undo edit">↶ Undo</button><button type="button" id="studio-v3-redo" aria-label="Redo edit">↷ Redo</button><button type="button" id="studio-v3-split">Split</button><button type="button" id="studio-v3-delete">Delete</button></div>
-      <section class="studio-v2-tools" aria-label="Editing tools">
-        <h3 class="studio-v2-visually-hidden">Editing tools</h3>
-        <div class="studio-v2-tool-grid">
-          <button type="button" data-studio-tool="edit"><span aria-hidden="true">✂</span>Trim</button>
-          <button type="button" data-studio-tool="kinetic"><span aria-hidden="true">T</span>Text</button>
-          <button type="button" data-studio-tool="captions"><span aria-hidden="true">▤</span>Lyrics</button>
-          <button type="button" data-studio-tool="audio"><span aria-hidden="true">♫</span>Music</button>
-          <button type="button" data-studio-tool="effects"><span aria-hidden="true">✧</span>Effects</button>
-          <button type="button" data-studio-tool="adjust"><span aria-hidden="true">☷</span>Adjust</button>
-          <button type="button" data-studio-tool="reframe"><span aria-hidden="true">⛶</span>Fit</button>
-          <button type="button" data-studio-tool="more"><span aria-hidden="true">•••</span>More</button>
-        </div>
-      </section>
-    </div>
-    <aside class="studio-v2-inspector" id="studio-v2-inspector" aria-label="Editing controls">
-      <div class="studio-v2-inspector-head"><strong id="studio-v2-inspector-title">Edit clip</strong><div class="studio-v3-sheet-actions"><button type="button" id="studio-v3-cancel">Discard</button><button type="button" id="studio-v3-apply">Done</button><button type="button" id="studio-v2-close" aria-label="Close editing controls">×</button></div></div>
-    </aside>
-  </div>`;
+shell.append($('#video-template-shell').content.cloneNode(true));
 root.append(shell);
 const preview = $('.studio-v2-preview');
 preview.append(empty, stage);
@@ -66,29 +22,11 @@ $('.studio-v2-inspector').append(inspector);
 const recognition = document.createElement('section');
 recognition.className = 'studio-v4-recognition';
 recognition.hidden = true;
-recognition.innerHTML = `
-  <div class="studio-lyrics-heading"><strong>Auto Lyrics</strong><button type="button" id="studio-lyrics-close" aria-label="Close lyrics dialog">×</button></div>
-  <label class="studio-lyrics-language">Language<select id="studio-lyrics-language">
-    <option value="auto">Auto detect</option><option value="english">English</option>
-    <option value="hindi">हिन्दी — Hindi</option><option value="marathi">मराठी — Marathi</option>
-    <option value="tamil">தமிழ் — Tamil</option><option value="telugu">తెలుగు — Telugu</option>
-    <option value="bengali">বাংলা — Bengali</option><option value="gujarati">ગુજરાતી — Gujarati</option>
-    <option value="punjabi">ਪੰਜਾਬੀ — Punjabi</option><option value="kannada">ಕನ್ನಡ — Kannada</option>
-    <option value="malayalam">മലയാളം — Malayalam</option><option value="urdu">اردو — Urdu</option>
-    <option value="spanish">Español</option><option value="portuguese">Português</option>
-  </select></label>
-  <div class="studio-lyrics-source" aria-label="Selected source"><span aria-hidden="true">▣</span><strong>VIDEO</strong><small id="studio-lyrics-source-name">Current video</small></div>
-  <button type="button" id="studio-v4-lyrics" class="studio-lyrics-start">Start</button>
-  <p id="studio-v4-status" role="status" aria-live="polite"></p>`;
+recognition.append($('#video-template-recognition').content.cloneNode(true));
 shell.append(recognition);
 const timelineDisplay = document.createElement('div');
 timelineDisplay.className = 'studio-v2-track-system';
-timelineDisplay.innerHTML = `
-  <div class="studio-v2-track"><span>Text</span><div class="studio-v2-track-content" id="studio-v2-text-track"></div></div>
-  <div class="studio-v2-track"><span>Video</span><div class="studio-v2-track-content studio-v2-video-track" id="studio-v2-video-track"><span>Import clips to populate timeline</span></div></div>
-  <div class="studio-v2-track"><span>Audio</span><div class="studio-v2-track-content studio-v2-audio-track" id="studio-v2-audio-track"><span>Audio waveform available after import</span></div></div>
-  <div class="studio-v3-timeline-control"><label class="studio-v2-seek-label"><span class="studio-v2-visually-hidden">Timeline playhead</span><input id="studio-v2-seek" type="range" min="0" max="1000" value="0" aria-label="Scrub video timeline"></label><div class="studio-v3-zoom"><button type="button" id="studio-v3-zoom-out" aria-label="Zoom out timeline">−</button><span id="studio-v3-zoom-label">100%</span><button type="button" id="studio-v3-zoom-in" aria-label="Zoom in timeline">+</button></div></div>
-  <div class="studio-v2-segments" id="studio-v2-segments" aria-label="Clip sequence"></div><span class="studio-v2-visually-hidden" id="studio-v2-reorder-status" role="status"></span>`;
+timelineDisplay.append($('#video-template-timelineDisplay').content.cloneNode(true));
 timeline.append(timelineDisplay);
 
 const showPanel = (tab, title, focusSelector) => {
