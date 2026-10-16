@@ -14,7 +14,8 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@huggingface/transformers": "3.8.1"
+    "@huggingface/transformers": "3.8.1",
+    "mediabunny": "1.61.5"
   },
   "devDependencies": {
     "esbuild": "0.25.12"

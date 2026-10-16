@@ -15,8 +15,9 @@ test('standalone video editor loads dedicated presentation only', async () => {
 
 test('all eight tool groups and playback controls have handlers', async () => {
   const script = await read('assets/video-editor-ui.js');
+  const markup = await read('media/video-editor/index.html');
   for (const group of ['edit','kinetic','captions','audio','effects','adjust','reframe','more']) {
-    assert.ok(script.includes('data-studio-tool="' + group + '"'));
+    assert.ok(markup.includes('data-studio-tool="' + group + '"'));
     assert.ok(script.includes(group + ': ['));
   }
   for (const control of ['studio-v2-play','studio-v2-export','studio-v2-seek','studio-v2-add-clips']) {
