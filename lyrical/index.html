@@ -308,6 +308,12 @@
           role="status"
           aria-live="polite"
         ></p>
+        <p
+          id="timing-quality-note"
+          class="lyrical-message"
+          role="status"
+          hidden
+        ></p>
         <div class="review-layout">
           <div>
             <div id="lyrics-list" class="lyrics-list"></div>
@@ -466,6 +472,9 @@
               ><input id="text-only" type="checkbox" />Continue without images —
               typography only</label
             >
+            <p id="image-mode-note" class="image-mode-note" role="status">
+              Add images to include them in your video.
+            </p>
           </div>
           <aside class="lyrical-card style-settings">
             <p class="eyebrow">YOUR VIDEO DIRECTION</p>
@@ -488,14 +497,14 @@
                 </select></label
               ><label for="intensity"
                 >Motion strength<select id="intensity">
-                  <option value="subtle">Subtle</option>
-                  <option value="balanced">Balanced</option>
-                  <option value="energetic">Energetic</option>
+                  <option value="subtle">Gentle movement</option>
+                  <option value="balanced">Kinetic · recommended</option>
+                  <option value="energetic">Expressive</option>
                 </select></label
               ><label for="presentation"
                 >Lyric presentation<select id="presentation">
                   <option value="phrases">Animated phrases</option>
-                  <option value="words">Highlight timed words</option>
+                  <option value="words">Build with timed words</option>
                 </select></label
               ><label for="accent"
                 >Accent colour<input
@@ -567,6 +576,11 @@
                 value="0"
               />
             </div>
+            <p
+              id="motion-label"
+              class="small-copy"
+              aria-label="Current motion"
+            ></p>
           </div>
           <aside class="lyrical-card export-card">
             <h3>Make it yours.</h3>
@@ -577,6 +591,11 @@
               Images & style
             </button>
             <hr />
+            <p id="export-visual-summary" class="visual-summary"></p>
+            <p id="export-timing-note" class="small-copy" hidden>
+              A lyric has an unusually long hold. Check its timing in Edit
+              lyrics before exporting.
+            </p>
             <label for="export-quality"
               >Video quality<select id="export-quality">
                 <option value="720">720p · smaller file</option>

@@ -969,6 +969,22 @@
   margin-bottom: 16px;
   border-bottom: 1px solid #dce2dc;
 }
+.image-mode-note {
+  margin: 0 24px 24px;
+  padding: 12px;
+  background: #e9f0eb;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.visual-summary {
+  font-weight: 650;
+  padding: 12px 0;
+  border-bottom: 1px solid #dce2dc;
+}
+#motion-label {
+  margin: 12px 0 0;
+  text-align: center;
+}
 .timing-options > summary {
   padding: 12px 0;
   min-height: 44px;

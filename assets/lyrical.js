@@ -8,6 +8,8 @@ import {
   dimensions,
   timeLabel,
   scriptReviewNote,
+  visualSummary,
+  validateVisuals,
 } from "/lib/lyrical/project.js";
 import {
   alignLyrics,
@@ -18,7 +20,13 @@ import {
   insertTimedLine,
 } from "/lib/lyrical/timing.js";
 import { decodeSong, transcribeSong } from "/lib/lyrical/audio.js";
-import { drawLyricalFrame, loadLyricalFonts } from "/lib/lyrical/renderer.js";
+import {
+  drawLyricalFrame,
+  loadLyricalFonts,
+  invalidateLyricalRender,
+  lyricalMotionLabel,
+} from "/lib/lyrical/renderer.js";
+import { longHoldLines } from "/lib/lyrical/motion.js";
 import { prepareImage, releaseImage } from "/lib/lyrical/images.js";
 import {
   saveDraft,
@@ -170,6 +178,11 @@ function showStep(step, { scroll = true } = {}) {
     renderDirection();
   }
   if (step === 3) {
+    $("#export-visual-summary").textContent = visualSummary(
+      project.textOnly,
+      images,
+    );
+    $("#export-timing-note").hidden = !longHoldLines(project.lines).length;
     drawPreview();
     checkExport();
   }
@@ -192,6 +205,7 @@ function remember() {
   $("#undo-lyrics").disabled = false;
 }
 function invalidateVideo() {
+  invalidateLyricalRender(project);
   if (downloadUrl) {
     URL.revokeObjectURL(downloadUrl);
     downloadUrl = "";
@@ -482,6 +496,13 @@ function editTiming(index, key, value) {
 function renderLyrics() {
   const list = $("#lyrics-list");
   list.replaceChildren();
+  const longHolds = longHoldLines(project.lines);
+  $("#timing-quality-note").hidden = !longHolds.length;
+  $("#timing-quality-note").textContent = longHolds.length
+    ? "Check the long hold in line " +
+      (longHolds[0] + 1) +
+      ". A word may have been stretched across a pause by transcription. Play the marked line before confirming."
+    : "";
   project.lines.forEach((line, index) => {
     const row = node("article", undefined, "lyric-row");
     row.dataset.lineId = line.id;
@@ -530,11 +551,13 @@ function renderLyrics() {
     const meta = node("div", undefined, "line-meta");
     const syncNote = node(
       "span",
-      line.timingQuality === "estimated"
-        ? "Estimated sync · listen"
-        : line.timing === "edited"
-          ? "Timing kept"
-          : "Auto-synced",
+      longHolds.includes(index)
+        ? "Long hold · listen"
+        : line.timingQuality === "estimated"
+          ? "Estimated sync · listen"
+          : line.timing === "edited"
+            ? "Timing kept"
+            : "Auto-synced",
       "line-note",
     );
     syncNote.classList.toggle("estimated", line.timingQuality === "estimated");
@@ -760,11 +783,8 @@ function renderImages() {
   invalidateVideo();
   $("#image-count").textContent = images.length + " / " + LIMITS.images;
   $("#text-only").checked = project.textOnly;
-  $("#image-readiness").textContent = images.length
-    ? images.length + " image" + (images.length === 1 ? "" : "s") + " ready."
-    : project.textOnly
-      ? "Typography-only video selected."
-      : "Add an image or choose typography only.";
+  $("#image-readiness").textContent = visualSummary(project.textOnly, images);
+  $("#image-mode-note").textContent = visualSummary(project.textOnly, images);
   const list = $("#selected-images");
   list.replaceChildren();
   images.forEach((image, index) => {
@@ -967,8 +987,9 @@ $("#create-video").addEventListener("click", async () => {
     message("Confirm the lyrics before creating a video.", true);
     return;
   }
-  if (!images.length && !project.textOnly) {
-    message("Add at least one image, or choose typography only.", true);
+  const imageError = validateVisuals(project.textOnly, images);
+  if (imageError) {
+    message(imageError, true);
     return;
   }
   message("Preparing your video…");
@@ -976,10 +997,14 @@ $("#create-video").addEventListener("click", async () => {
     await loadLyricalFonts();
     project.maxStep = 3;
     const first = project.lines[0];
-    player.currentTime = first
-      ? first.start + Math.min(0.8, (first.end - first.start) / 2)
-      : 0;
+    player.currentTime = first ? first.start : 0;
     showStep(3);
+    stopAt = null;
+    player
+      .play()
+      .catch(() =>
+        message("Tap Play preview to see the motion before downloading."),
+      );
   } catch {
     message(
       "The video fonts could not load. Check your connection and retry.",
@@ -1006,6 +1031,10 @@ function drawPreview() {
   $("#preview-seek").value = String(player.currentTime);
   $("#preview-time").textContent =
     timeLabel(player.currentTime) + " / " + timeLabel(project.duration);
+  $("#motion-label").textContent = lyricalMotionLabel(
+    project,
+    player.currentTime,
+  );
 }
 function animate() {
   drawPreview();
@@ -1076,6 +1105,11 @@ async function checkExport() {
 $("#export-quality").addEventListener("change", checkExport);
 $("#export-video").addEventListener("click", async () => {
   if (busy || !audioBuffer) return;
+  const imageError = validateVisuals(project.textOnly, images);
+  if (imageError) {
+    message(imageError, true);
+    return;
+  }
   player.pause();
   exportController = new AbortController();
   $("#cancel-export").hidden = false;
