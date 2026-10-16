@@ -73,7 +73,9 @@ const node = (tag, text, className) => {
 const button = (text, fn, className = "text-button") => {
   const b = node("button", text, className);
   b.type = "button";
-  b.addEventListener("click", (event) => { if (!busy) fn(event); });
+  b.addEventListener("click", (event) => {
+    if (!busy) fn(event);
+  });
   return b;
 };
 function message(text, error = false) {
@@ -130,7 +132,8 @@ function setBusy(value, cancelId) {
     )
     .forEach((el) => {
       if (value) {
-        if (!("preBusy" in el.dataset)) el.dataset.preBusy = el.disabled ? "1" : "0";
+        if (!("preBusy" in el.dataset))
+          el.dataset.preBusy = el.disabled ? "1" : "0";
         el.disabled = true;
       } else if ("preBusy" in el.dataset) {
         el.disabled = el.dataset.preBusy === "1";
@@ -265,6 +268,7 @@ async function selectSong(file, { restore = false } = {}) {
       timeLabel(audioBuffer.duration) + " · Local audio";
     $("#song-bar").hidden = false;
     $("#song-ready").hidden = false;
+    $("#song-language").value = project.language || "";
     $("#recovery").hidden = true;
     try {
       await assetStore("put", "song", file);
@@ -300,13 +304,20 @@ function dropTarget(el, handler) {
 dropTarget($("#song-drop"), (files) => selectSong(files[0]));
 $("#transcribe").addEventListener("click", async () => {
   if (!mono || busy) return;
+  const language = $("#song-language").value;
+  if (!language) {
+    message("Choose the song language before transcribing.", true);
+    return;
+  }
+  project.language = language;
+  persist();
   transcriptionController = new AbortController();
   $("#cancel-transcription").hidden = false;
   setBusy(true, "#cancel-transcription");
   message("");
   try {
     const chunks = await transcribeSong(mono, {
-      language: $("#song-language").value,
+      language,
       signal: transcriptionController.signal,
       onStatus: (text) => ($("#transcription-status").textContent = text),
     });
@@ -415,12 +426,18 @@ function renderLyrics() {
     input.dir = "auto";
     input.setAttribute("aria-label", "Lyric line " + (index + 1));
     let editRemembered = false;
-    input.addEventListener("focus", () => { editRemembered = false; });
+    input.addEventListener("focus", () => {
+      editRemembered = false;
+    });
     input.addEventListener("input", () => {
-      if (!editRemembered) { remember(); editRemembered = true; }
+      if (!editRemembered) {
+        remember();
+        editRemembered = true;
+      }
       project.lines[index] = reviseLine(project.lines[index], input.value);
       invalidateLyrics();
-      if (!meta.querySelector(".line-note")) meta.append(node("span", "Check timing", "line-note"));
+      if (!meta.querySelector(".line-note"))
+        meta.append(node("span", "Check timing", "line-note"));
     });
     const meta = node("div", undefined, "line-meta");
     const details = node("details");
@@ -851,7 +868,9 @@ $("#create-video").addEventListener("click", async () => {
     await loadLyricalFonts();
     project.maxStep = 3;
     const first = project.lines[0];
-    player.currentTime = first ? first.start + Math.min(0.8, (first.end - first.start) / 2) : 0;
+    player.currentTime = first
+      ? first.start + Math.min(0.8, (first.end - first.start) / 2)
+      : 0;
     showStep(3);
   } catch {
     message(

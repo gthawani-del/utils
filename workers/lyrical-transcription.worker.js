@@ -1,4 +1,5 @@
 // Model download is initiated only by the user's Transcribe action. Audio never leaves this worker.
+import { transcriptionOptions } from "/lib/lyrical/transcription-options.js";
 import { pipeline, env } from "/assets/recognition-runtime.js";
 env.allowLocalModels = false;
 env.useBrowserCache = true;
@@ -30,21 +31,23 @@ self.onmessage = async ({ data }) => {
       },
     );
     status(
-      "Transcribing on your device. Singing and layered vocals may need corrections…",
+      "Transcribing in " +
+        data.language +
+        " on your device. Singing may need corrections…",
     );
-    const options = {
-      chunk_length_s: 30,
-      stride_length_s: 5,
-      return_timestamps: "word",
-      task: "transcribe",
-    };
-    if (data.language !== "auto") options.language = data.language;
+    const options = transcriptionOptions(
+      data.language,
+      transcriber.model.generation_config,
+    );
     const result = await transcriber(data.audio, options);
     self.postMessage({ type: "complete", chunks: result.chunks || [] });
     await transcriber.dispose();
   } catch (error) {
     // Public model/runtime diagnostics only; never log audio or recognized text.
-    console.warn("Lyrical transcription failed:", error?.message || String(error));
+    console.warn(
+      "Lyrical transcription failed:",
+      error?.message || String(error),
+    );
     self.postMessage({
       type: "error",
       diagnostic: error?.message || String(error),
