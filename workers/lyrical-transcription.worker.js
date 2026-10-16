@@ -1,5 +1,6 @@
 // Model download is initiated only for fresh transcription, never review edits.
 import { transcriptionOptions } from "/lib/lyrical/transcription-options.js";
+import { createSpeechLoadReporter } from "/lib/lyrical/transcription-progress.js";
 import { pipeline, env } from "/assets/recognition-runtime.js";
 env.allowLocalModels = false;
 env.useBrowserCache = true;
@@ -9,7 +10,7 @@ env.backends.onnx.wasm.proxy = false;
 self.onmessage = async ({ data }) => {
   const status = (message) => self.postMessage({ type: "status", message });
   try {
-    status("Loading speech model. The first download can take a few minutes…");
+    status("Preparing speech engine. First-time setup can take a few minutes…");
     const transcriber = await pipeline(
       "automatic-speech-recognition",
       data.quality === "base"
@@ -18,12 +19,7 @@ self.onmessage = async ({ data }) => {
       {
         device: "wasm",
         dtype: { encoder_model: "fp32", decoder_model_merged: "q8" },
-        progress_callback: (p) => {
-          if (p.status === "progress" && Number.isFinite(p.progress))
-            status(
-              "Downloading speech model part · " + Math.round(p.progress) + "%",
-            );
-        },
+        progress_callback: createSpeechLoadReporter(status),
       },
     );
     status(

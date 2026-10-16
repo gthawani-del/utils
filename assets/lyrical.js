@@ -468,15 +468,6 @@ async function syncLyrics(texts = null, { savedOnly = false } = {}) {
     $("#transcription-status").textContent = text;
     $("#timing-status").textContent = text;
     $("#processing-status").textContent = text;
-    const part = /^Downloading speech model part · (\d+)%$/.exec(text);
-    const progress = $("#processing-progress");
-    if (part) {
-      progress.value = Math.min(100, Number(part[1]));
-      progress.setAttribute("aria-label", "Current speech engine download part");
-    } else {
-      progress.removeAttribute("value");
-      progress.setAttribute("aria-label", "Transcription activity");
-    }
   };
   status(
     needsRecognition ? "Preparing transcription…" : "Using saved vocal timing…",
