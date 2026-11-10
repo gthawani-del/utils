@@ -1,7 +1,7 @@
 import { clearWorkspace } from '/lib/security/workspace.js';
 
 const tools = [
-  ['Video Studio', 'Explainers and motion graphics · Coming soon.', '/media/video-studio', 'video'],
+  ['Motion Studio', 'Create animated explainers with text, visuals and voice. Coming soon.', '/media/motion-studio', 'video'],
   ['Lyrical', 'Turn your song into a lyric video.', '/lyrical', 'lyrical'],
   ['Video Editor', 'Cut and arrange your video clips.', '/media/video-editor', 'video'],
   ['Image Studio', 'Resize, crop and compress images.', '/image', 'image'],
