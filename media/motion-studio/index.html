@@ -1,37 +1,59 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="description" content="Motion Studio: a guided workflow for branded explainers and motion graphics.">
-  <title>Motion Studio · Utility OS</title>
-  <link rel="stylesheet" href="/assets/app.css">
-  <link rel="stylesheet" href="/assets/home.css">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Create animated explainers with editable templates, narration and local video export.">
+<title>Motion Studio · Utility OS</title>
+<link rel="stylesheet" href="/assets/motion.css">
 </head>
-<body class="home-body">
-  <header class="home-header">
-    <a class="brand" href="/" aria-label="Utility OS home"><span class="brand-mark">U</span><span>Utility OS</span></a>
-    <a class="text-button" href="/">All tools</a>
-  </header>
-  <main class="home-main">
-    <h1>Motion Studio</h1>
-    <p class="home-intro">Create animated explainers with text, visuals and voice.</p>
-    <section aria-labelledby="status-title">
-      <h2 id="status-title">Studio in preparation</h2>
-      <p>This is the starting page. Motion Studio does not generate or render videos yet.</p>
-      <h2>The planned workflow</h2>
-      <ol>
-        <li>Prepare your script, scene plan and images in ChatGPT.</li>
-        <li>Bring the prepared project into Motion Studio to adjust scenes, branding and timing.</li>
-        <li>Preview the animation and export your video.</li>
-      </ol>
-      <p>For now, you can edit existing clips in Video Editor or create a lyric video in Lyrical.</p>
-    </section>
-    <nav class="home-tools" aria-label="Available video tools">
-      <a class="home-tool" href="/media/video-editor"><span aria-hidden="true">▶</span><span><strong>Video Editor</strong><span>Cut and arrange existing video clips.</span></span><span class="home-tool-arrow" aria-hidden="true">›</span></a>
-      <a class="home-tool" href="/lyrical"><span aria-hidden="true">♪</span><span><strong>Lyrical</strong><span>Turn your song into a lyric video.</span></span><span class="home-tool-arrow" aria-hidden="true">›</span></a>
-    </nav>
-    <footer class="home-footer"><span>Utility OS · Motion Studio</span></footer>
-  </main>
-</body>
-</html>
+<body>
+<header class="topbar"><a href="/" class="brand"><span class="brand-mark">U</span> Utility OS</a><span class="divider">/</span><a href="/media/motion-studio" class="product">Motion Studio</a><span class="local-label">On your device</span></header>
+<main>
+<section id="welcome" class="welcome">
+  <div class="intro"><p class="eyebrow">MOTION STUDIO</p><h1>Give your ideas<br>some movement.</h1><p class="lede">Create animated explainers with text, visuals and voice. Start with a story. Make it yours.</p>
+    <div class="welcome-actions"><button id="try-sample" class="primary">Try a sample <span aria-hidden="true">↗</span></button><button id="start-new" class="secondary">Start my video</button></div>
+    <button id="resume" class="text-button" hidden>Resume saved draft →</button>
+    <label class="import-link">Have a project? <span>Import it</span><input id="import-welcome" type="file" accept=".json,application/json"></label>
+    <p class="fine">No account. No paid APIs. Your files stay in this browser.</p>
+  </div>
+  <div class="welcome-demo"><div class="demo-top"><span>Clear explainer</span><span>Sample · 24s</span></div><canvas id="welcome-canvas" width="540" height="960" aria-label="Motion Studio sample frame"></canvas><button id="sample-preview" class="demo-play">Play sample</button></div>
+</section>
+<section id="workspace" hidden>
+  <div class="workspace-heading"><div><p class="eyebrow">YOUR WORKSPACE</p><h1 id="project-heading">My motion story</h1></div><div class="project-actions"><span id="save-state">Not saved yet</span><button id="download-project" class="secondary small">Save project file</button><button id="new-project" class="text-button">New video</button></div></div>
+  <nav class="steps" aria-label="Creation steps"><button data-step="0" aria-current="step"><span>1</span> Brief</button><button data-step="1"><span>2</span> Scenes</button><button data-step="2"><span>3</span> Style & voice</button><button data-step="3"><span>4</span> Export</button></nav>
+  <div class="editor-grid">
+    <div class="controls">
+      <section data-panel="0"><p class="eyebrow">START WITH THE STORY</p><h2>What are you making?</h2><p class="hint">Choose a starting point. Every scene is editable.</p>
+        <label>Project name<input id="project-title" maxlength="80" required></label>
+        <div class="field-row"><label>Screen format<select id="format"><option value="vertical">Vertical · 9:16</option><option value="wide">Widescreen · 16:9</option></select></label><label>Language<select id="language"><option value="en-IN">English · India</option><option value="en-US">English · US</option><option value="en-GB">English · UK</option><option value="hi-IN">Hindi</option><option value="other">Other / supplied audio</option></select></label></div>
+        <label>Starting duration<select id="duration"><option value="15">15 seconds</option><option value="24" selected>24 seconds</option><option value="40">40 seconds</option><option value="60">60 seconds</option></select></label>
+        <fieldset><legend>Choose a template</legend><div id="templates" class="templates"></div></fieldset>
+        <details><summary>Need help writing the story?</summary><p>Plan the story and generate images in your existing ChatGPT conversation, then add the text and images here. This website uses templates; it does not connect to an AI assistant.</p><button id="copy-brief" class="secondary">Copy planning prompt</button><label class="file-button">Import Motion Studio project<input id="import-editor" type="file" accept=".json,application/json"></label></details>
+      </section>
+      <section data-panel="1" hidden><div class="section-heading"><div><p class="eyebrow">BUILD THE SEQUENCE</p><h2>Your scenes</h2></div><button id="add-scene" class="secondary small">+ Scene</button></div><div id="scene-list" class="scene-list" aria-label="Scene selection"></div>
+        <div class="scene-heading"><h3 id="scene-name">Scene 1</h3><div><button id="move-left" class="text-button" aria-label="Move scene earlier">←</button><button id="move-right" class="text-button" aria-label="Move scene later">→</button><button id="delete-scene" class="text-button">Remove</button></div></div>
+        <label>Heading<input id="scene-title" maxlength="80" required></label><label>Description<textarea id="scene-body" maxlength="220" rows="3"></textarea></label>
+        <div class="field-row"><label>Layout<select id="layout"><option value="title">Opening / layered cards</option><option value="steps">Three steps</option><option value="feature">Feature reveal</option><option value="closing">Brand closing card</option></select></label><label>Seconds<input id="scene-duration" type="number" min="2" max="30" step="0.1"></label></div>
+        <div id="point-fields" hidden><label>Step 1<input data-point="0" maxlength="40"></label><label>Step 2<input data-point="1" maxlength="40"></label><label>Step 3<input data-point="2" maxlength="40"></label></div>
+        <label>Animation<select id="effect"><option value="reveal">Masked text reveal</option><option value="stagger">Staggered entrances</option><option value="rise">Soft rise</option></select></label>
+        <label class="file-button">Add scene image<input id="scene-image" type="file" accept="image/png,image/jpeg,image/webp"></label><div class="asset-line"><span id="image-state">No image · uses animated graphics</span><button id="remove-image" class="text-button" hidden>Remove image</button></div><p class="hint">PNG, JPG or WebP, up to 8 MB. Images are resized on your device.</p>
+      </section>
+      <section data-panel="2" hidden><p class="eyebrow">MAKE IT YOURS</p><h2>Style & voice</h2><fieldset><legend>Colour palette</legend><div id="palettes" class="palettes"></div></fieldset>
+        <label>Brand name <span class="optional">Optional</span><input id="brand-name" maxlength="40" placeholder="Your brand"></label><label>Website on closing card <span class="optional">Optional</span><input id="brand-url" maxlength="80" placeholder="www.yourbrand.com"></label>
+        <label class="file-button">Upload logo<input id="logo" type="file" accept="image/png,image/jpeg,image/webp"></label><div class="asset-line"><span id="logo-state">No logo added</span><button id="remove-logo" class="text-button" hidden>Remove logo</button></div><p class="hint">A transparent PNG blends with the closing card.</p>
+        <div class="voice-section"><h3>Narration</h3><p class="hint">Upload your recording or a Microsoft voiceover prepared with the free companion tool.</p><label class="file-button">Add narration<input id="narration" type="file" accept="audio/*"></label><p id="audio-state" class="hint">No narration added. You can export without it.</p><div class="asset-line"><button id="fit-audio" class="secondary small" hidden>Fit scenes to narration</button><button id="remove-audio" class="text-button" hidden>Remove audio</button></div>
+          <details><summary>Use a Microsoft voice</summary><p>Microsoft voice generation is not connected to this website. The free companion script lets your team select an available language, accent and voice, generate an MP3, then upload it here. No paid API fallback.</p><a href="https://github.com/gthawani-del/utils/blob/main/docs/MOTION_VOICE.md" target="_blank" rel="noopener noreferrer">Open voice setup guide ↗</a></details>
+        </div>
+        <label class="check"><input id="music" type="checkbox"> Add a subtle instrumental pulse</label><p class="hint">Original synthesized audio. Mixed quietly beneath narration.</p><button id="save-brand" class="secondary">Save as my brand defaults</button><p class="hint">Defaults stay in this browser. They are applied to new projects.</p>
+      </section>
+      <section data-panel="3" hidden><p class="eyebrow">READY TO SHARE</p><h2>Preview. Check. Export.</h2><ul id="preflight" class="preflight"></ul><div class="field-row"><label>Resolution<select id="resolution"><option value="720">720p · recommended</option><option value="1080">1080p</option></select></label><label>File format<select id="export-format"><option value="mp4">MP4</option><option value="webm">WebM</option></select></label></div><p id="export-support" class="hint">Format availability is checked on this device.</p><button id="check-export" class="secondary">Check device support</button><button id="export-video" class="primary">Export video</button><button id="cancel-export" class="secondary" hidden>Cancel export</button><progress id="export-progress" max="100" value="0" hidden></progress><a id="download-video" class="primary download" hidden>Download video</a><p class="hint">Keep this tab open during export. Download your project file as an editable backup.</p></section>
+    </div>
+    <aside class="preview-panel" aria-label="Video preview"><div class="preview-top"><span>LIVE PREVIEW</span><button id="expand-preview" class="text-button small" type="button">Expand</button><span id="preview-meta">9:16 · 24s</span></div><div class="canvas-stage"><canvas id="preview" width="540" height="960" aria-label="Animated video preview"></canvas></div><div class="playback"><button id="play" class="secondary small">Play</button><label class="seek-label"><span class="sr-only">Preview position</span><input id="seek" type="range" min="0" max="24" value="0" step="0.05"></label><output id="time">0:00 / 0:24</output></div><p class="preview-note">Your text. Your timing. No generation credits.</p></aside>
+  </div>
+  <footer class="bottom-bar"><button id="back" class="secondary">Back</button><span id="step-label">Step 1 of 4</span><button id="next" class="primary">Continue to scenes →</button></footer>
+</section>
+<dialog id="preview-dialog" aria-label="Expanded video preview"><div class="dialog-toolbar"><button id="expanded-play" class="secondary small">Play / pause</button><button id="close-preview" class="secondary small">Close preview</button></div><canvas id="expanded-canvas" width="540" height="960" aria-label="Expanded current video frame"></canvas></dialog>
+<div id="status" role="status" aria-live="polite"></div>
+</main>
+<script type="module" src="/assets/motion.js"></script>
+</body></html>

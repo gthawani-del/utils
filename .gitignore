@@ -3,3 +3,6 @@ node_modules/
 coverage/
 *.log
 dist/
+
+.venv-motion-voice/
+__pycache__/

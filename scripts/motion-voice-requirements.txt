@@ -1,0 +1,2 @@
+# Optional local narration companion. Not a website/runtime dependency.
+edge-tts==7.3.1
