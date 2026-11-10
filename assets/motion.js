@@ -1,10 +1,12 @@
-import { TEMPLATES, PALETTES, MAX_PROJECT_BYTES, makeProject, validateProject, durationOf, dimensions, fitNarration } from '/lib/motion/project.js';
+import { mountGallery, remapTemplate } from '/lib/motion/gallery.js';
+import { setupGuided } from '/lib/motion/guided-ui.js';
+import { TEMPLATES, PALETTES, MAX_PROJECT_BYTES, makeProject, validateProject, durationOf, dimensions, fitNarration, resolveColors, contrastRatio, COLOR_KEYS } from '/lib/motion/project.js';
 import { drawFrame } from '/lib/motion/renderer.js';
 import { draft } from '/lib/motion/storage.js';
 import { decodeNarration, mixAudio } from '/lib/motion/audio.js';
 import { probeExport, exportLyrical } from '/lib/lyrical/export.js';
 const $ = id => document.getElementById(id);
-let project = makeProject(), selected = 0, step = 0, current = 0, playing = false, raf = 0, startTime = 0;
+let project = makeProject('problem'), selected = 0, step = 0, current = 0, playing = false, raf = 0, startTime = 0;
 let images = new Map(), narration = null, playbackContext = null, playbackSource = null, busy = false, exportController = null;
 let startingPlayback = false, playbackGeneration = 0;
 let saveTimer, saveQueue = Promise.resolve(), statusTimer, downloadUrl, recovered, inWorkspace = false;
@@ -56,11 +58,11 @@ function populate() {
   $('duration').querySelector('[data-custom]')?.remove();
   if (!['15','24','40','60'].includes(String(total))) { const option = document.createElement('option'); option.dataset.custom = 'true'; option.value = String(total); option.textContent = `${Math.round(total * 10) / 10} seconds · current`; $('duration').append(option); }
   $('duration').value = String(total);
-  $('brand-name').value = project.brand; $('brand-url').value = project.url; $('music').checked = project.music;
+  $('brand-name').value = project.brand; $('brand-url').value = project.url; $('music').checked = project.music; $('intensity').value = project.intensity || 'balanced'; $('font-choice').value = project.font || 'sans'; colourForm();
   $('logo-state').textContent = project.logo ? 'Logo added · closing card' : 'No logo added'; $('remove-logo').hidden = !project.logo;
   $('audio-state').textContent = narration ? `${project.audioName} · ${narration.duration.toFixed(1)}s` : 'No narration added. You can export without it.';
   $('fit-audio').hidden = !narration; $('remove-audio').hidden = !narration;
-  document.querySelectorAll('[data-template]').forEach(el => { const active = el.dataset.template === project.template; el.classList.toggle('selected', active); el.setAttribute('aria-pressed', String(active)); el.querySelector('.template-check').textContent = active ? '✓' : ''; });
+  document.querySelectorAll('[data-template]').forEach(el => { const active = el.dataset.template === project.template; el.classList.toggle('selected', active); el.setAttribute('aria-current', String(active)); el.querySelector('.template-check').textContent = active ? '✓' : ''; });
   document.querySelectorAll('[data-palette]').forEach(el => { const active = el.dataset.palette === project.palette; el.classList.toggle('selected', active); el.setAttribute('aria-pressed', String(active)); });
   const size = dimensions(project.format, 540); canvas.width = size.width; canvas.height = size.height;
   sceneTabs(); sceneForm(); render(); refreshSummary();
@@ -77,11 +79,11 @@ function sceneTabs() {
 }
 function sceneForm() {
   selected = Math.min(selected, project.scenes.length - 1); const scene = project.scenes[selected];
-  $('scene-name').textContent = `Scene ${selected + 1}`; $('scene-title').value = scene.title; $('scene-body').value = scene.body;
+  $('scene-name').textContent = `Scene ${selected + 1}`; $('scene-title').value = scene.title; $('scene-body').value = scene.body; $('scene-narration').value = scene.narration;
   $('scene-duration').value = String(Math.round(scene.duration * 10) / 10); $('layout').value = scene.layout; $('effect').value = scene.effect;
-  $('point-fields').hidden = scene.layout !== 'steps'; document.querySelectorAll('[data-point]').forEach(el => el.value = scene.points[Number(el.dataset.point)]);
+  $('point-fields').hidden = ['title','feature','closing'].includes(scene.layout) && TEMPLATES.find(t=>t.id===project.template)?.legacy; const hints = TEMPLATES.find(t=>t.id===scene.layout)?.labelHints || TEMPLATES.find(t=>t.id===project.template)?.labelHints || ['Step 1','Step 2','Step 3']; document.querySelectorAll('[data-point]').forEach((el,i)=> { el.parentElement.firstChild.textContent = hints[i]; }); document.querySelectorAll('[data-point]').forEach(el => el.value = scene.points[Number(el.dataset.point)]);
   $('image-state').textContent = scene.image ? 'Scene image added' : 'No image · uses animated graphics'; $('remove-image').hidden = !scene.image;
-  $('move-left').disabled = selected === 0; $('move-right').disabled = selected === project.scenes.length - 1; $('delete-scene').disabled = project.scenes.length === 1; $('add-scene').disabled = project.scenes.length >= 12;
+  $('move-left').disabled = selected === 0; $('move-right').disabled = selected === project.scenes.length - 1; $('delete-scene').disabled = project.scenes.length === 1; $('add-scene').disabled = project.scenes.length >= 12; colourForm();
 }
 function refreshSummary() {
   $('project-heading').textContent = project.title;
@@ -105,7 +107,7 @@ async function prepare(next) {
 async function openProject(next) {
   const valid = validateProject(next), prepared = await prepare(valid);
   stop(); project = valid; images = prepared.decoded; narration = prepared.audio; selected = 0; current = 0; inWorkspace = true;
-  $('welcome').hidden = true; $('workspace').hidden = false; invalidateExport(); populate(); setStep(0); scheduleSave();
+  $('welcome').hidden = true; $('guided').hidden = true; $('template-browser').hidden = true; $('workspace').hidden = false; invalidateExport(); populate(); setStep(0); scheduleSave();
 }
 function defaults(next) {
   try { const d = JSON.parse(localStorage.getItem('utility-os:motion:brand') || 'null'); if (d) return validateProject({ ...next, ...d }); } catch {} return next;
@@ -153,28 +155,58 @@ async function play() {
     }; tick();
   } catch (e) { message(e.message, true); } finally { startingPlayback = false; }
 }
-TEMPLATES.forEach(template => {
-  const button = document.createElement('button'); button.className = 'template'; button.dataset.template = template.id; button.type = 'button';
-  const icon = document.createElement('span'); icon.className = 'template-icon'; icon.textContent = template.id === 'process' ? '123' : template.id === 'launch' ? '→' : 'Aa'; icon.setAttribute('aria-hidden','true');
-  const copy = document.createElement('span'), title = document.createElement('strong'), desc = document.createElement('small'), check = document.createElement('span');
-  title.textContent = template.name; desc.textContent = template.description; copy.append(title, desc); check.className = 'template-check'; check.setAttribute('aria-hidden','true'); button.append(icon, copy, check);
-  button.addEventListener('click', () => guarded(async () => {
-    if (template.id === project.template) return;
-    if (!confirm('Replace the current scenes with this template? Your brand and narration will be kept.')) return;
-    const next = makeProject(template.id, { title: project.title, format: project.format, language: project.language, duration: Number($('duration').value) || 24 });
-    Object.assign(next, { brand: project.brand, url: project.url, logo: project.logo, audio: project.audio, audioName: project.audioName, music: project.music });
-    await openProject(next); message('Template applied. Edit the scene text to tell your story.');
-  })); $('templates').append(button);
-});
+const newTemplates = TEMPLATES.filter(t=>!t.legacy);
+for (const template of newTemplates) { const option=document.createElement('option'); option.value=template.id; option.textContent=template.name; $('layout').append(option); }
+async function useTemplate(id) {
+  await guarded(async()=>{
+    if (inWorkspace) {
+      if (!confirm('Apply this animation to your scenes? Text, images, audio and colours are kept. Review the three labels in each scene: their visual roles will change.')) return;
+      await openProject(remapTemplate(project,id)); setStep(1); message('Animation changed. Review labels and images in each scene; only Product walkthrough embeds a scene image in its diagram.');
+    } else {
+      if (recovered && !confirm('Replace the saved draft with this template? Download your saved project first to keep it.')) return;
+      await openProject(defaults(makeProject(id))); setStep(1);
+    }
+  });
+}
+const galleries = [mountGallery($('templates'),{getProject:()=>project,getImages:()=>images,onUse:useTemplate,onError:text=>message(text,true)}), mountGallery($('welcome-gallery'),{getProject:()=>inWorkspace?project:recovered,getImages:()=>images,onUse:useTemplate,onError:text=>message(text,true)})];
+const guided=setupGuided({onOpen:async p=>{if(inWorkspace||recovered){if(!confirm('Use this storyboard as your new project? Download your current project first if you want to keep it.')) throw new Error('Your current project was kept. The guided brief is saved.');}await openProject(defaults(p));setStep(1);message('Storyboard created from your answers. Review each scene and its narration.');},onExit:()=>{if(inWorkspace){recovered=structuredClone(project);$('resume').hidden=false;}inWorkspace=false;$('resume-guided').hidden=!guided.available;$('welcome').hidden=false;},onError:text=>message(text,true)});
+$('resume-guided').hidden=!guided.available;
+$('start-guided').addEventListener('click',()=>{stop();galleries.forEach(g=>g.stop());guided.begin($('guided-description').value);});
+$('resume-guided').addEventListener('click',()=>{stop();guided.begin('',true);});
+$('guide-from-editor').addEventListener('click',()=>{if(busy)return;stop();guided.begin('');});
+$('browse-templates').addEventListener('click',()=>{stop();$('welcome').hidden=true;$('template-browser').hidden=false;});
+$('gallery-back').addEventListener('click',()=>{galleries.forEach(g=>g.stop());$('template-browser').hidden=true;$('welcome').hidden=false;});
+const colorLabels={bg:'Background',ink:'Headings',body:'Body text',accent:'Primary accent',secondary:'Secondary accent',soft:'Cards / surfaces',line:'Lines / borders'};
+function colourForm() {
+  const scoped=$('colour-scope').value==='scene', scene=project.scenes[selected];
+  $('colour-scope-note').textContent=scoped?`Overrides for scene ${selected+1}: ${scene.title}`:'Whole-video colours. Scene overrides, if any, are kept.';
+  const colors=resolveColors(project,scoped?scene:undefined);
+  for(const key of COLOR_KEYS){const pick=$('color-'+key),hex=$('hex-'+key);if(pick)pick.value=colors[key];if(hex)hex.value=colors[key];}
+  const pairs=[['Heading',colors.ink,colors.bg],['Body',colors.body,colors.bg],['Card text',colors.ink,colors.soft]];
+  const low=pairs.filter(([,a,b])=>contrastRatio(a,b)<4.5).map(([label])=>label);
+  $('contrast-note').textContent=low.length?`Low contrast: ${low.join(', ')}. Choose more distinct text and background colours.`:'Text/background contrast looks suitable. Review the animated preview too.';
+}
+for(const key of COLOR_KEYS){
+  const row=document.createElement('div');row.className='color-row';const label=document.createElement('label');label.htmlFor='color-'+key;label.textContent=colorLabels[key];
+  const pick=document.createElement('input');pick.type='color';pick.id='color-'+key;
+  const hex=document.createElement('input');hex.type='text';hex.id='hex-'+key;hex.maxLength=7;hex.setAttribute('aria-label',colorLabels[key]+' HEX');hex.pattern='#[0-9a-fA-F]{6}';
+  for(const control of [pick,hex])control.addEventListener('change',()=>{const value=control.value;if(!/^#[0-9a-fA-F]{6}$/.test(value)){message('Enter a six-digit HEX colour, such as #245340.',true);colourForm();return;}applyChange(p=>{const target=$('colour-scope').value==='scene'?p.scenes[selected]:p;target.colors={...(target.colors||{}),[key]:value};});colourForm();});
+  row.append(label,pick,hex);$('colour-controls').append(row);
+}
+$('colour-scope').addEventListener('change',colourForm);
+$('reset-colours').addEventListener('click',()=>{applyChange(p=>{const target=$('colour-scope').value==='scene'?p.scenes[selected]:p;target.colors={};});colourForm();});
+$('font-choice').addEventListener('change',()=>applyChange(p=>p.font=$('font-choice').value));
+$('intensity').addEventListener('change',()=>applyChange(p=>p.intensity=$('intensity').value));
+$('download-narration').addEventListener('click',()=>download(new Blob([project.scenes.map(s=>s.narration).join('\n\n')],{type:'text/plain;charset=utf-8'}),'motion-narration.txt'));
 Object.entries(PALETTES).forEach(([id, palette]) => {
   const button = document.createElement('button'); button.className = 'palette'; button.dataset.palette = id; button.type = 'button';
   const swatches = document.createElement('span'); swatches.className = 'swatches'; swatches.setAttribute('aria-hidden','true'); swatches.append(document.createElement('i'), document.createElement('i')); button.append(swatches, document.createTextNode(palette.name));
-  button.addEventListener('click', () => { if (applyChange(p => p.palette = id)) populate(); }); $('palettes').append(button);
+  button.addEventListener('click', () => { if (applyChange(p => { p.palette = id; p.colors = {}; })) populate(); }); $('palettes').append(button);
 });
-$('try-sample').addEventListener('click', () => guarded(async () => { if (recovered && !confirm('Replace the saved draft with the sample? Download the saved project first to keep it.')) return; await openProject(makeProject()); setStep(1); current = 1.2; render(); }));
-$('start-new').addEventListener('click', () => guarded(async () => { if (recovered && !confirm('Replace the saved draft with a new video? Download the saved project first to keep it.')) return; await openProject(defaults(makeProject())); }));
+$('try-sample').addEventListener('click', () => guarded(async () => { if (recovered && !confirm('Replace the saved draft with the sample? Download the saved project first to keep it.')) return; await openProject(makeProject('problem')); setStep(1); current = 1.2; render(); }));
+$('start-new').addEventListener('click', () => guarded(async () => { if (recovered && !confirm('Replace the saved draft with a new video? Download the saved project first to keep it.')) return; await openProject(defaults(makeProject('problem'))); }));
 $('resume').addEventListener('click', () => guarded(() => openProject(recovered)));
-$('new-project').addEventListener('click', () => { if (busy) return; if (!confirm('Start a new video? Download your project file first to keep this draft.')) return; guarded(() => openProject(defaults(makeProject()))); });
+$('new-project').addEventListener('click', () => { if (busy) return; if (!confirm('Start a new video? Download your project file first to keep this draft.')) return; guarded(() => openProject(defaults(makeProject('problem')))); });
 $('back').addEventListener('click', () => { if (busy) return; if (step) setStep(step - 1); else { stop(); recovered = structuredClone(project); $('resume').hidden = false; $('workspace').hidden = true; $('welcome').hidden = false; inWorkspace = false; } });
 $('next').addEventListener('click', () => { if (!busy) setStep(step + 1); });
 document.querySelectorAll('[data-step]').forEach(el => el.addEventListener('click', () => { if (!busy) setStep(Number(el.dataset.step)); }));
@@ -182,7 +214,7 @@ for (const [id, key] of [['project-title','title'], ['format','format'], ['langu
   $(id).addEventListener('change', () => { applyChange(p => p[key] = $(id).value); populate(); });
 }
 $('duration').addEventListener('change', () => { applyChange(p => { const ratio = Number($('duration').value) / durationOf(p); p.scenes.forEach(s => s.duration *= ratio); }); populate(); });
-for (const [id, key] of [['scene-title','title'], ['scene-body','body'], ['layout','layout'], ['effect','effect'], ['scene-duration','duration']]) {
+for (const [id, key] of [['scene-title','title'], ['scene-body','body'], ['scene-narration','narration'], ['layout','layout'], ['effect','effect'], ['scene-duration','duration']]) {
   $(id).addEventListener('change', () => { applyChange(p => p.scenes[selected][key] = key === 'duration' ? Number($(id).value) : $(id).value); sceneTabs(); sceneForm(); current = project.scenes.slice(0, selected).reduce((n,s)=>n+s.duration,0)+1.3; render(); });
 }
 document.querySelectorAll('[data-point]').forEach(el => el.addEventListener('change', () => { applyChange(p => p.scenes[selected].points[Number(el.dataset.point)] = el.value); sceneForm(); }));
@@ -204,7 +236,7 @@ $('narration').addEventListener('change', () => guarded(async () => {
 $('remove-audio').addEventListener('click', () => { if (applyChange(p => { p.audio = ''; p.audioName = ''; })) { narration = null; populate(); } });
 $('fit-audio').addEventListener('click', () => { if (!narration || busy) return; try { project = fitNarration(project, narration.duration); stop(); invalidateExport(); populate(); scheduleSave(); message('Scene durations now fit your narration.'); } catch(e) { message(e.message + ' Add more scenes or shorten the narration, then try again.', true); } });
 $('music').addEventListener('change', () => { applyChange(p => p.music = $('music').checked); });
-$('save-brand').addEventListener('click', () => { if (busy) return; try { localStorage.setItem('utility-os:motion:brand', JSON.stringify({ brand: project.brand, url: project.url, logo: project.logo, palette: project.palette })); message('Brand defaults saved on this device.'); } catch { message('Brand defaults could not be saved. Download your project file instead.',true); } });
+$('save-brand').addEventListener('click', () => { if (busy) return; try { localStorage.setItem('utility-os:motion:brand', JSON.stringify({ brand: project.brand, url: project.url, logo: project.logo, palette: project.palette, colors: project.colors, intensity: project.intensity, font: project.font })); message('Brand defaults saved on this device.'); } catch { message('Brand defaults could not be saved. Download your project file instead.',true); } });
 for (const id of ['import-welcome','import-editor']) $(id).addEventListener('change', () => guarded(async () => { await importFile($(id).files[0]); $(id).value = ''; }));
 $('download-project').addEventListener('click', () => { if (busy) return; const json = JSON.stringify(project, null, 2); if (new Blob([json]).size > MAX_PROJECT_BYTES) { message('Project is too large. Remove some images or shorten narration before saving.',true); return; } download(new Blob([json], { type:'application/json' }), 'motion-studio-project.json'); message('Project download prepared, including your images and narration.'); });
 $('copy-brief').addEventListener('click', () => guarded(async () => {
@@ -218,7 +250,7 @@ $('close-preview').addEventListener('click', () => $('preview-dialog').close());
 $('seek').addEventListener('input', () => { if (busy) return; stop(); current = Number($('seek').value); render(); });
 $('sample-preview').addEventListener('click', () => {
   if (playing) { stop(); return; }
-  stop(); const sample = makeProject(), sampleCanvas = $('welcome-canvas'); let origin = performance.now(); playing = true; $('sample-preview').textContent = 'Pause sample';
+  stop(); const sample = makeProject('problem'), sampleCanvas = $('welcome-canvas'); let origin = performance.now(); playing = true; $('sample-preview').textContent = 'Pause sample';
   function tick(now) { if (!playing) return; const t = (now - origin) / 1000; drawFrame(sampleCanvas.getContext('2d'), sample, Math.min(t,23.98)); if(t >= 24) stop(); else raf = requestAnimationFrame(tick); } raf = requestAnimationFrame(tick);
 });
 async function support() { const size = dimensions(project.format, Number($('resolution').value)); const candidates = await probeExport({ ...size, sampleRate:48000, numberOfChannels:2, fps:30 }); $('export-support').textContent = candidates.length ? `Available on this device: ${candidates.map(c=>c.format.toUpperCase()).join(', ')}.` : 'Video encoding is unavailable in this browser. Save your project and try a current desktop browser.'; return candidates; }
@@ -240,5 +272,5 @@ $('export-video').addEventListener('click', () => guarded(async () => {
 $('cancel-export').addEventListener('click', () => exportController?.abort());
 document.addEventListener('visibilitychange', () => { if (document.hidden && playing) stop(); });
 window.addEventListener('beforeunload', e => { if (busy || $('save-state').textContent === 'Saving…') { e.preventDefault(); e.returnValue = ''; } });
-drawFrame($('welcome-canvas').getContext('2d'), makeProject(), 1.4);
+drawFrame($('welcome-canvas').getContext('2d'), makeProject('problem'), 1.4);
 try { const saved = await draft('read'); if (saved) { recovered=validateProject(saved); $('resume').hidden=false; } } catch { message('Saved drafts are unavailable. You can still create and download project files.',true); }
