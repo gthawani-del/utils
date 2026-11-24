@@ -1789,3 +1789,20 @@
   .compiler-asset-detail-stage{min-height:0;display:flex;align-items:center;justify-content:center;padding:20px;background:#eef1f5;overflow:hidden}
   .compiler-asset-detail-stage img{max-width:100%;max-height:100%;object-fit:contain}
 }
+
+.image-file-choice { display:flex; align-items:center; gap:8px; }
+.image-file-choice .file-row { flex:1; min-width:0; }
+.image-file-choice input { flex:none; width:20px; height:20px; margin:4px; }
+.image-batch-actions { padding:10px 12px; border-bottom:1px solid #dce2e8; }
+.image-batch-actions[hidden] { display:none; }
+.image-batch-actions .secondary-button { min-height:40px; margin:4px 2px 0 0; }
+#image-batch-status:empty { display:none; }
+
+.image-quick-links { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 14px; }
+.image-quick-links a { display:inline-flex; align-items:center; min-height:44px; }
+.compiler-crop-controls { padding:12px; }
+.compiler-crop-controls label { display:grid; gap:4px; margin:10px 0; }
+.compiler-crop-controls summary { cursor:pointer; }
+@media (max-width:700px) {
+  body.mobile-editing.mobile-files-open .file-list.has-batch-actions { max-height:calc(62dvh - 200px); }
+}

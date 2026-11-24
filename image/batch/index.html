@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="Resize, convert and export a batch of images on your device.">
+  <title>Batch Resize &amp; Export · Utility OS</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="/assets/home.css">
+  <link rel="stylesheet" href="/assets/image-batch.css">
+</head>
+<body class="home-body">
+  <header class="home-header">
+    <a class="brand" href="/" aria-label="Utility OS home"><span class="brand-mark">U</span><span>Utility OS</span></a>
+    <a href="/image">Image Studio</a>
+  </header>
+  <main class="image-batch">
+    <h1 id="batch-heading">Batch Resize &amp; Export</h1>
+    <p id="batch-intro">Give one or more images the same size or format. Files stay on this device.</p>
+    <section class="batch-picker" aria-label="Image files">
+      <label for="batch-input">Choose images</label>
+      <input id="batch-input" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/svg+xml" multiple aria-describedby="batch-limits">
+      <p id="batch-limits">JPEG, PNG, WebP, AVIF and supported SVG. Up to 50 files, 40 MB each.</p>
+    </section>
+    <form id="batch-form" hidden>
+      <div class="batch-layout">
+        <div class="batch-controls">
+          <label id="batch-preset-field">Preset
+            <select id="batch-preset"><option value="custom">Custom</option><option value="product">Product Photos · 2000 × 2000</option><option value="square">Social Square · 1080 × 1080</option><option value="portrait">Social Portrait · 1080 × 1350</option></select>
+          </label>
+          <label id="batch-framing-field">Framing
+            <select id="batch-framing"><option value="contain">Pad to exact size</option><option value="fit">Fit within dimensions</option><option value="fill">Fill and crop</option><option value="original">Keep original dimensions</option></select>
+          </label>
+          <p id="batch-frame-help"></p>
+          <div class="batch-pair" id="batch-dimensions">
+            <label>Width (px)<input id="batch-width" type="number" min="1" max="12000" value="1080" inputmode="numeric" required></label>
+            <label>Height (px)<input id="batch-height" type="number" min="1" max="12000" value="1080" inputmode="numeric" required></label>
+          </div>
+          <label>Format
+            <select id="batch-format"><option value="jpeg">JPEG</option><option value="webp">WebP</option><option value="png">PNG</option><option value="avif">AVIF (if supported)</option></select>
+          </label>
+          <details id="batch-options">
+            <summary>Padding, compression and file names</summary>
+            <div class="batch-options">
+              <label id="batch-padding-field">Padding
+                <select id="batch-padding"><option value="white">White</option><option value="transparent">Transparent</option></select>
+              </label>
+              <label id="batch-compression-field">Compression
+                <select id="batch-compression"><option value="quality">Choose quality</option><option value="target">Stay under a file size</option></select>
+              </label>
+              <label id="batch-quality-field">Quality <output id="batch-quality-value">82%</output>
+                <input id="batch-quality" type="range" min="5" max="98" value="82">
+              </label>
+              <label id="batch-target-field" hidden>Maximum size per image (KB)
+                <input id="batch-target" type="number" min="1" max="61440" value="200" inputmode="numeric" required>
+              </label>
+              <label>Numbered filenames <input id="batch-prefix" type="text" maxlength="40" placeholder="Optional, e.g. campaign"></label>
+            </div>
+          </details>
+          <button id="batch-generate" class="primary-button" type="submit">Preview exports</button>
+          <button id="batch-zip" class="secondary-button" type="button" hidden>Download ZIP</button>
+        </div>
+        <section aria-label="Batch preview">
+          <h2 id="batch-file-count">Files</h2>
+          <ul id="batch-files" class="batch-files"></ul>
+        </section>
+      </div>
+    </form>
+    <p id="batch-status" role="status"></p>
+  </main>
+  <script type="module" src="/assets/image-batch.js"></script>
+</body>
+</html>

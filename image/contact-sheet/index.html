@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="Create a labeled contact sheet of images and download it as PNG.">
+  <title>Contact Sheet · Utility OS</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="/assets/home.css">
+  <link rel="stylesheet" href="/assets/image-batch.css">
+</head>
+<body class="home-body">
+  <header class="home-header">
+    <a class="brand" href="/" aria-label="Utility OS home"><span class="brand-mark">U</span><span>Utility OS</span></a>
+    <a href="/image">Image Studio</a>
+  </header>
+  <main class="image-batch">
+    <h1>Contact Sheet</h1>
+    <p>Make a labeled photo grid for review. Files stay on this device.</p>
+    <div class="batch-picker">
+      <label for="contact-files">Choose images</label>
+      <input id="contact-files" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/svg+xml" multiple>
+      <p>JPEG, PNG, WebP, AVIF and supported SVG. Up to 50 files, 40 MB each.</p>
+    </div>
+    <form id="contact-form" hidden>
+      <div class="batch-layout">
+        <div class="batch-controls">
+          <label>Columns <select id="contact-columns"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
+          <label>Labels <select id="contact-labels"><option value="filenames">Filenames</option><option value="numbers">Reference numbers</option><option value="none">None</option></select></label>
+          <button id="contact-generate" class="primary-button" type="submit">Preview contact sheet</button>
+          <a id="contact-download" class="secondary-button contact-download" download="contact-sheet.png" hidden>Download PNG</a>
+        </div>
+        <img class="contact-preview" id="contact-preview" alt="Contact sheet preview" hidden>
+      </div>
+    </form>
+    <p id="contact-status" role="status"></p>
+    <ul id="contact-errors"></ul>
+  </main>
+  <script type="module" src="/assets/contact-sheet.js"></script>
+</body>
+</html>

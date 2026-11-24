@@ -17,15 +17,20 @@ import { buildResponsiveVariants, buildPictureMarkup } from '/lib/image/web-pack
 import { detectWatermarkRegions, boxesToCleanupStrokes } from '/lib/image/watermark-detect.js';
 import { shouldUseBrowserProcessor, processBrowserImage, optimizeBrowserImage } from '/lib/image/browser-processor.js';
 
+const openSocialPack = new URLSearchParams(location.search).get('tool') === 'social';
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
 const state = { items: [], selectedId: null, busy: false, useBrowserProcessor: shouldUseBrowserProcessor(), mobileStartOpen: true, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, layerDrag: null, replaceDrag: null, mobilePrecision: false, compilerCustomOutputs: [], compilerSelectedIds: new Set(), compilerGenerated: [], redoHistory: [], previewTimer: 0, previewAbort: null };
 const $ = (selector) => document.querySelector(selector);
+const RESIZE_FIELDS = ['preset', 'resizeMode', 'width', 'height', 'percentage', 'longest', 'shortest', 'preserveAspect'];
+const CROP_FIELDS = ['cropMode', 'customRatio', 'cropX', 'cropY', 'cropWidth', 'cropHeight', 'smartCropEnabled', 'rotate', 'flipX', 'flipY'];
+const EXPORT_FIELDS = ['format', 'quality', 'targetSize', 'background'];
 const EDIT_KEYS = ['brightness','exposure','contrast','saturation','vibrance','highlights','shadows','temperature','tint','gamma','sharpen','blur','grayscale','sepia','straighten'];
 const MOBILE_ADJUST_LABELS = { brightness:'Brightness', exposure:'Exposure', contrast:'Contrast', saturation:'Saturation', vibrance:'Vibrance', highlights:'Highlights', shadows:'Shadows', temperature:'Warmth', tint:'Tint', gamma:'Gamma', sharpen:'Sharpen', blur:'Blur', grayscale:'Black & White', sepia:'Sepia', straighten:'Straighten', rotate:'Rotate', flipX:'Flip Horizontal', flipY:'Flip Vertical' };
 const els = {
   input: $('#file-input'), choose: $('#choose-files'), uploadIcon: $('#upload-icon-button'), add: $('#add-more'), desktopAdd: $('#desktop-add-image'), desktopCurrentFile: $('#desktop-current-file'), desktopImageName: $('#desktop-image-name'), desktopOriginalInfo: $('#desktop-original-info'), desktopEditedInfo: $('#desktop-edited-info'), desktopApplyEdit: $('#desktop-apply-edit'), desktopCancelEdit: $('#desktop-cancel-edit'), drop: $('#drop-zone'), workspace: $('#workspace'), list: $('#file-list'), count: $('#file-count'), mobileContinue: $('#mobile-continue'), mobileStartCount: $('#mobile-start-count'),
   originalPreview: $('#original-preview'), outputPreview: $('#output-preview'), originalStats: $('#original-stats'), outputStats: $('#output-stats'), metadata: $('#metadata-box'),
+  batchActions: $('#image-batch-actions'), batchStatus: $('#image-batch-status'), copyResize: $('#copy-image-resize'), copyWatermark: $('#copy-image-watermark'),
   compatibility: $('#compatibility'), preset: $('#preset'), resizeMode: $('#resize-mode'), width: $('#width'), height: $('#height'), percentage: $('#percentage'), longest: $('#longest-edge'), shortest: $('#shortest-edge'),
   percentageWrap: $('#percentage-wrap'), longestWrap: $('#longest-wrap'), shortestWrap: $('#shortest-wrap'), preserveAspect: $('#preserve-aspect'), cropMode: $('#crop-mode'), customRatio: $('#custom-ratio'), customRatioWrap: $('#custom-ratio-wrap'), freeCrop: $('#free-crop'),
   cropX: $('#crop-x'), cropY: $('#crop-y'), cropWidth: $('#crop-width'), cropHeight: $('#crop-height'), smartCropEnabled: $('#smart-crop-enabled'), smartCropAnalyze: $('#smart-crop-analyze'), smartCropStatus: $('#smart-crop-status'), smartCropX: $('#smart-crop-x'), smartCropY: $('#smart-crop-y'), smartCropXValue: $('#smart-crop-x-value'), smartCropYValue: $('#smart-crop-y-value'), format: $('#format'), quality: $('#quality'), qualityValue: $('#quality-value'), targetSize: $('#target-size'), background: $('#background'), rotate: $('#rotate'), flipX: $('#flip-x'), flipY: $('#flip-y'),
@@ -58,6 +63,12 @@ function initialize() {
     option.value = preset.id; option.textContent = `${preset.label} · ${preset.width}×${preset.height}`;
     els.preset.append(option);
   }
+  if (openSocialPack) {
+    document.querySelector('.studio-heading h1').textContent = 'Create a social asset pack.';
+    document.querySelector('.studio-heading p:not(.eyebrow)').textContent = 'Choose a master image and preview it in several sizes.';
+    els.input.multiple = false;
+    els.choose.textContent = 'Choose master image';
+  }
   wireEvents();
   updateConditionalControls();
   renderLayerList(); renderLayerProperties(); updateWatermarkConditional(); renderCompiler(); renderAssetDoctor(selectedItem()); setMobileMode('adjust'); setMobileAdjust('brightness'); syncMobileEditingState();
@@ -83,9 +94,11 @@ function wireEvents() {
   els.quality.addEventListener('input', () => { els.qualityValue.textContent = els.quality.value; });
   for (const el of [els.width, els.height, els.percentage, els.longest, els.shortest]) el.addEventListener('input', () => { updateWarnings(); invalidatePerformanceResult(); });
   for (const el of [els.customRatio, els.cropX, els.cropY, els.cropWidth, els.cropHeight]) el.addEventListener('input', () => scheduleEditPreview(100));
-  els.reset.addEventListener('click', resetToOriginal);
+  els.reset.addEventListener('click', () => resetToOriginal());
   els.processSelected.addEventListener('click', processSelected);
   els.processAll.addEventListener('click', processAll);
+  els.copyResize.addEventListener('click', () => copyImageEdit('resize'));
+  els.copyWatermark.addEventListener('click', () => copyImageEdit('watermark'));
   els.downloadSelected.addEventListener('click', downloadSelected);
   els.downloadAll.addEventListener('click', downloadAll);
   els.clear.addEventListener('click', clearAll);
@@ -103,6 +116,7 @@ function wireEvents() {
   els.duplicateLayer.addEventListener('click', duplicateSelectedLayer); els.deleteLayer.addEventListener('click', deleteSelectedLayer); els.layerUp.addEventListener('click', () => moveSelectedLayer(1)); els.layerDown.addEventListener('click', () => moveSelectedLayer(-1));
   for (const control of layerControls()) { control.addEventListener('input', updateSelectedLayerFromControls); control.addEventListener('change', updateSelectedLayerFromControls); }
   for (const control of watermarkControls()) { control.addEventListener('input', () => { updateWatermarkConditional(); scheduleEditPreview(); }); control.addEventListener('change', () => { updateWatermarkConditional(); scheduleEditPreview(40); }); }
+  els.watermarkEnabled.addEventListener('change', updateButtons);
   els.chooseWatermarkLogo.addEventListener('click', () => els.watermarkLogoInput.click());
   els.watermarkLogoInput.addEventListener('change', () => setWatermarkLogo(els.watermarkLogoInput.files?.[0]));
   els.cleanupBrush.addEventListener('input', () => { els.cleanupBrushValue.textContent = els.cleanupBrush.value; });
@@ -124,10 +138,12 @@ function wireEvents() {
   els.mobileExportTop.addEventListener('click', () => setMobileMode('export'));
   els.mobileSheetBack.addEventListener('click', () => setMobileMode('more'));
   for (const button of els.mobileMoreButtons) button.addEventListener('click', () => setMobileMode(button.dataset.mobileMoreTarget));
-  els.mobileMoreRevert.addEventListener('click', () => { resetToOriginal(); renderSelectedSafely(); setMobileMode('adjust'); });
+  els.mobileMoreRevert.addEventListener('click', () => { resetToOriginal(); setMobileMode('adjust'); });
   els.mobileMoreFiles.addEventListener('click', toggleMobileFiles);
-  for (const type of ['pointerdown','keydown']) els.mobileCompare.addEventListener(type, (event) => { if (type === 'keydown' && ![' ','Enter'].includes(event.key)) return; state.mobileShowOriginal = true; renderMobileCanvas(selectedItem()); });
-  for (const type of ['pointerup','pointercancel','pointerleave','keyup']) els.mobileCompare.addEventListener(type, () => { state.mobileShowOriginal = false; renderMobileCanvas(selectedItem()); });
+  els.mobileCompare.addEventListener('click', () => {
+    setCompareOriginal(!state.mobileShowOriginal);
+    renderMobileCanvas(selectedItem());
+  });
   els.mobileBatchChip.addEventListener('click', toggleMobileFiles);
   els.mobileFilesBackdrop.addEventListener('click', closeMobileFiles); els.mobileFilesClose.addEventListener('click', closeMobileFiles);
   els.mobileExportSelected.addEventListener('click', mobileExportSelected); els.mobileExportAll.addEventListener('click', mobileExportAll);
@@ -224,7 +240,10 @@ async function addFiles(files) {
         state.selectedId = firstReady.id;
         state.mobileStartOpen = false;
         syncMobileEditingState();
-        try { resetToOriginal(); } catch {}
+        try { resetToOriginal({ resetExport: true }); } catch {}
+        if (openSocialPack) {
+          setMobileMode('compiler'); setDesktopInspectorTool('social');
+        }
       }
     }
     renderList(); renderSelectedSafely(); syncMobileEditingState();
@@ -235,17 +254,104 @@ function makeRejectedItem(file, reason) {
   return { id: crypto.randomUUID(), file, status: 'unsupported', inspect: null, error: reason, originalUrl: '', outputBlob: null, outputUrl: '', outputName: '', editPreviewUrl: '', editPreviewBlob: null, cleanupStrokes: [], cleanupApplied: false, cleanupImage: null, replaceSelection: null, textReplacements: [], replaceHistory: [], pendingTextRemoval:null, displayName:file.name.replace(/\.[^.]+$/,''), performanceResult: null, performanceResultUrl: '', transparencyDetected: null, assetDoctorReport: null, smartCrop: { analyzed:false, regions:[], manual:false, focusX:.5, focusY:.5, summary:null } };
 }
 
-function selectItem(id, reset = false) {
+function readFields(controls) {
+  return controls.map(control => control.type === 'checkbox' ? control.checked : control.value);
+}
+
+function writeFields(controls, values) {
+  if (!values) return;
+  controls.forEach((control, index) => {
+    if (control.type === 'checkbox') control.checked = values[index];
+    else control.value = values[index];
+  });
+}
+
+function saveActiveImage() {
+  const item = selectedItem();
+  if (!item?.inspect) return;
+  item.editor = {
+    resize: readFields(RESIZE_FIELDS.map(key => els[key])),
+    geometry: readFields(CROP_FIELDS.map(key => els[key])),
+    watermark: readFields(watermarkControls()),
+    settings: collectSettings(),
+    layers: [...state.layers], layerId: state.selectedLayerId, logo: state.watermarkLogoFile,
+    undo: [...state.editHistory], redo: [...state.redoHistory],
+    committedEdits: state.lastCommittedEdits, committedGeometry: state.lastCommittedGeometry,
+  };
+}
+
+function restoreImageEditor(item) {
+  const exportValues = readFields(EXPORT_FIELDS.map(key => els[key]));
+  initializeImageControls(item);
+  const editor = item.editor;
+  if (editor) {
+    writeFields(RESIZE_FIELDS.map(key => els[key]), editor.resize);
+    writeFields(CROP_FIELDS.map(key => els[key]), editor.geometry);
+    writeFields(watermarkControls(), editor.watermark);
+    applyEditsToControls(editor.settings.edits);
+    state.layers = editor.layers || [];
+    state.selectedLayerId = editor.layerId || null;
+    state.watermarkLogoFile = editor.logo || null;
+    state.editHistory = editor.undo || [];
+    state.redoHistory = editor.redo || [];
+    state.lastCommittedEdits = editor.committedEdits || normalizeEdits(DEFAULT_EDITS);
+    state.lastCommittedGeometry = editor.committedGeometry || { rotate: 0, flipX: false, flipY: false };
+    els.watermarkLogoName.textContent = state.watermarkLogoFile?.name || 'No logo selected';
+  }
+  writeFields(EXPORT_FIELDS.map(key => els[key]), exportValues);
+  els.qualityValue.textContent = els.quality.value;
+  els.targetSize.disabled = els.format.value === 'png';
+  updateConditionalControls(); syncMobileCropButtons(); updateWatermarkConditional();
+  renderLayerList(); renderLayerProperties(); updateMobileLayerHint(); updateUndoButton();
+}
+
+function selectItem(id) {
+  if (state.busy || id === state.selectedId) return;
+  const next = state.items.find(item => item.id === id);
+  if (!next?.inspect) return;
+  saveActiveImage();
+  clearTimeout(state.previewTimer);
+  state.previewAbort?.abort();
+  setCompareOriginal(false);
   state.selectedId = id;
   state.mobileStartOpen = false;
-  syncMobileEditingState();
-  if (state.selectedLayerId && !layersForItem().some((layer) => layer.id === state.selectedLayerId)) state.selectedLayerId = null;
-  if (reset) {
-    try { resetToOriginal(); }
-    catch { showCompatibility('The image is selected, but some editor controls could not be initialized.'); }
-  }
+  restoreImageEditor(next);
+  els.batchStatus.textContent = '';
+  els.mobileCanvasStatus?.classList.add('hidden');
+  state.layerDrag = state.replaceDrag = null;
   renderList(); renderSelectedSafely(); syncMobileEditingState();
   if (window.matchMedia('(max-width: 700px)').matches) closeMobileFiles();
+  if (next.editor && !next.editPreviewUrl && !next.outputUrl) scheduleEditPreview(20);
+}
+
+function copyImageEdit(kind) {
+  const active = selectedItem();
+  if (!active?.inspect || state.busy) return;
+  const recipients = state.items.filter(item => item.batchSelected && item.inspect && item !== active);
+  if (!recipients.length) { els.batchStatus.textContent = 'Choose one or more other images first.'; return; }
+  saveActiveImage();
+  const source = active.editor;
+  for (const item of recipients) {
+    const editor = item.editor ??= { settings: {} };
+    if (kind === 'resize') {
+      editor.resize = [...source.resize];
+      for (const key of ['resizeMode', 'width', 'height', 'percentage', 'longestEdge', 'shortestEdge', 'preserveAspect']) {
+        editor.settings[key] = source.settings[key];
+      }
+    } else {
+      editor.watermark = [...source.watermark];
+      editor.settings.watermark = { ...source.settings.watermark };
+      editor.logo = source.logo;
+    }
+    discardPreviewUrl(item);
+    revokeObjectUrl(item.outputUrl);
+    item.outputUrl = ''; item.outputBlob = null; item.outputName = '';
+    item.assetDoctorReport = null;
+    invalidatePerformanceResult(item);
+    item.status = 'ready'; item.error = '';
+  }
+  els.batchStatus.textContent = `${kind === 'resize' ? 'Resize' : 'Watermark'} copied to ${recipients.length} ${recipients.length === 1 ? 'image' : 'images'}.`;
+  renderList(); updateButtons();
 }
 
 function selectedItem() { return state.items.find((item) => item.id === state.selectedId) || null; }
@@ -253,6 +359,8 @@ function selectedItem() { return state.items.find((item) => item.id === state.se
 function renderList() {
   els.list.replaceChildren();
   els.count.textContent = `${state.items.length} image${state.items.length === 1 ? '' : 's'}`;
+  els.batchActions.hidden = state.items.filter(item => item.inspect).length < 2;
+  els.list.classList.toggle('has-batch-actions', !els.batchActions.hidden);
   for (const item of state.items) {
     const button = document.createElement('button');
     button.type = 'button'; button.className = `file-row${item.id === state.selectedId ? ' selected' : ''}`; button.addEventListener('click', () => selectItem(item.id));
@@ -260,7 +368,18 @@ function renderList() {
     const name = document.createElement('strong'); name.textContent = item.displayName || item.file.name || 'Unnamed file';
     const detail = document.createElement('span'); detail.textContent = item.inspect ? `${item.inspect.kind.toUpperCase()} · ${item.inspect.dimensions.width}×${item.inspect.dimensions.height} · ${formatBytes(item.file.size)}` : (item.error || formatBytes(item.file.size));
     const status = document.createElement('span'); status.className = `status status-${item.status}`; status.textContent = statusLabel(item.status);
-    copy.append(name, detail); button.append(copy, status); els.list.append(button);
+    copy.append(name, detail); button.append(copy, status);
+    const row = document.createElement('div');
+    row.className = 'image-file-choice';
+    if (!els.batchActions.hidden && item.inspect && item.id !== state.selectedId) {
+      const select = document.createElement('input');
+      select.type = 'checkbox'; select.checked = Boolean(item.batchSelected); select.disabled = state.busy;
+      select.setAttribute('aria-label', `Select ${name.textContent} for batch changes`);
+      select.addEventListener('change', () => { item.batchSelected = select.checked; updateButtons(); });
+      row.append(select);
+    }
+    button.disabled = state.busy || !item.inspect;
+    row.append(button); els.list.append(row);
   }
 }
 
@@ -318,24 +437,44 @@ function renderMetadata(item) {
 function addPreviewImage(container, src, alt) { const img = document.createElement('img'); img.src = src; img.alt = alt; img.decoding = 'async'; container.append(img); }
 function fillStats(dl, entries) { for (const [key, value] of entries) { const dt = document.createElement('dt'); dt.textContent = key; const dd = document.createElement('dd'); dd.textContent = value; dl.append(dt, dd); } }
 
-function resetToOriginal() {
-  const item = selectedItem();
-  if (!item?.inspect) return;
+function initializeImageControls(item) {
   els.preset.value = 'custom'; els.resizeMode.value = 'fit'; els.width.value = item.inspect.dimensions.width; els.height.value = item.inspect.dimensions.height; els.percentage.value = 100; els.longest.value = Math.max(item.inspect.dimensions.width, item.inspect.dimensions.height); els.shortest.value = Math.min(item.inspect.dimensions.width, item.inspect.dimensions.height);
   els.preserveAspect.checked = true; els.cropMode.value = 'none'; els.cropX.value = 0; els.cropY.value = 0; els.cropWidth.value = item.inspect.dimensions.width; els.cropHeight.value = item.inspect.dimensions.height;
   els.format.value = item.inspect.kind === 'svg' ? 'png' : item.inspect.kind; els.quality.value = 82; els.qualityValue.textContent = '82'; els.targetSize.value = ''; els.rotate.value = 0; els.flipX.checked = false; els.flipY.checked = false;
   applyEditsToControls(DEFAULT_EDITS); state.editHistory = []; state.redoHistory = []; state.lastCommittedEdits = normalizeEdits(DEFAULT_EDITS); state.lastCommittedGeometry = { rotate: 0, flipX: false, flipY: false }; updateUndoButton();
   state.layers = []; state.selectedLayerId = null; renderLayerList(); renderLayerProperties(); resetWatermarkControls();
-  item.cleanupStrokes = []; item.cleanupApplied = false; item.replaceSelection = null; item.textReplacements = []; item.replaceHistory = []; item.assetDoctorReport = null; item.smartCrop={analyzed:false,regions:[],manual:false,focusX:.5,focusY:.5,summary:null}; els.smartCropEnabled.checked=false; invalidatePerformanceResult(item); renderCleanupEditor(item); renderReplaceSelector(item);
-  if (item.editPreviewUrl) { revokeObjectUrl(item.editPreviewUrl); item.editPreviewUrl = ''; item.editPreviewBlob = null; }
+  els.smartCropEnabled.checked = false;
   els.editComparison.classList.add('hidden');
   updateConditionalControls(); syncMobileCropButtons(); updateWarnings();
+}
+
+function resetToOriginal({ resetExport = false } = {}) {
+  const item = selectedItem();
+  if (!item?.inspect || state.busy) return;
+  clearTimeout(state.previewTimer);
+  state.previewAbort?.abort();
+  const exportValues = readFields(EXPORT_FIELDS.map(key => els[key]));
+  initializeImageControls(item);
+  if (!resetExport) writeFields(EXPORT_FIELDS.map(key => els[key]), exportValues);
+  els.qualityValue.textContent = els.quality.value;
+  item.editor = null;
+  setCompareOriginal(false);
+  item.cleanupStrokes = []; item.cleanupApplied = false; item.replaceSelection = null;
+  item.textReplacements = []; item.replaceHistory = []; item.pendingTextRemoval = null;
+  item.assetDoctorReport = null;
+  item.smartCrop = { analyzed: false, regions: [], manual: false, focusX: .5, focusY: .5, summary: null };
+  invalidatePerformanceResult(item); discardPreviewUrl(item);
+  revokeObjectUrl(item.outputUrl);
+  item.outputUrl = ''; item.outputBlob = null; item.outputName = '';
+  item.outputWidth = null; item.outputHeight = null; item.status = 'ready'; item.error = '';
+  els.targetSize.disabled = els.format.value === 'png';
+  renderList(); renderSelectedSafely();
 }
 
 function applyPreset() {
   const preset = IMAGE_PRESETS.find((item) => item.id === els.preset.value);
   if (!preset) return;
-  els.resizeMode.value = 'fill'; els.width.value = preset.width; els.height.value = preset.height; updateConditionalControls(); updateWarnings(); scheduleEditPreview(80);
+  els.resizeMode.value = 'contain'; els.width.value = preset.width; els.height.value = preset.height; updateConditionalControls(); updateWarnings(); scheduleEditPreview(80);
 }
 
 function updateConditionalControls() {
@@ -381,28 +520,44 @@ function collectSettings() {
 }
 
 async function processSelected() {
-  const item = selectedItem(); if (!item || item.status === 'unsupported' || item.status === 'failed') return;
-  await runAssetDoctor({ quiet:true });
-  setBusy(true); await processItem(item, collectSettings()); setBusy(false); renderList(); renderSelected();
+  const item = selectedItem();
+  if (!item?.inspect || state.busy) return;
+  const settings = collectSettings();
+  const logo = state.watermarkLogoFile;
+  state.previewAbort?.abort(); clearTimeout(state.previewTimer);
+  setBusy(true);
+  try {
+    await runAssetDoctor({ quiet: true });
+    await processItem(item, settings, logo);
+  } finally {
+    setBusy(false); renderList(); renderSelectedSafely();
+  }
 }
 
 async function processAll() {
-  const candidates = state.items.filter((item) => item.inspect && !['unsupported', 'failed'].includes(item.status));
+  if (state.busy) return;
+  const candidates = state.items.filter(item => item.inspect);
   if (!candidates.length) return;
-  setBusy(true); const settings = collectSettings();
-  let cursor = 0;
-  const workers = Array.from({ length: Math.min(SECURITY_BUDGET.batchConcurrency, candidates.length) }, async () => {
-    while (cursor < candidates.length) { const item = candidates[cursor++]; await processItem(item, settings); renderList(); if (item.id === state.selectedId) renderSelected(); }
-  });
-  await Promise.all(workers); setBusy(false); renderList(); renderSelected();
+  saveActiveImage();
+  const { format, quality, targetBytes, background } = collectSettings();
+  const exportOptions = { format, quality, targetBytes, background };
+  state.previewAbort?.abort(); clearTimeout(state.previewTimer);
+  setBusy(true);
+  try {
+    for (const item of candidates) {
+      await processItem(item, { ...item.editor?.settings, ...exportOptions }, item.editor?.logo ?? null);
+    }
+  } finally {
+    setBusy(false); renderList(); renderSelectedSafely();
+  }
 }
 
-async function processItem(item, settings) {
+async function processItem(item, settings, logo = state.watermarkLogoFile) {
   item.status = 'processing'; item.error = ''; renderList();
   if (item.outputUrl) { revokeObjectUrl(item.outputUrl); item.outputUrl = ''; item.outputBlob = null; }
   try {
     const effectiveSettings = { ...settings, layers: layersForItem(item), cleanup: cleanupForItem(item), textReplacements: item.textReplacements || [] };
-    const result = await runImageOperation('process', item, effectiveSettings);
+    const result = await runImageOperation('process', item, effectiveSettings, 30_000, undefined, logo);
     if (result.state !== 'completed') { item.status = result.state; item.error = result.error?.message || 'Processing failed.'; return; }
     const value = result.value; const blob = new Blob([value.buffer], { type: value.mime });
     item.outputBlob = blob; item.outputUrl = trackObjectUrl(blob); item.outputWidth = value.width; item.outputHeight = value.height; item.status = 'completed';
@@ -420,6 +575,9 @@ function updateButtons() {
   els.downloadSelected.disabled = state.busy || !item?.outputBlob;
   els.downloadAll.disabled = state.busy || !state.items.some((entry) => entry.outputBlob);
   els.add.disabled = state.busy;
+  const canCopy = !state.busy && item?.inspect && state.items.some(entry => entry !== item && entry.inspect && entry.batchSelected);
+  els.copyResize.disabled = !canCopy;
+  els.copyWatermark.disabled = !canCopy || !els.watermarkEnabled.checked;
   if (els.mobileExportSelected) els.mobileExportSelected.disabled = state.busy || !item?.inspect;
   if (els.mobileExportAll) els.mobileExportAll.disabled = state.busy || !state.items.some((entry) => entry.inspect);
   if (els.performanceRun) els.performanceRun.disabled = state.busy || !item?.inspect;
@@ -618,19 +776,19 @@ function watermarkControls() { return [els.watermarkEnabled,els.watermarkType,el
 function collectWatermark() { return normalizeWatermark({ enabled:els.watermarkEnabled.checked,type:els.watermarkType.value,position:els.watermarkPosition.value,opacity:Number(els.watermarkOpacity.value)/100,rotation:Number(els.watermarkRotation.value),margin:Number(els.watermarkMargin.value),tiled:els.watermarkTiled.checked,tileGap:Number(els.watermarkTileGap.value),x:Number(els.watermarkX.value),y:Number(els.watermarkY.value),text:els.watermarkText.value,fontFamily:els.watermarkFont.value,fontSize:Number(els.watermarkFontSize.value),color:els.watermarkColor.value,logoWidth:Number(els.watermarkLogoWidth.value) }); }
 function updateWatermarkConditional() { const enabled=els.watermarkEnabled.checked; els.watermarkControls.classList.toggle('hidden',!enabled); const image=els.watermarkType.value==='image'; els.watermarkTextFields.classList.toggle('hidden',image); els.watermarkImageFields.classList.toggle('hidden',!image); els.watermarkCustomPosition.classList.toggle('hidden',els.watermarkPosition.value!=='custom'||!enabled); }
 function resetWatermarkControls() { const r=DEFAULT_WATERMARK; els.watermarkEnabled.checked=false; els.watermarkType.value=r.type; els.watermarkPosition.value=r.position; els.watermarkOpacity.value=Math.round(r.opacity*100); els.watermarkRotation.value=r.rotation; els.watermarkMargin.value=r.margin; els.watermarkTiled.checked=r.tiled; els.watermarkTileGap.value=r.tileGap; els.watermarkX.value=r.x; els.watermarkY.value=r.y; els.watermarkText.value=r.text; els.watermarkFont.value=r.fontFamily; els.watermarkFontSize.value=r.fontSize; els.watermarkColor.value=r.color; els.watermarkLogoWidth.value=r.logoWidth; els.watermarkLogoInput.value=''; els.watermarkLogoName.textContent='No logo selected'; state.watermarkLogoFile=null; updateWatermarkConditional(); }
-async function setWatermarkLogo(file) { if(!file) return; const budget=validateFileBudget(file); if(!budget.ok){ showCompatibility(budget.reason); return; } try { const buffer=await file.arrayBuffer(); const result=await runner.run({op:'inspect',buffer},[buffer],15_000); if(result.state!=='completed'||!['jpeg','png','webp','avif'].includes(result.value.kind)){ showCompatibility('Watermark logos must be a valid JPEG, PNG, WebP, or AVIF image.'); els.watermarkLogoInput.value=''; return; } state.watermarkLogoFile=file; els.watermarkLogoName.textContent=file.name; els.watermarkEnabled.checked=true; els.watermarkType.value='image'; updateWatermarkConditional(); scheduleEditPreview(40); } catch { showCompatibility('The watermark image could not be inspected safely.'); } }
-async function runImageOperation(op, item, settings, timeoutMs = 30_000, signal) {
+async function setWatermarkLogo(file) { const active = selectedItem(); if(!file) return; const budget=validateFileBudget(file); if(!budget.ok){ showCompatibility(budget.reason); return; } try { const buffer=await file.arrayBuffer(); const result=await runner.run({op:'inspect',buffer},[buffer],15_000); if(result.state!=='completed'||!['jpeg','png','webp','avif'].includes(result.value.kind)){ showCompatibility('Watermark logos must be a valid JPEG, PNG, WebP, or AVIF image.'); els.watermarkLogoInput.value=''; return; } if (selectedItem() !== active) return; state.watermarkLogoFile=file; els.watermarkLogoName.textContent=file.name; els.watermarkEnabled.checked=true; els.watermarkType.value='image'; updateWatermarkConditional(); updateButtons(); scheduleEditPreview(40); } catch { showCompatibility('The watermark image could not be inspected safely.'); } }
+async function runImageOperation(op, item, settings, timeoutMs = 30_000, signal, logo = state.watermarkLogoFile) {
   if (state.useBrowserProcessor && ['preview','process','performance-budget'].includes(op)) {
-    const options = { preview: op === 'preview', watermarkLogoFile: state.watermarkLogoFile, signal };
+    const options = { preview: op === 'preview', watermarkLogoFile: logo, signal };
     return op === 'performance-budget'
       ? optimizeBrowserImage(item.file, settings, options)
       : processBrowserImage(item.file, settings, options);
   }
-  const payload = await createProcessingPayload(op, item, settings);
+  const payload = await createProcessingPayload(op, item, settings, logo);
   return runner.run(payload.message, payload.transfers, timeoutMs, signal);
 }
 
-async function createProcessingPayload(op,item,settings) { const buffer=await item.file.arrayBuffer(); const message={op,buffer,settings}; const transfers=[buffer]; if(settings.watermark?.enabled&&settings.watermark.type==='image'&&state.watermarkLogoFile){ const watermarkLogoBuffer=await state.watermarkLogoFile.arrayBuffer(); message.watermarkLogoBuffer=watermarkLogoBuffer; transfers.push(watermarkLogoBuffer); } return {message,transfers}; }
+async function createProcessingPayload(op,item,settings,logo) { const buffer=await item.file.arrayBuffer(); const message={op,buffer,settings}; const transfers=[buffer]; if(settings.watermark?.enabled&&settings.watermark.type==='image'&&logo){ const watermarkLogoBuffer=await logo.arrayBuffer(); message.watermarkLogoBuffer=watermarkLogoBuffer; transfers.push(watermarkLogoBuffer); } return {message,transfers}; }
 
 function toggleMobilePrecision() {
   state.mobilePrecision = !state.mobilePrecision;
@@ -673,7 +831,10 @@ function addDesignLayer(type) {
   state.layers.push(layer); state.selectedLayerId = layer.id; renderLayerList(); renderLayerProperties(); updateMobileLayerHint(); scheduleEditPreview(40);
 }
 
-function layersForItem(item = selectedItem()) { return state.layers.filter((layer) => !layer.scopeItemId || layer.scopeItemId === item?.id); }
+function layersForItem(item = selectedItem()) {
+  const layers = item?.id === state.selectedId ? state.layers : (item?.editor?.layers || []);
+  return layers.filter(layer => !layer.scopeItemId || layer.scopeItemId === item?.id);
+}
 function selectedDesignLayer() { return layersForItem().find((layer) => layer.id === state.selectedLayerId) || null; }
 
 function renderLayerList() {
@@ -815,8 +976,6 @@ function renderComparison(item) {
 function setDesktopInspectorTool(tool) {
   const card = document.querySelector('.control-card');
   if (!card || !['adjust','crop','cleanup','text','watermark','social','webpack','resize','replace','optimize','export'].includes(tool)) return;
-  const previous = card.dataset.inspectorTool;
-  if (previous && previous !== tool) discardUncommittedToolPreview(previous);
   card.dataset.inspectorTool = tool;
   document.body.dataset.desktopWorkspace = (tool === 'social' || tool === 'webpack') ? 'output' : 'edit';
   document.querySelectorAll('.image-sidebar-nav-button').forEach((button) => button.classList.toggle('active', button.dataset.sidebarTool === tool));
@@ -1180,34 +1339,67 @@ function addCompilerCustomOutput() {
 function removeCompilerCustomOutput(id) { state.compilerCustomOutputs=state.compilerCustomOutputs.filter((item)=>item.id!==id); state.compilerSelectedIds.delete(id); renderCompiler(); }
 
 async function generateCompilerPack() {
-  const item=selectedItem(), outputs=selectedCompilerOutputs(); if(!item?.inspect||!outputs.length||state.busy)return;
-  if(els.compilerFit.value==='smart'&&!item.smartCrop?.analyzed) await runSmartCropAnalysis(item,{quiet:true});
-  clearCompilerGenerated(); setBusy(true); updateCompilerState(); let totalBytes=0; const failures=[], generated=[];
-  const base=collectSettings(); base.layers=layersForItem(item); base.cleanup=cleanupForItem(item); base.textReplacements=item.textReplacements||[];
-  // Pack composition must never inherit an unrelated Crop-tool selection.
-  // Safe Fit is a hard invariant: render the complete source into the target frame.
-  base.crop={mode:'none'}; base.smartCrop={enabled:false,focusX:.5,focusY:.5};
+  const item = selectedItem();
+  const outputs = selectedCompilerOutputs();
+  if (!item?.inspect || !outputs.length || state.busy) return;
+
+  const fitMode = els.compilerFit.value;
+  clearCompilerGenerated();
+  const base = {
+    ...collectSettings(),
+    crop: { mode: 'none' },
+    layers: layersForItem(item),
+    cleanup: cleanupForItem(item),
+    textReplacements: item.textReplacements || [],
+  };
+  const source = { item, base, logo: state.watermarkLogoFile, fitMode };
+  const generated = [];
+  let totalBytes = 0;
+  setBusy(true);
   try {
-    for(let index=0;index<outputs.length;index++){
-      const spec=outputs[index]; els.compilerStatus.textContent='Rendering preview '+(index+1)+'/'+outputs.length+': '+spec.label+'…';
-      const settings=compilerSettings(base,spec,els.compilerFit.value);
-      if(els.compilerFit.value==='smart'&&item.smartCrop?.analyzed){
-        const focus=item.smartCrop.manual?{focusX:item.smartCrop.focusX,focusY:item.smartCrop.focusY}:chooseSmartFocus(item.inspect.dimensions.width,item.inspect.dimensions.height,spec.width/spec.height,item.smartCrop.regions);
-        settings.smartCrop={enabled:true,focusX:focus.focusX,focusY:focus.focusY};
-      } else settings.smartCrop={enabled:false,focusX:.5,focusY:.5};
-      const result=await runImageOperation('process',item,settings);
-      if(result.state!=='completed'){failures.push(spec.label);continue;}
-      if(result.value.width!==spec.width||result.value.height!==spec.height){failures.push(spec.label);continue;}
-      totalBytes+=result.value.buffer.byteLength; if(totalBytes>MAX_COMPILER_PACK_BYTES)break;
-      const ext=result.value.kind==='jpeg'?'jpg':result.value.kind, baseName=item.displayName||item.file.name.replace(/\.[^.]+$/,'');
-      const name=exportFilename(baseName+'.'+ext,ext,{suffix:'-'+spec.id,preserveOriginal:true});
-      const blob=new Blob([result.value.buffer],{type:'image/'+result.value.kind}), url=trackObjectUrl(blob);
-      generated.push({spec,name,buffer:result.value.buffer,blob,url,fitMode:els.compilerFit.value});
+    if (fitMode === 'smart' && !item.smartCrop?.analyzed) {
+      await runSmartCropAnalysis(item, { quiet: true });
     }
-    state.compilerGenerated=generated; renderCompilerResults();
-    els.compilerStatus.textContent=generated.length?generated.length+' previews ready. Review before downloading.':(failures.length?'No previews completed.':'No previews completed.');
-  } finally { setBusy(false); updateCompilerState(); }
+    for (const [index, spec] of outputs.entries()) {
+      els.compilerStatus.textContent = `Rendering preview ${index + 1}/${outputs.length}: ${spec.label}…`;
+      const result = await renderCompilerOutput(source, spec);
+      if (!result) continue;
+      if (totalBytes + result.buffer.byteLength > MAX_COMPILER_PACK_BYTES) break;
+      totalBytes += result.buffer.byteLength;
+      generated.push({ ...result, url: trackObjectUrl(result.blob) });
+    }
+  } finally {
+    state.compilerGenerated = generated;
+    setBusy(false);
+    updateCompilerState();
+    renderCompilerResults();
+    els.compilerStatus.textContent = generated.length
+      ? `${generated.length} of ${outputs.length} previews ready. Review before downloading.`
+      : 'No previews completed.';
+  }
 }
+
+async function renderCompilerOutput(source, spec, manualFocus) {
+  const { item, base, logo } = source;
+  const fitMode = manualFocus ? 'fill' : source.fitMode;
+  const settings = compilerSettings(base, spec, fitMode);
+  let focus = manualFocus;
+  if (!focus && fitMode === 'smart' && item.smartCrop?.analyzed) {
+    const { width, height } = item.inspect.dimensions;
+    focus = item.smartCrop.manual
+      ? { focusX: item.smartCrop.focusX, focusY: item.smartCrop.focusY }
+      : chooseSmartFocus(width, height, spec.width / spec.height, item.smartCrop.regions);
+  }
+  settings.smartCrop = focus ? { enabled: true, ...focus } : { enabled: false, focusX: .5, focusY: .5 };
+  const result = await runImageOperation('process', item, settings, 30_000, undefined, logo);
+  if (result.state !== 'completed' || result.value.width !== spec.width || result.value.height !== spec.height) return null;
+  const { buffer, mime, kind } = result.value;
+  const ext = kind === 'jpeg' ? 'jpg' : kind;
+  const baseName = item.displayName || item.file.name.replace(/\.[^.]+$/, '');
+  const name = exportFilename(baseName + '.' + ext, ext, { suffix: '-' + spec.id, preserveOriginal: true });
+  return { spec, source, name, buffer, blob: new Blob([buffer], { type: mime }), fitMode, focus };
+}
+
 function setCompilerView(view) {
   const section=document.querySelector('.compiler-section'); if(!section)return;
   section.dataset.compilerView=view;
@@ -1235,7 +1427,7 @@ function renderCompilerResults(){
     safety.textContent=asset.fitMode==='contain'?'✓ Full image preserved':'⚠ Fill mode may crop';
     copy.append(title,detail,safety);
     const dl=document.createElement('button'); dl.type='button'; dl.className='secondary-button'; dl.textContent='Download'; dl.addEventListener('click',(event)=>{event.stopPropagation();triggerDownload(asset.url,asset.name);});
-    const open=()=>openCompilerAsset(asset); card.addEventListener('click',open); card.addEventListener('keydown',(event)=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();open();}});
+    const open=()=>openCompilerAsset(asset); card.addEventListener('click',open); card.addEventListener('keydown',(event)=>{if(event.target===card&&(event.key==='Enter'||event.key===' ')){event.preventDefault();open();}});
     meta.append(copy,dl); card.append(frame,meta); els.compilerResults.append(card);
   }
 }
@@ -1252,7 +1444,61 @@ function openCompilerAsset(asset){
   const dl=document.createElement('button'); dl.type='button'; dl.className='primary-button'; dl.textContent='Download'; dl.addEventListener('click',()=>triggerDownload(asset.url,asset.name));
   top.append(close,info,dl);
   const stage=document.createElement('div'); stage.className='compiler-asset-detail-stage'; const img=document.createElement('img');img.src=asset.url;img.alt=asset.spec.label+' full preview';stage.append(img);
-  shell.append(top,stage);dialog.append(shell);dialog.showModal();
+  shell.append(top, stage, compilerCropControls(asset, dialog));
+  dialog.append(shell);
+  dialog.setAttribute('aria-label', asset.spec.label + ' preview');
+  if (!dialog.open) dialog.showModal();
+}
+
+function compilerCropControls(asset, dialog) {
+  const panel = document.createElement('details');
+  panel.className = 'compiler-crop-controls';
+  const summary = document.createElement('summary');
+  summary.textContent = 'Adjust crop for this size';
+  const hint = document.createElement('p');
+  hint.textContent = 'Fill the frame by cropping. The other sizes keep their current framing.';
+  const fields = ['Horizontal', 'Vertical'].map((name, index) => {
+    const label = document.createElement('label');
+    label.textContent = name + ' focus';
+    const input = document.createElement('input');
+    input.type = 'range'; input.min = '0'; input.max = '100';
+    input.value = Math.round((asset.focus?.[index ? 'focusY' : 'focusX'] ?? .5) * 100);
+    label.append(input);
+    return { label, input };
+  });
+  const apply = document.createElement('button');
+  apply.className = 'secondary-button'; apply.type = 'button'; apply.textContent = 'Update crop preview';
+  const message = document.createElement('p');
+  message.setAttribute('role', 'status');
+  apply.addEventListener('click', async () => {
+    if (state.busy) return;
+    apply.disabled = true;
+    message.textContent = 'Updating crop…';
+    setBusy(true);
+    try {
+      const focus = { focusX: fields[0].input.valueAsNumber / 100, focusY: fields[1].input.valueAsNumber / 100 };
+      const result = await renderCompilerOutput(asset.source, asset.spec, focus);
+      const index = state.compilerGenerated.indexOf(asset);
+      if (!result || index < 0) { message.textContent = 'This crop could not be rendered.'; return; }
+      const totalBytes = state.compilerGenerated.reduce((total, current) => total + current.buffer.byteLength, 0);
+      if (totalBytes - asset.buffer.byteLength + result.buffer.byteLength > MAX_COMPILER_PACK_BYTES) {
+        message.textContent = 'This crop would exceed the pack size limit.';
+        return;
+      }
+      revokeObjectUrl(asset.url);
+      const updated = { ...result, url: trackObjectUrl(result.blob) };
+      state.compilerGenerated[index] = updated;
+      renderCompilerResults();
+      if (dialog.open) openCompilerAsset(updated);
+    } catch {
+      message.textContent = 'This crop could not be rendered.';
+    } finally {
+      apply.disabled = false;
+      setBusy(false);
+    }
+  });
+  panel.append(summary, hint, ...fields.map(field => field.label), apply, message);
+  return panel;
 }
 
 async function downloadCompilerPack(){
@@ -1270,13 +1516,16 @@ function closeMobileFiles() { document.body.classList.remove('mobile-files-open'
 
 async function mobileExportSelected() {
   const item = selectedItem(); if (!item?.inspect || state.busy) return;
-  await runAssetDoctor({ quiet:true });
+  const settings = collectSettings();
+  const logo = state.watermarkLogoFile;
+  state.previewAbort?.abort(); clearTimeout(state.previewTimer);
   setBusy(true); els.mobileExportStatus.textContent = 'Preparing export…';
   try {
-    await processItem(item, collectSettings()); renderList(); renderSelected();
+    await runAssetDoctor({ quiet: true });
+    await processItem(item, settings, logo);
     if (item.outputUrl && item.outputName && item.status === 'completed') { els.mobileExportStatus.textContent = `${formatBytes(item.outputBlob.size)} · ready`; triggerDownload(item.outputUrl, item.outputName); }
     else els.mobileExportStatus.textContent = item.error || 'Export could not be completed.';
-  } finally { setBusy(false); }
+  } finally { setBusy(false); renderList(); renderSelectedSafely(); }
 }
 
 async function mobileExportAll() {
@@ -1290,7 +1539,7 @@ async function mobileExportAll() {
 }
 
 function setMobileMode(mode) {
-  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Clean', text:'Text', more:'More', replace:'Replace Text', design:'Design', watermark:'Add Watermark', watermarkremove:'Remove Watermark', compiler:'Compiler', assetdoctor:'Asset Doctor', webpack:'Web Pack', performance:'Performance', export:'Export' };
+  const labels = { adjust:'Adjust', crop:'Crop', cleanup:'Retouch', text:'Layers', more:'Tools', replace:'Replace Text', design:'Design', watermark:'Add Watermark', watermarkremove:'Remove Watermark', compiler:'Social Asset Pack', assetdoctor:'Asset Doctor', webpack:'Web Pack', performance:'Performance', export:'Export' };
   const advanced = new Set(['replace','design','watermark','watermarkremove','compiler','assetdoctor','webpack','performance','export']);
   state.mobileMode = labels[mode] ? mode : 'adjust';
   document.body.dataset.mobileTool = state.mobileMode;
@@ -1348,6 +1597,12 @@ function exitMobileEditor() {
   state.mobileStartOpen = true;
   syncMobileEditingState();
   window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+function setCompareOriginal(showOriginal) {
+  state.mobileShowOriginal = showOriginal;
+  els.mobileCompare.textContent = showOriginal ? 'Original' : 'Compare';
+  els.mobileCompare.setAttribute('aria-pressed', String(showOriginal));
 }
 
 function renderMobileCanvas(item) {

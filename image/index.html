@@ -50,12 +50,25 @@
       <button class="secondary-button mobile-continue-button hidden" id="mobile-continue" type="button">Continue editing</button>
       <span class="mobile-start-count hidden" id="mobile-start-count"></span>
       <p class="microcopy">Maximum 50 files · 40 MB each · 60 MP decoded image limit</p>
+      <nav class="image-quick-links" aria-label="Quick image tools">
+        <a href="/image/batch">Batch Resize &amp; Export</a>
+        <a href="/image/batch?tool=convert">Convert Image</a>
+        <a href="/image/batch?tool=compress">Compress Image</a>
+        <a href="/image?tool=social">Social Asset Pack</a>
+        <a href="/image/contact-sheet">Contact Sheet</a>
+      </nav>
     </section>
 
     <section id="workspace" class="workspace hidden" aria-live="polite">
       <button class="mobile-files-backdrop" id="mobile-files-backdrop" type="button" aria-label="Close image list"></button>
       <aside class="file-panel" aria-label="Image files">
         <div class="panel-title"><div><p class="eyebrow">Files</p><h2 id="file-count">0 images</h2></div><div class="file-panel-actions"><button class="icon-button" id="add-more" type="button" aria-label="Add more images">＋</button><button class="icon-button mobile-files-close" id="mobile-files-close" type="button" aria-label="Close image list">×</button></div></div>
+        <div id="image-batch-actions" class="image-batch-actions" hidden>
+          <p class="microcopy">Copy settings from the active image to checked files.</p>
+          <button class="secondary-button" id="copy-image-resize" type="button" disabled>Copy resize</button>
+          <button class="secondary-button" id="copy-image-watermark" type="button" disabled>Copy watermark</button>
+          <p class="microcopy" id="image-batch-status" role="status"></p>
+        </div>
         <div id="file-list" class="file-list"></div>
       </aside>
 
@@ -68,7 +81,7 @@
               <button class="mobile-round-button" id="mobile-redo-edit" type="button" aria-label="Redo" disabled>↷</button>
             </div>
             <div class="mobile-topbar-spacer"></div>
-            <button class="mobile-pill-button" id="mobile-compare" type="button">Original</button>
+            <button class="mobile-pill-button" id="mobile-compare" type="button" aria-pressed="false">Compare</button>
             <button class="mobile-pill-button emphasis" id="mobile-export-top" type="button">Export</button>
           </div>
           <div class="mobile-canvas-shell" id="mobile-canvas-shell">
@@ -110,7 +123,7 @@
           <div class="control-section preset-section export-section"><h3>Preset</h3><div class="form-row"><label>Preset<select id="preset"><option value="custom">Custom</option></select></label></div></div>
 
           <div class="control-section resize-section export-section"><h3>Resize</h3><div class="form-grid">
-            <label>Mode<select id="resize-mode"><option value="fit">Fit</option><option value="fill">Fill</option><option value="contain">Contain</option><option value="percentage">Percentage</option><option value="longest">Longest edge</option><option value="shortest">Shortest edge</option></select></label>
+            <label>Mode<select id="resize-mode"><option value="fit">Fit within dimensions</option><option value="contain">Pad to exact size</option><option value="fill">Fill and crop</option><option value="percentage">Percentage</option><option value="longest">Longest edge</option><option value="shortest">Shortest edge</option></select></label>
             <label>Width<input id="width" type="number" min="1" max="12000" inputmode="numeric"></label>
             <label>Height<input id="height" type="number" min="1" max="12000" inputmode="numeric"></label>
             <label id="percentage-wrap" class="hidden">Percentage<input id="percentage" type="number" min="1" max="500" value="100"></label>
@@ -350,7 +363,7 @@
               <button type="button" data-mobile-more-target="design"><span>□</span><strong>Design</strong></button>
               <button type="button" data-mobile-more-target="watermark"><span>W</span><strong>Add Watermark</strong></button>
               <button type="button" data-mobile-more-target="watermarkremove"><span>⌫</span><strong>Remove Watermark</strong></button>
-              <button type="button" data-mobile-more-target="compiler"><span>▦</span><strong>Compiler</strong></button>
+              <button type="button" data-mobile-more-target="compiler"><span>▦</span><strong>Social Asset Pack</strong></button>
               <button type="button" data-mobile-more-target="assetdoctor"><span>✓</span><strong>Asset Doctor</strong></button>
               <button type="button" data-mobile-more-target="webpack"><span>&lt;/&gt;</span><strong>Web Pack</strong></button>
               <button type="button" data-mobile-more-target="performance"><span>⚡</span><strong>Performance</strong></button>
@@ -424,15 +437,15 @@
               <button class="secondary-button hidden" id="mobile-export-all" type="button">Export all as ZIP</button>
               <span id="mobile-export-status" class="microcopy">Local export · metadata stripped</span>
             </div>
-            <button class="primary-button desktop-export-action" id="process-selected" type="button">Process selected</button><button class="secondary-button desktop-export-action" id="process-all" type="button">Process all</button><button class="secondary-button desktop-export-action" id="download-selected" type="button" disabled>Download selected</button><button class="secondary-button desktop-export-action" id="download-all" type="button" disabled>Download All (ZIP)</button>
+            <button class="primary-button desktop-export-action" id="process-selected" type="button">Process selected</button><button class="secondary-button desktop-export-action" id="process-all" type="button">Process all with individual edits</button><button class="secondary-button desktop-export-action" id="download-selected" type="button" disabled>Download selected</button><button class="secondary-button desktop-export-action" id="download-all" type="button" disabled>Download All (ZIP)</button>
           </div>
         </div>
         <nav class="mobile-tool-dock" aria-label="Image editing tools">
           <button class="mobile-tool-button active" type="button" data-mobile-tool="adjust"><span>☼</span><small>Adjust</small></button>
           <button class="mobile-tool-button" type="button" data-mobile-tool="crop"><span>⌗</span><small>Crop</small></button>
-          <button class="mobile-tool-button" type="button" data-mobile-tool="cleanup"><span>◇</span><small>Clean</small></button>
-          <button class="mobile-tool-button" type="button" data-mobile-tool="text"><span>T</span><small>Text</small></button>
-          <button class="mobile-tool-button" type="button" data-mobile-tool="more"><span>•••</span><small>More</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="cleanup"><span>◇</span><small>Retouch</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="text"><span>T</span><small>Layers</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="more"><span>•••</span><small>Tools</small></button>
         </nav>
       </section>
     </section>

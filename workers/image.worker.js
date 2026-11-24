@@ -212,7 +212,7 @@ function render(source, crop, target, settings) {
   ctx.imageSmoothingQuality = 'high';
   const mode = settings.resizeMode || 'fit';
   const outputKind = settings.format || 'png';
-  if (outputKind === 'jpeg') {
+  if (outputKind === 'jpeg' || settings.solidBackground) {
     ctx.fillStyle = settings.background || '#ffffff';
     ctx.fillRect(0, 0, target.width, target.height);
   }
