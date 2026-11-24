@@ -7,61 +7,58 @@
   <title>Image Studio · Utility OS</title>
   <link rel="stylesheet" href="/assets/app.css">
   <link rel="stylesheet" href="/assets/image-desktop.css">
+  <link rel="stylesheet" href="/assets/image-workspace.css">
 </head>
 <body class="image-studio-body">
   <header class="site-header">
     <a class="brand" href="/" aria-label="Utility OS home"><span class="brand-mark">U</span><span>Utility OS</span></a>
-    <div class="image-sidebar-product"><span class="image-sidebar-product-icon">▧</span><div><strong>Image Studio</strong><small>Private image tools</small></div></div>
-    <div class="image-sidebar-intro"><strong>Edit images privately</strong><p>Resize, crop, adjust, clean up, add text and export — processed in your browser.</p><small>Choose an image to open the editing tools.</small></div>
+    <div class="image-sidebar-product"><span class="image-sidebar-product-icon"><img src="/assets/brand/tools/editor.webp" width="38" height="38" alt=""></span><div><strong>Image Studio</strong><small>Image editor</small></div></div>
+    <a class="studio-directory-link" href="/images">← Image tools</a>
     <nav class="image-sidebar-nav" aria-label="Image Studio tools">
-      <button class="image-sidebar-nav-button active" type="button" data-sidebar-tool="adjust"><span>☼</span><div><strong>Adjust</strong><small>Light, colour & transform</small></div></button>
-      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="crop"><span>⌗</span><div><strong>Crop</strong><small>Frame & aspect ratio</small></div></button>
-      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="cleanup"><span>◇</span><div><strong>Cleanup</strong><small>Remove unwanted areas</small></div></button>
-      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="text"><span>T</span><div><strong>Text & Design</strong><small>Layers & graphics</small></div></button>
-      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="watermark"><span>◈</span><div><strong>Watermark</strong><small>Brand & ownership</small></div></button>
-      <div class="image-sidebar-nav-divider" aria-hidden="true"></div>
-      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="social"><span>▦</span><div><strong>Social Asset Pack</strong><small>Multi-size social outputs</small></div></button>
-      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="webpack"><span>⌘</span><div><strong>Web Pack</strong><small>Responsive web images</small></div></button>
-      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="resize"><span>↔</span><div><strong>Resize</strong><small>Single image dimensions</small></div></button>
-      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="replace"><span>⌁</span><div><strong>Replace Text</strong><small>Erase & rewrite</small></div></button>
-      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="optimize"><span>⚡</span><div><strong>Optimize</strong><small>Performance & diagnostics</small></div></button>
-      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="export"><span>⇧</span><div><strong>Export</strong><small>Output & download</small></div></button>
+      <p>Edit photo</p>
+      <button class="image-sidebar-nav-button active" type="button" data-sidebar-tool="adjust" aria-pressed="true">Adjust</button>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="crop" aria-pressed="false">Crop &amp; rotate</button>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="cleanup" aria-pressed="false">Retouch</button>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="replace" aria-pressed="false">Replace text</button>
+      <p>Add &amp; layers</p>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="text" aria-pressed="false">Layers</button>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="watermark" aria-pressed="false">Watermark</button>
+      <p>Output</p>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="resize" aria-pressed="false">Resize</button>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="optimize" aria-pressed="false">Check image</button>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="social" aria-pressed="false">Social Asset Pack</button>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="webpack" aria-pressed="false">Responsive Web Pack</button>
+      <button class="image-sidebar-nav-button" type="button" data-sidebar-tool="export" aria-pressed="false">Export</button>
     </nav>
     <div class="header-actions"><span class="local-badge">Processed locally</span><button class="ghost-button" id="clear-workspace" type="button">Clear workspace</button></div>
   </header>
   <main class="studio-shell">
     <section class="studio-heading desktop-onboarding">
-      <div><p class="eyebrow">Image Studio</p><h1>Image work without the upload.</h1><p>Processed locally in your browser. Your files are not uploaded.</p></div>
-      <div class="security-note"><strong>Local-processing guarantee</strong><span>Network access is disabled by production CSP for this tool.</span></div>
+      <div><a class="studio-breadcrumb" href="/images">← Image tools</a><h1>Image Studio</h1><p>Crop, retouch and add layers. Your images stay on this device.</p></div>
+      <img class="studio-heading-art" src="/assets/brand/tools/editor.webp" width="256" height="256" alt="">
     </section>
 
     <section class="desktop-workspace-header" aria-label="Image Studio workspace header">
       <div class="desktop-image-identity"><p class="eyebrow">Image Studio</p><div class="desktop-name-row"><input id="desktop-image-name" class="desktop-image-name" type="text" maxlength="120" aria-label="Image name" value="Untitled image"><span class="desktop-local-status">● Local processing</span></div><span id="desktop-current-file" class="desktop-current-file">Ready to edit</span></div>
-      <div class="desktop-image-info"><span id="desktop-original-info">Original —</span><span id="desktop-edited-info">Edited —</span></div>
+      <div class="desktop-image-info"><span id="desktop-original-info">Original —</span><span id="desktop-edited-info">Edited —</span><button class="secondary-button desktop-files-toggle" id="desktop-files-toggle" type="button" aria-expanded="false" aria-controls="studio-files">Files</button><button class="primary-button" id="desktop-export-top" type="button">Export</button></div>
     </section>
 
     <div id="compatibility" class="notice danger hidden" role="alert"></div>
     <section class="upload-panel desktop-onboarding" id="drop-zone" aria-labelledby="upload-title">
       <input id="file-input" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/svg+xml" multiple>
-      <button class="upload-icon upload-icon-button" id="upload-icon-button" type="button" aria-label="Choose images">＋</button>
+      <button class="upload-icon upload-icon-button" id="upload-icon-button" type="button" aria-label="Choose images" hidden>＋</button>
       <h2 id="upload-title">Drop images here</h2>
       <p>JPEG, PNG, WebP, AVIF where supported, and conservatively sanitized SVG.</p>
       <button class="primary-button" id="choose-files" type="button">Choose images</button>
       <button class="secondary-button mobile-continue-button hidden" id="mobile-continue" type="button">Continue editing</button>
       <span class="mobile-start-count hidden" id="mobile-start-count"></span>
       <p class="microcopy">Maximum 50 files · 40 MB each · 60 MP decoded image limit</p>
-      <nav class="image-quick-links" aria-label="Quick image tools">
-        <a href="/image/batch">Batch Resize &amp; Export</a>
-        <a href="/image/batch?tool=convert">Convert Image</a>
-        <a href="/image/batch?tool=compress">Compress Image</a>
-        <a href="/image?tool=social">Social Asset Pack</a>
-        <a href="/image/contact-sheet">Contact Sheet</a>
-      </nav>
+      <button class="text-button studio-sample-button" id="studio-sample" type="button">Try a sample image</button>
     </section>
 
     <section id="workspace" class="workspace hidden" aria-live="polite">
       <button class="mobile-files-backdrop" id="mobile-files-backdrop" type="button" aria-label="Close image list"></button>
-      <aside class="file-panel" aria-label="Image files">
+      <aside class="file-panel" id="studio-files" aria-label="Image files">
         <div class="panel-title"><div><p class="eyebrow">Files</p><h2 id="file-count">0 images</h2></div><div class="file-panel-actions"><button class="icon-button" id="add-more" type="button" aria-label="Add more images">＋</button><button class="icon-button mobile-files-close" id="mobile-files-close" type="button" aria-label="Close image list">×</button></div></div>
         <div id="image-batch-actions" class="image-batch-actions" hidden>
           <p class="microcopy">Copy settings from the active image to checked files.</p>
@@ -80,7 +77,7 @@
               <button class="mobile-round-button" id="mobile-undo-edit" type="button" aria-label="Undo" disabled>↶</button>
               <button class="mobile-round-button" id="mobile-redo-edit" type="button" aria-label="Redo" disabled>↷</button>
             </div>
-            <div class="mobile-topbar-spacer"></div>
+            <button class="mobile-pill-button studio-files-trigger hidden" id="mobile-batch-chip" type="button" aria-controls="studio-files" aria-expanded="false">Files</button><div class="mobile-topbar-spacer"></div>
             <button class="mobile-pill-button" id="mobile-compare" type="button" aria-pressed="false">Compare</button>
             <button class="mobile-pill-button emphasis" id="mobile-export-top" type="button">Export</button>
           </div>
@@ -91,7 +88,6 @@
             <span id="mobile-layer-hint" class="mobile-layer-hint hidden">Drag selected layer to position</span>
             <div id="mobile-replace-selection" class="replace-selection-box hidden" aria-hidden="true"></div>
           </div>
-          <button class="mobile-batch-chip hidden" id="mobile-batch-chip" type="button">1 image</button>
         </section>
 
         <div class="preview-grid">
@@ -118,7 +114,7 @@
   <span class="mobile-sheet-handle" aria-hidden="true"></span>
   <strong id="mobile-sheet-title">Adjust</strong>
 </div>
-          <div class="control-header"><div><p class="eyebrow">Configure</p><h2>Output settings</h2></div><button class="text-button" id="reset-settings" type="button">Reset to Original</button></div>
+          <div class="control-header"><div><h2 id="studio-inspector-title">Adjust</h2></div><button class="text-button" id="reset-settings" type="button">Reset to Original</button></div>
 
           <div class="control-section preset-section export-section"><h3>Preset</h3><div class="form-row"><label>Preset<select id="preset"><option value="custom">Custom</option></select></label></div></div>
 
@@ -153,7 +149,8 @@
             <div class="form-grid">
             <label class="desktop-crop-select">Crop<select id="crop-mode"><option value="none">None</option><option value="free">Free</option><option value="ratio">1:1</option><option value="ratio-4-5">4:5</option><option value="ratio-16-9">16:9</option><option value="ratio-9-16">9:16</option><option value="custom">Custom ratio</option></select></label>
             <label id="custom-ratio-wrap" class="hidden">Custom ratio<input id="custom-ratio" type="number" min="0.05" max="20" step="0.01" value="1"></label>
-          </div><div id="free-crop" class="form-grid hidden"><label>X<input id="crop-x" type="number" min="0" value="0"></label><label>Y<input id="crop-y" type="number" min="0" value="0"></label><label>Width<input id="crop-width" type="number" min="1"></label><label>Height<input id="crop-height" type="number" min="1"></label></div></div>
+          </div><div id="free-crop" class="form-grid hidden"><label>X<input id="crop-x" type="number" min="0" value="0"></label><label>Y<input id="crop-y" type="number" min="0" value="0"></label><label>Width<input id="crop-width" type="number" min="1"></label><label>Height<input id="crop-height" type="number" min="1"></label></div><button class="primary-button studio-crop-done" id="studio-crop-done" type="button">Done</button>
+          </div>
 
           <div class="control-section edit-section">
             <div class="mobile-adjust-picker" aria-label="Adjust image">
@@ -358,18 +355,29 @@
           </div>
 
           <div class="control-section mobile-more-section">
-            <div class="mobile-more-grid">
-              <button type="button" data-mobile-more-target="replace"><span>↔</span><strong>Replace Text</strong></button>
-              <button type="button" data-mobile-more-target="design"><span>□</span><strong>Design</strong></button>
-              <button type="button" data-mobile-more-target="watermark"><span>W</span><strong>Add Watermark</strong></button>
-              <button type="button" data-mobile-more-target="watermarkremove"><span>⌫</span><strong>Remove Watermark</strong></button>
-              <button type="button" data-mobile-more-target="compiler"><span>▦</span><strong>Social Asset Pack</strong></button>
-              <button type="button" data-mobile-more-target="assetdoctor"><span>✓</span><strong>Asset Doctor</strong></button>
-              <button type="button" data-mobile-more-target="webpack"><span>&lt;/&gt;</span><strong>Web Pack</strong></button>
-              <button type="button" data-mobile-more-target="performance"><span>⚡</span><strong>Performance</strong></button>
-              <button type="button" data-mobile-more-target="export"><span>⇧</span><strong>Export settings</strong></button>
-              <button type="button" id="mobile-more-revert"><span>↺</span><strong>Revert image</strong></button>
-              <button type="button" id="mobile-more-files"><span>▤</span><strong>Images</strong></button>
+            <div class="studio-mobile-groups">
+              <section aria-label="Photo edits">
+                <h3>Edit photo</h3>
+                <button type="button" data-mobile-more-target="replace">Replace text</button>
+                <button type="button" data-mobile-more-target="watermarkremove">Remove watermark</button>
+              </section>
+              <section aria-label="Layers">
+                <h3>Add &amp; layers</h3>
+                <button type="button" data-mobile-more-target="design">Design layers</button>
+                <button type="button" data-mobile-more-target="watermark">Add watermark</button>
+              </section>
+              <section aria-label="Output">
+                <h3>Output</h3>
+                <button type="button" data-mobile-more-target="compiler">Social Asset Pack</button>
+                <button type="button" data-mobile-more-target="webpack">Responsive Web Pack</button>
+                <button type="button" data-mobile-more-target="assetdoctor">Asset Doctor</button>
+                <button type="button" data-mobile-more-target="performance">Performance budget</button>
+              </section>
+              <section aria-label="Image management">
+                <h3>Files</h3>
+                <button type="button" id="mobile-more-files">Manage images</button>
+                <button type="button" id="mobile-more-revert">Revert active image</button>
+              </section>
             </div>
           </div>
 
@@ -441,11 +449,11 @@
           </div>
         </div>
         <nav class="mobile-tool-dock" aria-label="Image editing tools">
-          <button class="mobile-tool-button active" type="button" data-mobile-tool="adjust"><span>☼</span><small>Adjust</small></button>
-          <button class="mobile-tool-button" type="button" data-mobile-tool="crop"><span>⌗</span><small>Crop</small></button>
-          <button class="mobile-tool-button" type="button" data-mobile-tool="cleanup"><span>◇</span><small>Retouch</small></button>
-          <button class="mobile-tool-button" type="button" data-mobile-tool="text"><span>T</span><small>Layers</small></button>
-          <button class="mobile-tool-button" type="button" data-mobile-tool="more"><span>•••</span><small>Tools</small></button>
+          <button class="mobile-tool-button active" type="button" data-mobile-tool="adjust"><span><img src="/assets/brand/tools/editor.webp" width="28" height="28" alt=""></span><small>Adjust</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="crop"><span><img src="/assets/brand/tools/crop.webp" width="28" height="28" alt=""></span><small>Crop</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="cleanup"><span><img src="/assets/brand/tools/cleanup.webp" width="28" height="28" alt=""></span><small>Retouch</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="text"><span><img src="/assets/brand/tools/text.webp" width="28" height="28" alt=""></span><small>Layers</small></button>
+          <button class="mobile-tool-button" type="button" data-mobile-tool="more"><span><img src="/assets/brand/tools/contact.webp" width="28" height="28" alt=""></span><small>Tools</small></button>
         </nav>
       </section>
     </section>

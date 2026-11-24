@@ -363,6 +363,9 @@ async function attachPlaybackWaveform() {
     waveformContext = null; waveformSource = null;
   }
 }
+const requestedTool = new URLSearchParams(location.search).get('tool');
+if (requestedTool === 'reframe') document.querySelector('[data-studio-tool="reframe"]')?.click();
+
 const input = $('#media-file-input');
 input?.addEventListener('change', async () => {
   const file = input.files?.[0];

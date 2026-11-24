@@ -1632,7 +1632,9 @@ recipeWorkspace = initRecipeWorkspace({
 });
 
 selectVideoTool('edit');
-selectCategory(isDedicatedVideoEditor ? 'video' : (project.activeCategory || 'video'));
+const requestedCategory = new URLSearchParams(location.search).get('tool');
+const initialCategory = categories.some(category => category.id === requestedCategory) ? requestedCategory : project.activeCategory;
+selectCategory(isDedicatedVideoEditor ? 'video' : (initialCategory || 'video'));
 transcriptWorkspace.onSourceChanged();
 lyricsWorkspace.onSourceChanged();
 audioVideoWorkspace.onSourceChanged();

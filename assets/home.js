@@ -1,33 +1,47 @@
 import { clearWorkspace } from '/lib/security/workspace.js';
 
-const tools = [
-  ['Motion Studio', 'Create animated explainers with text, visuals and voice.', '/media/motion-studio', 'video'],
-  ['Lyrical', 'Turn your song into a lyric video.', '/lyrical', 'lyrical'],
-  ['Video Editor', 'Cut and arrange your video clips.', '/media/video-editor', 'video'],
-  ['Image Studio', 'Resize, crop and compress images.', '/image', 'image'],
-  ['Media & Transcription', 'Edit media and turn speech into text.', '/media', 'media'],
-];
-for (const [name, description, href, symbol] of tools) {
-  const link = document.createElement('a');
-  link.className = 'home-tool' + (name === 'Lyrical' ? ' home-tool-featured' : '');
-  link.href = href;
-  const icon = document.createElement('span');
-  icon.className = 'home-tool-icon';
-  icon.setAttribute('aria-hidden', 'true');
-  icon.append(document.getElementById('icon-' + symbol).content.cloneNode(true));
-  const copy = document.createElement('span');
-  const title = document.createElement('strong');
-  title.textContent = name;
-  const detail = document.createElement('span');
-  detail.textContent = description;
-  copy.append(title, detail);
-  const arrow = document.createElement('span');
-  arrow.className = 'home-tool-arrow';
-  arrow.textContent = '›';
-  arrow.setAttribute('aria-hidden', 'true');
-  link.append(icon, copy, arrow);
-  document.querySelector('#tool-grid').append(link);
-}
+import { categories, makeToolCard, matchesTool, quickTools, tools } from '/assets/tool-directory.js';
+
+const categoryGrid = document.querySelector('#category-grid');
+categoryGrid.append(...categories.map(category => makeToolCard(category, 'category')));
+document.querySelector('#quick-tools').append(...quickTools.map(tool => makeToolCard(tool, 'quick')));
+const studioIds = ['image-editor', 'video-editor', 'lyrical', 'motion'];
+document.querySelector('#studio-tools').append(...studioIds.map(id => makeToolCard(tools.find(tool => tool.id === id), 'tool')));
+
+const search = document.querySelector('#tool-search');
+const results = document.querySelector('#search-results');
+search.addEventListener('input', () => {
+  results.replaceChildren();
+  const query = search.value.trim();
+  results.hidden = query.length === 0;
+  if (!query) { document.querySelector('#search-status').textContent = ''; return; }
+  const destinations = new Set();
+  const matches = tools.filter(tool => {
+    if (!matchesTool(tool, query) || destinations.has(tool.href)) return false;
+    destinations.add(tool.href);
+    return true;
+  }).slice(0, 8);
+  document.querySelector('#search-status').textContent = `${matches.length} matching tools`;
+  if (!matches.length) {
+    const empty = document.createElement('p');
+    empty.textContent = 'No tools match that search.';
+    results.append(empty);
+    return;
+  }
+  for (const tool of matches) {
+    const link = document.createElement('a');
+    link.href = tool.href;
+    link.textContent = tool.label;
+    results.append(link);
+  }
+});
+search.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    search.value = '';
+    search.dispatchEvent(new Event('input'));
+  }
+});
+
 document.querySelectorAll('[data-open]').forEach(button => {
   button.addEventListener('click', () => document.getElementById(button.dataset.open).showModal());
 });

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { tools, quickTools } from '../assets/tool-directory.js';
 
 const read = path => readFile(new URL('../' + path, import.meta.url), 'utf8');
 
@@ -28,5 +29,6 @@ test('all eight tool groups and playback controls have handlers', async () => {
 });
 
 test('homepage retains dedicated Video Editor link', async () => {
-  assert.match(await read('assets/home.js'), /\/media\/video-editor/);
+  assert.equal(quickTools.find(tool => tool.id === 'trim-video')?.href, '/media/video-editor');
+  assert.equal(tools.find(tool => tool.id === 'video-editor')?.href, '/media/video-editor');
 });

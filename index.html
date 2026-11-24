@@ -7,17 +7,36 @@
   <title>Utility OS</title>
   <link rel="stylesheet" href="/assets/app.css">
   <link rel="stylesheet" href="/assets/home.css">
+  <link rel="stylesheet" href="/assets/catalog.css">
 </head>
-<body class="home-body">
-  <header class="home-header">
-    <a class="brand" href="/" aria-label="Utility OS home"><span class="brand-mark">U</span><span>Utility OS</span></a>
-    <button class="text-button home-menu" type="button" data-open="home-settings" aria-label="Help and storage options">•••</button>
+<body class="home-body directory-body">
+  <header class="directory-header">
+    <a class="directory-brand" href="/" aria-label="Utility OS home"><span class="directory-brand-mark">U</span>Utility OS</a>
+    <div class="directory-header-actions">
+      <button class="directory-text" type="button" data-open="home-help">Help</button>
+      <button class="directory-text" type="button" data-open="home-settings">Storage</button>
+    </div>
   </header>
-  <main class="home-main">
-    <h1>What would you like<br class="home-title-break"> to create?</h1>
-    <p class="home-intro">Simple tools, right in your browser.</p>
-    <nav class="home-tools" id="tool-grid" aria-label="Choose a tool"></nav>
-    <footer class="home-footer"><span>No account needed.</span><button class="text-button" type="button" data-open="home-help">Help</button><button class="text-button" type="button" data-open="home-settings">Storage</button></footer>
+  <main class="directory-main">
+    <section class="directory-intro" aria-labelledby="home-heading">
+      <div><h1 id="home-heading">Tools for creators</h1><p>Make, edit and export in your browser.</p></div>
+      <div class="directory-search">
+        <label for="tool-search">Find a tool</label>
+        <input id="tool-search" type="search" autocomplete="off" aria-controls="search-results" placeholder="Try crop, WebP or subtitles">
+        <div id="search-results" class="directory-search-results" hidden></div>
+        <p id="search-status" class="visually-hidden" role="status"></p>
+      </div>
+    </section>
+    <nav id="category-grid" class="directory-category-grid" aria-label="Browse by category"></nav>
+    <section class="directory-section" aria-labelledby="quick-heading">
+      <div class="directory-section-heading"><h2 id="quick-heading">Quick tools</h2></div>
+      <nav id="quick-tools" class="directory-quick-grid" aria-label="Quick tools"></nav>
+    </section>
+    <section class="directory-section directory-studio-section" aria-labelledby="studio-heading">
+      <div class="directory-section-heading"><h2 id="studio-heading">Studios</h2><a href="/tools?category=studios">See all studios</a></div>
+      <div id="studio-tools" class="directory-catalog-grid"></div>
+    </section>
+    <footer class="directory-footer">Utility OS · No account needed</footer>
   </main>
   <dialog id="home-help" class="home-dialog" aria-labelledby="help-title">
     <div class="dialog-heading"><h2 id="help-title">Choose your starting point</h2><button class="text-button" type="button" data-close aria-label="Close help">✕</button></div>
@@ -33,10 +52,6 @@
     <button class="secondary-button" id="clear-workspace" type="button">Clear saved workspace…</button>
     <p id="storage-status" role="status"></p>
   </dialog>
-  <template id="icon-lyrical"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="34" height="34" rx="4"/><path d="M17 27V13l13-3v14M17 15l13-3"/><ellipse cx="13" cy="28" rx="4" ry="3"/><ellipse cx="26" cy="25" rx="4" ry="3"/></svg></template>
-  <template id="icon-video"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="8" width="25" height="25" rx="4"/><path d="m27 16 11-7v23l-11-7z"/></svg></template>
-  <template id="icon-image"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="34" height="34" rx="4"/><circle cx="27" cy="12" r="3"/><path d="m4 31 11-13 9 10 5-5 8 9"/></svg></template>
-  <template id="icon-media"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M25 3H8a3 3 0 0 0-3 3v29a3 3 0 0 0 3 3h24a3 3 0 0 0 3-3V13zM25 3v10h10M12 22v8m5-12v16m6-19v19m5-12v8"/></svg></template>
   <script type="module" src="/assets/home.js"></script>
 </body>
 </html>

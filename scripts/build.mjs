@@ -6,10 +6,10 @@ import { buildLyricalVosk } from './build-lyrical-vosk.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = resolve(root, 'dist');
-const productionEntries = ['index.html', 'image', 'media', 'lyrical', 'assets', 'lib', 'workers'];
+const productionEntries = ['index.html', 'images', 'tools', 'image', 'media', 'lyrical', 'assets', 'lib', 'workers'];
 const required = [
-  'index.html', 'image/index.html', 'image/batch/index.html',
-  'image/contact-sheet/index.html', 'assets/contact-sheet.js', 'assets/image-batch.js', 'assets/image-batch.css', 'lib/image/batch.js', 'media/index.html', 'lyrical/index.html', 'assets/lyrical.js', 'assets/lyrical.css', 'workers/lyrical-transcription.worker.js',
+  'index.html', 'images/index.html', 'tools/index.html', 'assets/catalog.css', 'assets/catalog.js', 'assets/tool-directory.js', 'image/index.html', 'image/batch/index.html', 'image/algorithmic-drawing/index.html', 'assets/image-workspace.css',
+  'image/contact-sheet/index.html', 'assets/contact-sheet.js', 'assets/algorithmic-drawing.css', 'assets/algorithmic-drawing.js', 'assets/image-batch.js', 'assets/image-batch.css', 'lib/image/batch.js', 'media/index.html', 'lyrical/index.html', 'assets/lyrical.js', 'assets/lyrical.css', 'workers/lyrical-transcription.worker.js',
   'assets/app.css', 'assets/home.js', 'assets/image.js', 'assets/media.css', 'assets/media.js',
   'workers/image.worker.js', 'lib/security/index.js', 'lib/media/ingest.js', 'lib/media/project.js', 'lib/media/audio/edits.js', 'lib/media/audio-video/visualizer.js', 'lib/media/audio-video/workspace.js', 'lib/media/command/grammar.js', 'lib/media/command/workspace.js', 'lib/media/recipes/store.js', 'lib/media/recipes/workspace.js', 'lib/media/compiler/plan.js', 'lib/media/compiler/tar.js', 'lib/media/compiler/workspace.js', 'lib/media/delivery/plan.js', 'lib/media/delivery/workspace.js', 'lib/media/qc/report.js', 'lib/media/qc/workspace.js', 'lib/media/lyrics/lyrics.js', 'lib/media/lyrics/workspace.js', 'lib/media/transcript/subtitles.js', 'lib/media/transcript/workspace.js', 'lib/media/video/edits.js', 'lib/image/edits.js', 'lib/image/layers.js', 'lib/image/watermark.js', 'lib/image/cleanup.js', 'lib/image/text-replace.js', 'lib/image/compiler.js', 'lib/image/performance.js', 'lib/image/asset-doctor.js', 'lib/image/smart-crop.js', 'lib/image/web-pack.js', 'lib/image/watermark-detect.js', 'lib/image/browser-processor.js', 'vercel.json'
 ];

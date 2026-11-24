@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="Create repeatable geometric artwork on your device and export it as WebP or PNG.">
+  <title>Algorithmic Drawing · Utility OS</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="/assets/home.css">
+  <link rel="stylesheet" href="/assets/algorithmic-drawing.css">
+</head>
+<body class="home-body">
+  <header class="home-header">
+    <a class="brand" href="/" aria-label="Utility OS home"><span class="brand-mark">U</span><span>Utility OS</span></a>
+    <a class="drawing-studio-link" href="/image">Image Studio</a>
+  </header>
+  <main class="drawing-main">
+    <h1>Algorithmic Drawing</h1>
+    <p>Create geometric artwork on your device. Reuse the same seed and settings to recreate a design.</p>
+    <div class="drawing-workspace">
+      <div class="drawing-preview">
+        <canvas id="drawing-preview" width="640" height="640" role="img" aria-label="Generated artwork preview">
+          Your browser needs Canvas support to preview drawings.
+        </canvas>
+      </div>
+      <div class="drawing-controls">
+        <label>Pattern<select id="pattern"><option value="rosette">Rosette</option><option value="waves">Wave Lines</option><option value="contours">Contour Lines</option></select></label>
+        <label>Palette<select id="palette"><option value="fern">Fern</option><option value="ink">Ink</option><option value="clay">Clay</option></select></label>
+        <label>Line density<input id="density" type="range" min="0" max="100" value="54"></label>
+        <div class="drawing-seed">
+          <label>Seed<input id="seed" type="number" inputmode="numeric" min="0" max="4294967295" step="1" value="4173"></label>
+          <button id="new-seed" class="secondary-button" type="button">New seed</button>
+        </div>
+        <label>Size<select id="size"><option value="1080x1080">Square · 1080 × 1080</option><option value="1080x1920">Story · 1080 × 1920</option><option value="1920x1080">Landscape · 1920 × 1080</option></select></label>
+        <label class="drawing-transparent"><input id="transparent" type="checkbox"> Transparent background</label>
+        <div class="drawing-downloads">
+          <button class="primary-button" id="download-webp" type="button">Download WebP</button>
+          <button class="secondary-button" id="download-png" type="button">PNG</button>
+        </div>
+        <p id="drawing-status" role="status"></p>
+      </div>
+    </div>
+  </main>
+  <script type="module" src="/assets/algorithmic-drawing.js"></script>
+</body>
+</html>

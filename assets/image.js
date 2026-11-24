@@ -17,7 +17,18 @@ import { buildResponsiveVariants, buildPictureMarkup } from '/lib/image/web-pack
 import { detectWatermarkRegions, boxesToCleanupStrokes } from '/lib/image/watermark-detect.js';
 import { shouldUseBrowserProcessor, processBrowserImage, optimizeBrowserImage } from '/lib/image/browser-processor.js';
 
-const openSocialPack = new URLSearchParams(location.search).get('tool') === 'social';
+const toolEntries = {
+  crop: ['Crop Image', 'Frame a photo using a preset ratio or a custom crop.', 'crop', 'crop'],
+  cleanup: ['Clean Up Image', 'Brush over small marks and preview the result.', 'cleanup', 'cleanup'],
+  text: ['Add Text', 'Place editable text on your image.', 'text', 'text'],
+  watermark: ['Add Watermark', 'Place a text or logo watermark on an image.', 'watermark', 'watermark'],
+  replace: ['Replace Text', 'Select an area, remove the old text and place new text.', 'replace', 'replace'],
+  social: ['Social Asset Pack', 'Choose a master image and preview it in several sizes.', 'social', 'compiler'],
+  webpack: ['Responsive Web Pack', 'Create responsive image variants and export HTML.', 'webpack', 'webpack'],
+  assetdoctor: ['Asset Doctor', 'Check image dimensions, format and export settings.', 'optimize', 'assetdoctor'],
+};
+const requestedTool = new URLSearchParams(location.search).get('tool');
+const entryTool = Object.hasOwn(toolEntries, requestedTool) ? toolEntries[requestedTool] : null;
 const workerUrl = new URL('/workers/image.worker.js', location.origin);
 const runner = new WorkerRunner(workerUrl);
 const state = { items: [], selectedId: null, busy: false, useBrowserProcessor: shouldUseBrowserProcessor(), mobileStartOpen: true, editHistory: [], lastCommittedEdits: normalizeEdits(DEFAULT_EDITS), lastCommittedGeometry: { rotate: 0, flipX: false, flipY: false }, layers: [], selectedLayerId: null, watermarkLogoFile: null, cleanupPointerId: null, mobileMode: 'adjust', mobileAdjustKey: 'brightness', mobileShowOriginal: false, layerDrag: null, replaceDrag: null, mobilePrecision: false, compilerCustomOutputs: [], compilerSelectedIds: new Set(), compilerGenerated: [], redoHistory: [], previewTimer: 0, previewAbort: null };
@@ -63,11 +74,13 @@ function initialize() {
     option.value = preset.id; option.textContent = `${preset.label} · ${preset.width}×${preset.height}`;
     els.preset.append(option);
   }
-  if (openSocialPack) {
-    document.querySelector('.studio-heading h1').textContent = 'Create a social asset pack.';
-    document.querySelector('.studio-heading p:not(.eyebrow)').textContent = 'Choose a master image and preview it in several sizes.';
+  if (entryTool) {
+    const [title, description] = entryTool;
+    document.title = title + ' · Utility OS';
+    document.querySelector('.studio-heading h1').textContent = title;
+    document.querySelector('.studio-heading p').textContent = description;
     els.input.multiple = false;
-    els.choose.textContent = 'Choose master image';
+    els.choose.textContent = 'Choose image';
   }
   wireEvents();
   updateConditionalControls();
@@ -77,6 +90,10 @@ function initialize() {
 
 function wireEvents() {
   els.choose.addEventListener('click', openImagePicker);
+  $('#studio-sample').addEventListener('click', loadStudioSample);
+  $('#desktop-files-toggle').addEventListener('click', toggleMobileFiles);
+  $('#desktop-export-top').addEventListener('click', () => { closeMobileFiles(); setDesktopInspectorTool('export'); });
+  window.addEventListener('keydown', event => { if (event.key === 'Escape') closeMobileFiles(); });
   els.uploadIcon?.addEventListener('click', openImagePicker);
   els.add.addEventListener('click', openImagePicker);
   els.mobileContinue.addEventListener('click', enterMobileEditor);
@@ -136,6 +153,7 @@ function wireEvents() {
   els.mobileUndo.addEventListener('click', undoEdit);
   els.mobileRedo.addEventListener('click', redoEdit);
   els.mobileExportTop.addEventListener('click', () => setMobileMode('export'));
+  $('#studio-crop-done').addEventListener('click', () => setMobileMode('adjust'));
   els.mobileSheetBack.addEventListener('click', () => setMobileMode('more'));
   for (const button of els.mobileMoreButtons) button.addEventListener('click', () => setMobileMode(button.dataset.mobileMoreTarget));
   els.mobileMoreRevert.addEventListener('click', () => { resetToOriginal(); setMobileMode('adjust'); });
@@ -161,6 +179,20 @@ function wireEvents() {
   els.mobileCanvasImage.addEventListener('pointerdown', beginLayerDrag); els.mobileCanvasImage.addEventListener('pointermove', continueLayerDrag); els.mobileCanvasImage.addEventListener('pointerup', endLayerDrag); els.mobileCanvasImage.addEventListener('pointercancel', endLayerDrag);
   window.addEventListener('resize', () => { syncMobileEditingState(); if (['cleanup','watermarkremove'].includes(state.mobileMode)) requestAnimationFrame(() => renderCleanupEditor(selectedItem())); });
   window.addEventListener('pagehide', () => { state.previewAbort?.abort(); cleanupUrls(); });
+}
+
+async function loadStudioSample(event) {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    const response = await fetch('/assets/brand/tools/images.webp');
+    if (!response.ok) throw new Error('Sample image unavailable');
+    await addFiles([new File([await response.blob()], 'utility-os-sample.webp', { type: 'image/webp' })]);
+  } catch {
+    showCompatibility('The sample image is unavailable. Choose a file to continue.');
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function openImagePicker() {
@@ -241,8 +273,8 @@ async function addFiles(files) {
         state.mobileStartOpen = false;
         syncMobileEditingState();
         try { resetToOriginal({ resetExport: true }); } catch {}
-        if (openSocialPack) {
-          setMobileMode('compiler'); setDesktopInspectorTool('social');
+        if (entryTool) {
+          setDesktopInspectorTool(entryTool[2]); setMobileMode(entryTool[3]);
         }
       }
     }
@@ -320,7 +352,7 @@ function selectItem(id) {
   els.mobileCanvasStatus?.classList.add('hidden');
   state.layerDrag = state.replaceDrag = null;
   renderList(); renderSelectedSafely(); syncMobileEditingState();
-  if (window.matchMedia('(max-width: 700px)').matches) closeMobileFiles();
+  closeMobileFiles();
   if (next.editor && !next.editPreviewUrl && !next.outputUrl) scheduleEditPreview(20);
 }
 
@@ -978,7 +1010,12 @@ function setDesktopInspectorTool(tool) {
   if (!card || !['adjust','crop','cleanup','text','watermark','social','webpack','resize','replace','optimize','export'].includes(tool)) return;
   card.dataset.inspectorTool = tool;
   document.body.dataset.desktopWorkspace = (tool === 'social' || tool === 'webpack') ? 'output' : 'edit';
-  document.querySelectorAll('.image-sidebar-nav-button').forEach((button) => button.classList.toggle('active', button.dataset.sidebarTool === tool));
+  document.querySelectorAll('.image-sidebar-nav-button').forEach(button => {
+    const active = button.dataset.sidebarTool === tool;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+    if (active) $('#studio-inspector-title').textContent = button.textContent.trim();
+  });
 }
 function discardPreviewUrl(item) {
   if (!item?.editPreviewUrl) return;
@@ -1511,8 +1548,14 @@ async function downloadCompilerPack(){
   } finally {setBusy(false);updateCompilerState();}
 }
 
-function toggleMobileFiles() { document.body.classList.toggle('mobile-files-open'); }
-function closeMobileFiles() { document.body.classList.remove('mobile-files-open'); }
+function setFilesPanel(open) {
+  document.body.classList.toggle('mobile-files-open', open);
+  for (const trigger of [els.mobileBatchChip, $('#desktop-files-toggle')]) {
+    trigger.setAttribute('aria-expanded', String(open));
+  }
+}
+function toggleMobileFiles() { setFilesPanel(!document.body.classList.contains('mobile-files-open')); }
+function closeMobileFiles() { setFilesPanel(false); }
 
 async function mobileExportSelected() {
   const item = selectedItem(); if (!item?.inspect || state.busy) return;
@@ -1572,8 +1615,9 @@ function syncMobileEditingState() {
   document.body.classList.toggle('mobile-start', mobile && !editing);
   const count = readyItems.length;
   if (els.mobileBatchChip) {
-    els.mobileBatchChip.textContent = `${count} image${count === 1 ? '' : 's'}`;
-    els.mobileBatchChip.classList.toggle('hidden', count < 2 || state.mobileMode === 'watermarkremove');
+    els.mobileBatchChip.textContent = `Files (${count})`;
+    els.mobileBatchChip.classList.toggle('hidden', count < 1);
+    $('#desktop-files-toggle').textContent = `Files (${count})`;
   }
   if (els.mobileExportAll) { els.mobileExportAll.textContent = `Export all ${count} as ZIP`; els.mobileExportAll.classList.toggle('hidden', count < 2); }
   if (els.mobileContinue) els.mobileContinue.classList.toggle('hidden', !hasReady);
