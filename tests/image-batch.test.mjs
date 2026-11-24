@@ -36,3 +36,11 @@ test('contact sheet uses a bounded grid and allocates room for labels only when 
   const max = contactSheetLayout(50, 6, true);
   assert.ok(max.width * max.height < 5_000_000);
 });
+
+test('relative presets preserve individual proportions and max width does not enlarge', () => {
+  assert.deepEqual(batchDimensions(portrait, batchSettings(portrait, { ...defaults, preset: 'half' })), { width: 500, height: 1000 });
+  assert.deepEqual(batchDimensions(portrait, batchSettings(portrait, { ...defaults, preset: 'max-width' })), portrait);
+  const landscape = { width: 3000, height: 2000 };
+  assert.deepEqual(batchDimensions(landscape, batchSettings(landscape, { ...defaults, preset: 'max-width' })), { width: 1200, height: 800 });
+  assert.deepEqual(batchFilenames([{ name: 'front.jpg' }], 'jpeg', '', '{name}-{width}x{height}-{index}', [portrait]), ['front-1000x2000-001.jpg']);
+});

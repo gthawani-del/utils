@@ -1,10 +1,11 @@
+import { drawResize } from '../lib/image/draw-resize.js';
 import { cropFrameSize, cropInPixels, drawCroppedPhoto } from '../lib/image/interactive-crop.js';
 import { SECURITY_BUDGET, validateDimensions } from '../lib/security/budget.js';
 import { sniffBytes } from '../lib/security/sniff.js';
 import { sanitizeSvgText } from '../lib/security/svg.js';
 import { ok, fail, unsupported } from '../lib/security/result.js';
 import { preflightDimensions, parseExifSummary, parseColorProfileSummary } from '../lib/image/preflight.js';
-import { calculateResize, calculateCrop, coverRect } from '../lib/image/math.js';
+import { calculateResize, calculateCrop } from '../lib/image/math.js';
 import { normalizeEdits, hasPixelEdits } from '../lib/image/edits.js';
 import { normalizeLayers } from '../lib/image/layers.js';
 import { normalizeWatermark, resolveWatermarkPosition } from '../lib/image/watermark.js';
@@ -17,6 +18,7 @@ try { Object.defineProperty(self, 'fetch', { value: () => Promise.reject(new Err
 self.onmessage = async (event) => {
   const { op } = event.data || {};
   try {
+    if (op === 'batch-proxy') return send(await batchProxy(event.data.file));
     if (op === 'inspect') return send(await inspect(event.data));
     if (op === 'process') return send(await processImage(event.data));
     if (op === 'preview') return send(await processImage({ ...event.data, preview: true }));
@@ -34,7 +36,7 @@ function send(result) {
   self.postMessage(result, transfers);
 }
 
-async function inspect({ buffer }) {
+export async function inspect({ buffer }) {
   const bytes = new Uint8Array(buffer);
   const kind = sniffBytes(bytes).kind;
   if (!['jpeg', 'png', 'webp', 'avif', 'svg'].includes(kind)) return unsupported('File signature is not a supported image format.', 'BAD_SIGNATURE');
@@ -55,9 +57,9 @@ async function inspect({ buffer }) {
   return ok({ kind, mime: mimeFor(kind), dimensions, exif, color });
 }
 
-async function processImage({ buffer, settings = {}, preview = false, watermarkLogoBuffer = null }) {
+export async function processImage({ buffer, settings = {}, preview = false, watermarkLogoBuffer = null, batchOutput = false }) {
   const bytes = new Uint8Array(buffer);
-  const inspected = await inspect({ buffer: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) });
+  const inspected = await inspect({ buffer });
   if (inspected.state !== 'completed') return inspected;
   const { kind, dimensions, exif } = inspected.value;
 
@@ -126,7 +128,10 @@ async function processImage({ buffer, settings = {}, preview = false, watermarkL
     target = { width: Math.max(1, Math.round(target.width * scale)), height: Math.max(1, Math.round(target.height * scale)) };
   }
   const targetCheck = validateDimensions(target.width, target.height);
-  if (!targetCheck.ok) return unsupported(targetCheck.reason, 'RESOURCE_LIMIT');
+  if (!targetCheck.ok) {
+    if ('close' in source) source.close(); else source.width = source.height = 1;
+    return unsupported(targetCheck.reason, 'RESOURCE_LIMIT');
+  }
 
   const edits = normalizeEdits(settings.edits);
   if (hasPixelEdits(edits) && target.width * target.height > 24_000_000) {
@@ -168,9 +173,13 @@ async function processImage({ buffer, settings = {}, preview = false, watermarkL
   } else {
     encoded = await encode(canvas, mime, usedQuality);
   }
+  const outputWidth = canvas.width;
+  const outputHeight = canvas.height;
+  if (batchOutput) canvas.width = canvas.height = 1;
   if (encoded.type !== mime) return unsupported(`${outputKind.toUpperCase()} encoding is not supported by this browser.`, 'ENCODER_UNAVAILABLE');
   if (encoded.size > SECURITY_BUDGET.maxOutputBytes) return unsupported('Output exceeds the safe output-size limit.', 'RESOURCE_LIMIT');
 
+  if (batchOutput) return ok({ blob: encoded, width: outputWidth, height: outputHeight, mime });
   const outputBuffer = await encoded.arrayBuffer();
   return ok({
     buffer: outputBuffer,
@@ -229,26 +238,7 @@ function hasKnownNeighbor(known,width,height,x,y){for(let oy=-1;oy<=1;oy++)for(l
 
 function render(source, crop, target, settings) {
   const canvas = new OffscreenCanvas(target.width, target.height);
-  const ctx = canvas.getContext('2d', { alpha: true });
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  const mode = settings.resizeMode || 'fit';
-  const outputKind = settings.format || 'png';
-  if (outputKind === 'jpeg' || settings.solidBackground) {
-    ctx.fillStyle = settings.background || '#ffffff';
-    ctx.fillRect(0, 0, target.width, target.height);
-  }
-  if (mode === 'fill') {
-    const cover = coverRect(crop.width, crop.height, target.width, target.height, settings.smartCrop?.focusX, settings.smartCrop?.focusY);
-    ctx.drawImage(source, crop.x + cover.x, crop.y + cover.y, cover.width, cover.height, 0, 0, target.width, target.height);
-  } else if (mode === 'contain') {
-    const scale = Math.min(target.width / crop.width, target.height / crop.height);
-    const w = Math.max(1, Math.round(crop.width * scale));
-    const h = Math.max(1, Math.round(crop.height * scale));
-    ctx.drawImage(source, crop.x, crop.y, crop.width, crop.height, Math.round((target.width - w) / 2), Math.round((target.height - h) / 2), w, h);
-  } else {
-    ctx.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, target.width, target.height);
-  }
+  drawResize(canvas.getContext('2d', { alpha: true }), source, crop, target, settings);
   return canvas;
 }
 
@@ -527,3 +517,32 @@ function crc32(bytes) {
 function mimeFor(kind) { return ({ jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', avif: 'image/avif', svg: 'image/svg+xml' })[kind] || 'application/octet-stream'; }
 function normalizeQuality(value) { const n = Number(value); return Number.isFinite(n) ? Math.max(0.05, Math.min(1, n)) : 0.82; }
 function positiveInt(value, fallback) { const n = Math.round(Number(value)); return Number.isFinite(n) && n > 0 ? n : fallback; }
+
+async function batchProxy(file) {
+  const buffer = await file.arrayBuffer();
+  const inspected = await inspect({ buffer });
+  if (inspected.state !== 'completed') return inspected;
+  const { mime, kind, dimensions } = inspected.value;
+  const blob = kind === 'svg'
+    ? new Blob([sanitizeSvgText(new TextDecoder().decode(buffer))], { type: mime })
+    : file.slice(0, file.size, mime);
+  if (typeof OffscreenCanvas !== 'function' || typeof createImageBitmap !== 'function') {
+    return ok({ ...inspected.value, displayFile: blob });
+  }
+  const scale = Math.min(1, 250 / Math.max(dimensions.width, dimensions.height));
+  const width = Math.max(1, Math.round(dimensions.width * scale));
+  const height = Math.max(1, Math.round(dimensions.height * scale));
+  let bitmap;
+  let canvas;
+  try {
+    bitmap = await createImageBitmap(blob, { resizeWidth: width, resizeHeight: height, resizeQuality: 'medium' });
+    canvas = new OffscreenCanvas(width, height);
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+    return ok({ ...inspected.value, proxy: await canvas.convertToBlob({ type: 'image/png' }), ...(kind === 'svg' && { displayFile: blob }) });
+  } catch {
+    return ok({ ...inspected.value, displayFile: blob });
+  } finally {
+    bitmap?.close();
+    if (canvas) canvas.width = canvas.height = 1;
+  }
+}

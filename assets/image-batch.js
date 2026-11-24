@@ -1,291 +1,584 @@
-import { SECURITY_BUDGET, validateBatchBudget, validateDimensions, validateFileBudget } from '/lib/security/budget.js';
+import { validateBatchBudget, validateDimensions, validateFileBudget } from '/lib/security/budget.js';
 import { WorkerRunner } from '/lib/security/worker-runner.js';
-import { processBrowserImage, shouldUseBrowserProcessor } from '/lib/image/browser-processor.js';
-import { batchDimensions, batchFilenames, batchSettings } from '/lib/image/batch.js';
+import { processBrowserImage } from '/lib/image/browser-processor.js';
+import { batchCover, batchDimensions, batchFilenames, batchSettings } from '/lib/image/batch.js';
+import { drawResize } from '/lib/image/draw-resize.js';
+import { exportBatch } from '/assets/batch-archive.js';
 
 const $ = id => document.getElementById('batch-' + id);
-const input = $('input');
+const workspace = $('workspace');
 const form = $('form');
-const fileList = $('files');
+const input = $('input');
+const cards = $('files');
 const status = $('status');
-const framing = $('framing');
-const format = $('format');
-const compression = $('compression');
-const generate = $('generate');
-const zip = $('zip');
+const gallery = workspace.querySelector('.batch-gallery');
+const workerUrl = '/workers/batch-export.worker.js';
 const runner = new WorkerRunner(new URL('/workers/image.worker.js', location.origin));
-const useBrowserProcessor = shouldUseBrowserProcessor();
 const tool = new URLSearchParams(location.search).get('tool');
-const resizePresets = { product: [2000, 2000], square: [1080, 1080], portrait: [1080, 1350] };
-const zipByteBudget = SECURITY_BUDGET.maxOutputBytes * 4;
+const resizeTool = tool !== 'compress' && tool !== 'convert';
+const presets = { portrait: [1080, 1350], square: [1080, 1080], story: [1080, 1920], banner: [1920, 1080], hero: [1600, 900], product: [2000, 2000] };
+const help = {
+  contain: 'Keep the whole photo and fill the extra space.',
+  fill: 'Fill the frame. Reposition individual photos if needed.',
+  fit: 'Keep proportions within the selected dimensions.',
+  original: 'Keep each image at its original size.',
+  stretch: 'Fill the frame by changing the photo’s proportions.',
+};
 let items = [];
-let busy = false;
+let importing = false;
+let job;
+let ratio = 1080 / 1350;
+let archive;
+let archiveUrl;
+let editItem;
+let dragStart;
+let estimateTimer;
+let estimateVersion = 0;
 
-if (tool === 'convert' || tool === 'compress') {
-  const title = tool === 'convert' ? 'Convert Image' : 'Compress Image';
+if (!resizeTool) {
+  const compress = tool === 'compress';
+  const title = compress ? 'Compress Image' : 'Convert Image';
   $('heading').textContent = title;
   document.title = title + ' · Utility OS';
-  $('intro').textContent = tool === 'convert'
-    ? 'Change format while keeping the original image dimensions. Files stay on this device.'
-    : 'Reduce file size without changing image dimensions. Files stay on this device.';
-  framing.value = 'original';
-  $('preset-field').hidden = true;
-  $('framing-field').hidden = true;
-  if (tool === 'compress') $('options').open = true;
+  $('intro').textContent = compress ? 'Reduce file size without changing image dimensions.' : 'Change image formats while keeping original dimensions.';
+  $('resize').hidden = $('advanced').hidden = true;
 }
 
-function readOptions() {
+function currentOptions() {
+  const framing = !resizeTool || $('original').checked ? 'original'
+    : $('stretch').checked ? 'stretch' : form.elements.framing.value;
+  const format = $('format').value;
   return {
-    framing: framing.value,
-    width: $('width').valueAsNumber,
-    height: $('height').valueAsNumber,
-    padding: $('padding').value,
-    format: format.value,
+    preset: $('preset').value, framing, format,
+    width: $('width').valueAsNumber, height: $('height').valueAsNumber,
+    padding: form.elements.padding.value, padColor: $('color').value,
     quality: $('quality').valueAsNumber / 100,
-    targetBytes: format.value !== 'png' && compression.value === 'target' ? $('target').valueAsNumber * 1024 : 0,
+    targetBytes: format !== 'png' && $('compression').value === 'target' ? $('target').valueAsNumber * 1024 : 0,
+    keepCamera: $('camera').checked, pattern: $('pattern').value.trim(), prefix: $('prefix').value.trim(),
   };
 }
 
-function updateControls() {
-  const original = framing.value === 'original';
-  const useQuality = format.value !== 'png';
-  const target = useQuality && compression.value === 'target';
-  $('dimensions').hidden = original;
-  $('frame-help').hidden = tool === 'convert' || tool === 'compress';
-  $('frame-help').textContent = {
-    contain: 'Keep the whole image and pad the extra space.',
-    fit: 'Keep the proportions. Output dimensions may differ between files.',
-    fill: 'Cover the full frame. Edges may be cropped.',
-    original: 'Keep each image at its original width and height.',
-  }[framing.value];
-  $('padding-field').hidden = framing.value !== 'contain' || format.value === 'jpeg';
-  $('compression-field').hidden = !useQuality;
-  $('quality-field').hidden = !useQuality || target;
+function syncControls() {
+  const options = currentOptions();
+  const active = items.length > 0;
+  const busy = Boolean(job) || importing;
+  const relative = ['half', 'max-width'].includes(options.preset);
+  const framingVisible = options.framing !== 'original' && !relative;
+  const target = options.format !== 'png' && $('compression').value === 'target';
+  workspace.classList.toggle('has-files', active);
+  $('sheet').hidden = !active;
+  $('dropzone').hidden = active;
+  $('active').hidden = !active;
+  $('dimensions').hidden = !framingVisible;
+  $('framing').hidden = !framingVisible || options.framing === 'stretch';
+  $('padding-field').hidden = !framingVisible || options.framing !== 'contain';
+  $('transparent').hidden = options.format === 'jpeg';
+  $('color').hidden = options.padding !== 'custom' || $('padding-field').hidden;
+  $('frame-help').textContent = options.framing !== 'original' && relative
+    ? options.preset === 'half' ? 'Halve both dimensions for each image.' : 'Shrink wider images. Keep smaller images at their current size.'
+    : help[options.framing];
+  $('compression-field').hidden = options.format === 'png';
+  $('quality-field').hidden = target || options.format === 'png';
   $('target-field').hidden = !target;
+  $('camera-field').hidden = options.format !== 'jpeg';
+  $('camera-help').hidden = options.format !== 'jpeg';
   $('quality-value').textContent = $('quality').value + '%';
-  for (const control of form.querySelectorAll('input, select')) control.disabled = busy || Boolean(control.closest('[hidden]'));
-  input.disabled = busy;
-  generate.disabled = busy || !items.some(item => item.inspect);
-  zip.disabled = busy;
-  zip.hidden = items.filter(item => item.output).length < 2;
+  const count = items.filter(item => item.inspect).length;
+  const geometry = options.framing === 'original' ? 'Original dimensions' : relative
+    ? options.preset === 'half' ? '50% size' : 'Max width 1200 px' : `${$('width').value} × ${$('height').value}`;
+  const layout = { contain: 'Pad', fill: 'Crop', fit: 'Fit', stretch: 'Stretch' }[options.framing];
+  $('quick').textContent = [geometry, framingVisible ? layout : '', options.format.toUpperCase(), options.format === 'png' ? '' : target
+    ? `≤ ${$('target').value} KB` : `${$('quality').value}%`].filter(Boolean).join(' · ');
+  for (const control of form.querySelectorAll('button, input, select')) {
+    control.disabled = busy || Boolean(control.closest('[hidden]')) || (relative && control === $('stretch'));
+  }
+  for (const control of [input, $('pick'), $('add'), $('clear')]) control.disabled = busy;
+  $('zip').disabled = busy || !count;
+  if (!job) $('zip').textContent = `Download ZIP (${count})`;
+  $('cancel').hidden = !job;
+  $('retry').hidden = busy || !items.some(item => item.error && item.inspect);
+  $('save').hidden = busy || !archive;
 }
 
-function releaseOutput(item) {
-  if (item.output) URL.revokeObjectURL(item.output.url);
-  item.output = null;
-  item.error = '';
-}
+const iconPaths = {
+  crop: 'M6 2v14a2 2 0 0 0 2 2h14M2 6h14a2 2 0 0 1 2 2v14',
+  remove: 'M6 6l12 12M18 6 6 18',
+};
 
-function namesForReady(options) {
-  return batchFilenames(items.filter(item => item.inspect).map(item => item.file), options.format, $('prefix').value.trim());
+function cardAction(action, label, handler) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.setAttribute('aria-label', label);
+  const ns = 'http' + '://www.w3.org/2000/svg';
+  const icon = document.createElementNS(ns, 'svg');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('fill', 'none');
+  icon.setAttribute('stroke', 'currentColor');
+  icon.setAttribute('stroke-width', '2');
+  icon.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', iconPaths[action]);
+  icon.append(path);
+  button.append(icon);
+  button.addEventListener('click', handler);
+  return button;
 }
 
 function formatSize(bytes) {
   return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function renderFiles() {
-  fileList.replaceChildren();
-  $('file-count').textContent = items.length === 1 ? '1 image' : `${items.length} images`;
-  const options = readOptions();
-  let index = 0;
-  const names = namesForReady(options);
-  for (const item of items) {
-    const row = document.createElement('li');
-    const previewUrl = item.output?.url || item.sourceUrl;
-    if (previewUrl) {
-      const image = document.createElement('img');
-      image.src = previewUrl;
-      image.alt = item.output ? 'Output preview' : 'Original preview';
-      image.loading = 'lazy';
-      row.append(image);
-    }
-    const info = document.createElement('div');
-    info.className = 'batch-file-info';
-    const name = document.createElement('strong');
-    const detail = document.createElement('span');
-    name.textContent = item.file.name;
-    if (item.inspect) {
-      const dimensions = item.inspect.dimensions;
-      const plannedName = names[index++];
-      const planned = batchDimensions(dimensions, batchSettings(dimensions, options));
-      detail.textContent = item.error || (item.output
-        ? `${item.output.name} · ${item.output.width} × ${item.output.height} · ${formatSize(item.output.blob.size)}`
-        : `${dimensions.width} × ${dimensions.height} → ${planned.width} × ${planned.height} · ${plannedName}`);
-    } else {
-      detail.textContent = item.rejection;
-    }
-    info.append(name, detail);
-    row.append(info);
-    if (item.output && !busy) {
-      const download = document.createElement('a');
-      download.href = item.output.url;
-      download.download = item.output.name;
-      download.textContent = 'Download';
-      download.setAttribute('aria-label', `Download ${item.output.name}`);
-      row.append(download);
-    }
-    fileList.append(row);
+function preview(item, canvas, maxEdge = 250, focus = item.focus) {
+  if (!item.image) return;
+  const basis = item.inspect.dimensions;
+  const settings = batchSettings(basis, currentOptions());
+  const target = batchDimensions(basis, settings);
+  if (!validateDimensions(target.width, target.height).ok) return;
+  const scale = Math.min(1, maxEdge / Math.max(target.width, target.height));
+  canvas.width = Math.max(1, Math.round(target.width * scale));
+  canvas.height = Math.max(1, Math.round(target.height * scale));
+  drawResize(canvas.getContext('2d'), item.image, { x: 0, y: 0, width: item.image.naturalWidth, height: item.image.naturalHeight },
+    { width: canvas.width, height: canvas.height }, { ...settings, batchFocus: focus || {} }, basis);
+}
+
+const visibility = new IntersectionObserver(entries => {
+  for (const entry of entries) {
+    const item = items.find(value => value.tile === entry.target);
+    if (!item) continue;
+    item.visible = entry.isIntersecting;
+    if (item.visible) paintItem(item);
   }
-  updateControls();
+}, { rootMargin: '60px' });
+
+async function paintItem(item) {
+  if (!item.proxyUrl) return;
+  if (!item.image) {
+    if (!item.decoding) {
+      const image = new Image();
+      image.src = item.proxyUrl;
+      item.decoding = image.decode().then(() => image, () => null);
+    }
+    item.image = await item.decoding;
+    if (!item.image || !items.includes(item)) return;
+  }
+  if (item.visible) preview(item, item.canvas);
+}
+
+function addCard(item) {
+  const row = document.createElement('li');
+  const tile = document.createElement('div');
+  tile.className = 'batch-thumbnail';
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  canvas.setAttribute('aria-label', 'Output framing preview');
+  tile.append(canvas);
+  const actions = document.createElement('div');
+  actions.className = 'batch-card-actions';
+  const crop = cardAction('crop', 'Reposition ' + item.file.name, () => openCrop(item));
+  const remove = cardAction('remove', 'Remove ' + item.file.name, () => removeItem(item));
+  actions.append(crop, remove);
+  const info = document.createElement('div');
+  info.className = 'batch-card-info';
+  const name = document.createElement('strong');
+  name.textContent = item.file.name;
+  name.title = item.file.name;
+  const details = document.createElement('small');
+  const error = document.createElement('small');
+  error.className = 'batch-error';
+  const download = document.createElement('button');
+  download.type = 'button';
+  download.className = 'text-button';
+  download.textContent = 'Download';
+  download.setAttribute('aria-label', 'Download ' + item.file.name);
+  download.onclick = () => {
+    if (item.output && archive) {
+      const { start, size, mime, name } = item.output;
+      downloadBlob(archive.slice(start, start + size, mime), name);
+    }
+  };
+  info.append(name, details, error, download);
+  row.append(tile, actions, info);
+  cards.append(row);
+  Object.assign(item, { row, tile, canvas, crop, remove, details, errorLabel: error, download });
+  visibility.observe(tile);
+}
+
+let paintFrame;
+function repaint() {
+  if (paintFrame) return;
+  paintFrame = requestAnimationFrame(() => {
+    paintFrame = null;
+    for (const item of items) if (item.visible) paintItem(item);
+  });
+}
+
+function refresh() {
+  const options = currentOptions();
+  const ready = items.filter(item => item.inspect);
+  const planned = ready.map(item => batchDimensions(item.inspect.dimensions, batchSettings(item.inspect.dimensions, options)));
+  const names = batchFilenames(ready.map(item => item.file), options.format, options.prefix, options.pattern, planned);
+  const busy = Boolean(job) || importing;
+  let index = 0;
+  for (const item of items) {
+    const dimensions = item.inspect && planned[index];
+    item.details.textContent = item.inspect
+      ? item.output ? `${formatSize(item.file.size)} → ${formatSize(item.output.size)} · ${item.output.width} × ${item.output.height}`
+        : `${dimensions.width} × ${dimensions.height} · ${names[index]} · ${formatSize(item.file.size)} source`
+      : item.rejection ? '' : 'Checking image…';
+    item.errorLabel.textContent = item.error || item.rejection || '';
+    item.errorLabel.hidden = !item.errorLabel.textContent;
+    item.crop.hidden = !item.inspect || !item.proxyUrl || options.framing !== 'fill' || ['half', 'max-width'].includes(options.preset);
+    item.crop.disabled = item.remove.disabled = busy;
+    item.download.hidden = busy || !item.output || !archive;
+    if (item.inspect) index++;
+  }
+  $('file-count').textContent = `${items.length} ${items.length === 1 ? 'image' : 'images'}`;
+  syncControls();
+  repaint();
+  estimateSize();
+}
+
+function estimateSize() {
+  clearTimeout(estimateTimer);
+  const version = ++estimateVersion;
+  const ready = items.filter(item => item.inspect);
+  const total = ready.reduce((sum, item) => sum + item.file.size, 0);
+  $('total').textContent = archive ? `${formatSize(archive.size)} ZIP` : total ? `${formatSize(total)} source` : '';
+  if (archive || !ready.length || job || importing) return;
+  estimateTimer = setTimeout(async () => {
+    const options = currentOptions();
+    if (options.targetBytes || !['jpeg','webp'].includes(options.format)) return;
+    const sample = ready.filter(item => item.image).slice(0, 4);
+    if (!sample.length) return;
+    const canvas = document.createElement('canvas');
+    let bytes = 0, pixels = 0;
+    for (const item of sample) {
+      if (version !== estimateVersion) break;
+      canvas.width = canvas.height = 1;
+      preview(item, canvas);
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/' + options.format, options.quality));
+      if (blob?.type !== 'image/' + options.format || Math.min(canvas.width, canvas.height) < 50) continue;
+      bytes += Math.max(0, blob.size - 512);
+      pixels += canvas.width * canvas.height;
+    }
+    canvas.width = canvas.height = 1;
+    if (version !== estimateVersion || !pixels || !bytes) return;
+    const outputPixels = ready.reduce((sum, item) => {
+      const dims = item.inspect.dimensions;
+      const target = batchDimensions(dims, batchSettings(dims, options));
+      return sum + target.width * target.height;
+    }, 0);
+    const projected = bytes / pixels * outputPixels + 512 * ready.length;
+    if (Number.isFinite(projected) && projected >= 1024) {
+      const rounded = Number(projected.toPrecision(1));
+      $('total').textContent = `Approx. ${formatSize(rounded)} output · ${formatSize(total)} source`;
+    }
+  }, 300);
+}
+
+function clearArchive(clearErrors = true) {
+  if (archiveUrl) URL.revokeObjectURL(archiveUrl);
+  archive = archiveUrl = null;
+  $('save').removeAttribute('href');
+  for (const item of items) {
+    item.output = null;
+    if (clearErrors) item.error = '';
+  }
+}
+
+function removeItem(item) {
+  if (job || importing) return;
+  visibility.unobserve(item.tile);
+  item.row.remove();
+  item.canvas.width = item.canvas.height = 1;
+  if (item.proxyUrl) URL.revokeObjectURL(item.proxyUrl);
+  items = items.filter(value => value !== item);
+  if (!items.length) {
+    workspace.classList.remove('settings-open');
+    $('sheet').setAttribute('aria-expanded', 'false');
+  }
+  clearArchive();
+  status.textContent = items.length ? '' : 'Select images to export.';
+  refresh();
 }
 
 async function chooseFiles(files) {
-  if (!files.length || busy) return;
-  const budget = validateBatchBudget(files);
-  if (!budget.ok) { status.textContent = budget.reason; return; }
-  if (!('Worker' in window) || (!useBrowserProcessor && !('OffscreenCanvas' in window))) {
-    status.textContent = 'This browser does not support local image processing.';
-    return;
-  }
-  for (const item of items) {
-    releaseOutput(item);
-    if (item.sourceUrl) URL.revokeObjectURL(item.sourceUrl);
-  }
-  items = [];
-  busy = true;
-  updateControls();
+  if (!files.length || job || importing) return;
+  const batch = validateBatchBudget([...items.map(item => item.file), ...files]);
+  if (!batch.ok) { status.textContent = batch.reason; return; }
+  clearArchive();
+  importing = true;
   status.textContent = 'Checking images…';
+  const added = files.map(file => ({ file, id: crypto.randomUUID() }));
+  items.push(...added);
+  for (const item of added) addCard(item);
+  refresh();
   try {
-    for (const file of files) {
-      const limit = validateFileBudget(file);
-      if (!limit.ok) { items.push({ file, rejection: limit.reason }); continue; }
-      const buffer = await file.arrayBuffer();
-      const result = await runner.run({ op: 'inspect', buffer }, [buffer], 15_000);
-      if (result.state === 'completed') {
-        const { kind, mime } = result.value;
-        const sourceUrl = kind === 'svg' ? '' : URL.createObjectURL(new Blob([file], { type: mime }));
-        items.push({ file, inspect: result.value, sourceUrl });
-      } else {
-        items.push({ file, rejection: result.error?.message || 'This image could not be checked.' });
+    for (const item of added) {
+      try {
+        const check = validateFileBudget(item.file);
+        if (!check.ok) throw new Error(check.reason);
+        const inspected = await runner.run({ op: 'batch-proxy', file: item.file }, [], 30_000);
+        if (inspected.state !== 'completed') throw new Error(inspected.error?.message || 'The file could not be checked.');
+        const { proxy, displayFile, ...info } = inspected.value;
+        item.inspect = info;
+        item.displayFile = displayFile;
+        if (proxy || displayFile) item.proxyUrl = URL.createObjectURL(proxy || displayFile);
+      } catch (error) {
+        item.rejection = error.message || 'The file could not be checked.';
       }
+      refresh();
     }
     const ready = items.filter(item => item.inspect).length;
-    status.textContent = ready === items.length ? '' : `${ready} of ${items.length} images can be processed.`;
-  } catch {
-    status.textContent = 'Some files could not be checked. You can choose them again.';
+    status.textContent = ready === items.length ? 'Ready to export.' : `${ready} of ${items.length} images can be exported.`;
   } finally {
-    busy = false;
-    input.value = '';
-    form.hidden = items.length === 0;
-    renderFiles();
+    importing = false;
+    refresh();
   }
 }
 
-async function previewExports(event) {
-  event.preventDefault();
-  if (busy) return;
-  const options = readOptions();
-  if (options.framing !== 'original') {
-    const check = validateDimensions(options.width, options.height);
-    if (!check.ok) { status.textContent = check.reason; return; }
+function workerRun(message, signal, report) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const worker = new Worker(workerUrl, { type: 'module' });
+    let settled = false;
+    let timer;
+    const finish = (callback, result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      worker.terminate();
+      signal?.removeEventListener('abort', abort);
+      callback(result);
+    };
+    const abort = () => finish(reject, signal.reason);
+    const armTimeout = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => finish(reject, new Error('The image worker timed out. Try a smaller batch.')), message.type === 'probe' ? 5000 : 120_000);
+    };
+    signal?.addEventListener('abort', abort, { once: true });
+    worker.onerror = () => finish(reject, new Error('The image worker could not start.'));
+    worker.onmessageerror = () => finish(reject, new Error('The image worker returned unreadable data.'));
+    worker.onmessage = ({ data }) => {
+      if (message.type === 'probe' || data.type === 'complete') finish(resolve, data);
+      else if (data.type === 'error') finish(reject, new Error(data.message));
+      else { armTimeout(); report?.(data); }
+    };
+    armTimeout();
+    try { worker.postMessage(message); } catch (error) { finish(reject, error); }
+  });
+}
+
+const workerCapabilities = new URLSearchParams(location.search).has('browserCanvas') ? Promise.resolve(null)
+  : workerRun({ type: 'probe' }).then(result => result.supported ? result : null, () => null);
+
+function archiveName() {
+  return resizeTool ? 'resized-images.zip' : tool === 'compress' ? 'compressed-images.zip' : 'converted-images.zip';
+}
+
+function downloadBlob(blob, name, existingUrl = '') {
+  const link = document.createElement('a');
+  link.href = existingUrl || URL.createObjectURL(blob);
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  if (!existingUrl) setTimeout(() => URL.revokeObjectURL(link.href), 30_000);
+}
+
+async function runExport(retry = false) {
+  if (job || importing) return;
+  const options = currentOptions();
+  if ([...form.querySelectorAll('input')].some(control => !control.disabled && !control.checkValidity())) {
+    status.textContent = 'Enter valid dimensions and file size before exporting.';
+    return;
   }
+  const count = items.filter(item => item.inspect && (!retry || item.error)).length;
+  if (!count) return;
   const candidates = items.filter(item => item.inspect);
-  const names = namesForReady(options);
-  busy = true;
-  let totalBytes = 0;
-  let ready = 0;
-  for (const item of items) releaseOutput(item);
-  renderFiles();
-  try {
-    for (const [index, item] of candidates.entries()) {
-      status.textContent = `Preparing ${index + 1} of ${candidates.length} images…`;
-      const settings = batchSettings(item.inspect.dimensions, options);
-      try {
-        const result = useBrowserProcessor
-          ? await processBrowserImage(item.file, settings)
-          : await processWithWorker(item.file, settings);
-        if (result.state !== 'completed') {
-          item.error = result.error?.message || 'Unable to prepare this image.';
-          continue;
-        }
-        const { mime, buffer, width, height } = result.value;
-        if (options.targetBytes && buffer.byteLength > options.targetBytes) {
-          item.error = `Limit could not be met. Result at the closest available quality: ${formatSize(buffer.byteLength)}.`;
-          continue;
-        }
-        if (totalBytes + buffer.byteLength + 512 > zipByteBudget) {
-          item.error = 'Batch output limit reached. Try a smaller batch or lower output sizes.';
-          continue;
-        }
-        totalBytes += buffer.byteLength + 512;
-        const blob = new Blob([buffer], { type: mime });
-        item.output = { blob, width, height, name: names[index], url: URL.createObjectURL(blob) };
-        ready++;
-      } catch {
-        item.error = 'Unable to prepare this image.';
-      }
+  const queue = candidates.map(item => ({ id: item.id, file: item.file, inspect: item.inspect, focus: item.focus, skip: retry && !item.error }));
+  const totalSelected = items.length;
+  clearArchive(!retry);
+  const controller = new AbortController();
+  job = controller;
+  const { signal } = controller;
+  status.textContent = 'Preparing export…';
+  $('zip').textContent = 'Preparing export…';
+  refresh();
+  const report = message => {
+    if (signal.aborted) return;
+    if (message.type === 'progress') {
+      const progress = `Processing ${message.current} of ${message.total}…`;
+      $('zip').textContent = progress;
+      status.textContent = message.name;
+    } else if (message.type === 'item-error') {
+      const failed = items.find(item => item.id === message.id);
+      if (failed) failed.error = message.message;
     }
-    status.textContent = ready === candidates.length
-      ? `${ready} ${ready === 1 ? 'image' : 'images'} ready to download.`
-      : `${ready} of ${candidates.length} images ready. Check the file list for details.`;
+  };
+  try {
+    const supported = await workerCapabilities;
+    signal.throwIfAborted();
+    const result = supported ? await workerRun({ type: 'export', items: queue, options }, signal, report)
+      : await exportBatch(queue, options, {
+        signal, report,
+        async process(item, settings) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+          signal.throwIfAborted();
+          const original = items.find(value => value.id === item.id);
+          return processBrowserImage(original?.displayFile || item.file, settings, { signal, batchOutput: true });
+        },
+      });
+    signal.throwIfAborted();
+    for (const output of result.outputs) {
+      const item = items.find(value => value.id === output.id);
+      item.output = output;
+      item.error = '';
+    }
+    if (result.blob) {
+      archive = result.blob;
+      archiveUrl = URL.createObjectURL(archive);
+      $('save').href = archiveUrl;
+      $('save').download = archiveName();
+      downloadBlob(archive, archiveName(), archiveUrl);
+    }
+    const expected = retry ? count : totalSelected;
+    status.textContent = result.outputs.length
+      ? `${result.outputs.length} of ${expected} images exported.`
+      : 'No images were exported. Check the errors on the cards.';
+  } catch (error) {
+    status.textContent = signal.aborted ? 'Export cancelled. Your images and settings are ready to retry.' : error.message || 'The export failed.';
   } finally {
-    busy = false;
-    renderFiles();
+    job = null;
+    refresh();
   }
 }
 
-async function processWithWorker(file, settings) {
-  const buffer = await file.arrayBuffer();
-  return runner.run({ op: 'process', buffer, settings }, [buffer]);
+function paintCrop() {
+  preview(editItem, $('crop-image'), 440, { x: $('focus-x').valueAsNumber / 100, y: $('focus-y').valueAsNumber / 100 });
 }
 
-async function downloadZip() {
-  if (busy) return;
-  const outputs = items.flatMap(item => item.output ? [item.output] : []);
-  if (outputs.length < 2) return;
-  busy = true;
-  updateControls();
-  status.textContent = 'Packing ZIP…';
-  try {
-    const files = await Promise.all(outputs.map(async output => ({
-      name: output.name, buffer: await output.blob.arrayBuffer(),
-    })));
-    const result = await runner.run({ op: 'zip', files }, files.map(file => file.buffer), 45_000);
-    if (result.state !== 'completed') {
-      status.textContent = result.error?.message || 'ZIP export failed. You can download files individually.';
-      return;
-    }
-    const url = URL.createObjectURL(new Blob([result.value.buffer], { type: 'application/zip' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'utility-os-images.zip';
-    document.body.append(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    status.textContent = `${outputs.length} images exported as ZIP.`;
-  } catch {
-    status.textContent = 'ZIP export failed. You can download files individually.';
-  } finally {
-    busy = false;
-    updateControls();
+async function openCrop(item) {
+  if (job || importing) return;
+  await paintItem(item);
+  if (!item.image) return;
+  editItem = item;
+  const { dimensions: source } = item.inspect;
+  const target = batchDimensions(source, batchSettings(source, currentOptions()));
+  const cover = batchCover(source.width, source.height, target.width, target.height);
+  $('focus-x').disabled = source.width - cover.width < .01;
+  $('focus-y').disabled = source.height - cover.height < .01;
+  $('focus-x').value = (item.focus?.x ?? .5) * 100;
+  $('focus-y').value = (item.focus?.y ?? .5) * 100;
+  $('crop').showModal();
+  paintCrop();
+}
+
+$('crop-close').onclick = () => $('crop').close();
+$('crop-done').onclick = () => {
+  editItem.focus = { x: $('focus-x').valueAsNumber / 100, y: $('focus-y').valueAsNumber / 100 };
+  $('crop').close();
+  clearArchive();
+  status.textContent = 'Crop updated.';
+  refresh();
+};
+$('crop').addEventListener('close', () => { editItem = dragStart = null; });
+for (const axis of ['x','y']) $('focus-' + axis).oninput = paintCrop;
+$('crop-image').addEventListener('pointerdown', event => {
+  if (!editItem) return;
+  const canvas = event.currentTarget;
+  canvas.setPointerCapture(event.pointerId);
+  dragStart = { x: event.clientX, y: event.clientY, width: canvas.clientWidth, height: canvas.clientHeight,
+    fx: $('focus-x').valueAsNumber, fy: $('focus-y').valueAsNumber };
+});
+$('crop-image').addEventListener('pointermove', event => {
+  if (!dragStart || !editItem) return;
+  const source = editItem.inspect.dimensions;
+  const target = batchDimensions(source, batchSettings(source, currentOptions()));
+  const cover = batchCover(source.width, source.height, target.width, target.height);
+  for (const [axis, dimension] of [['x','width'], ['y','height']]) {
+    const control = $('focus-' + axis);
+    if (control.disabled) continue;
+    const coord = axis === 'x' ? event.clientX : event.clientY;
+    const movement = (coord - dragStart[axis]) / dragStart[dimension] * cover[dimension];
+    const next = dragStart['f' + axis] - 100 * movement / (source[dimension] - cover[dimension]);
+    control.value = Math.round(Math.min(100, Math.max(0, next)));
   }
-}
+  paintCrop();
+});
+for (const type of ['pointerup','pointercancel','lostpointercapture']) $('crop-image').addEventListener(type, () => { dragStart = null; });
 
-input.addEventListener('change', () => chooseFiles([...input.files]));
-const picker = input.closest('.batch-picker');
-picker.addEventListener('dragover', event => event.preventDefault());
-picker.addEventListener('drop', event => {
+form.noValidate = true;
+form.addEventListener('submit', event => { event.preventDefault(); runExport(); });
+form.addEventListener('input', event => {
+  const field = event.target;
+  if (field === $('preset')) {
+    const size = presets[field.value];
+    $('original').checked = $('stretch').checked = false;
+    if (size) {
+      [$('width').value, $('height').value] = size;
+      ratio = size[0] / size[1];
+      $('lock').setAttribute('aria-pressed', 'true');
+      form.elements.framing.value = 'contain';
+    }
+  }
+  if (field === $('width') || field === $('height')) {
+    $('preset').value = 'custom';
+    if ($('lock').getAttribute('aria-pressed') === 'true' && field.valueAsNumber > 0) {
+      const other = field === $('width') ? $('height') : $('width');
+      other.value = Math.max(1, Math.round(field.valueAsNumber * (field === $('width') ? 1 / ratio : ratio)));
+    }
+  }
+  if (field === $('original') && field.checked) $('stretch').checked = false;
+  if (field === $('stretch') && field.checked) $('original').checked = false;
+  if (field === $('format') && field.value === 'jpeg' && form.elements.padding.value === 'transparent') form.elements.padding.value = 'white';
+  clearArchive();
+  status.textContent = items.length ? 'Ready to export.' : 'Select images to export.';
+  refresh();
+});
+$('lock').onclick = () => {
+  const lock = $('lock').getAttribute('aria-pressed') === 'false';
+  if (lock && $('width').valueAsNumber > 0 && $('height').valueAsNumber > 0) ratio = $('width').valueAsNumber / $('height').valueAsNumber;
+  $('lock').setAttribute('aria-pressed', String(lock));
+};
+$('sheet').onclick = () => {
+  const open = workspace.classList.toggle('settings-open');
+  $('sheet').setAttribute('aria-expanded', String(open));
+  if (open) $('sheet').scrollIntoView({ block: 'nearest' });
+};
+$('cancel').onclick = () => job?.abort();
+$('retry').onclick = () => runExport(true);
+$('clear').onclick = () => { for (const item of [...items]) removeItem(item); };
+for (const id of ['pick', 'add']) $(id).onclick = () => input.click();
+input.addEventListener('change', () => {
+  const selected = [...input.files];
+  input.value = '';
+  chooseFiles(selected);
+});
+gallery.addEventListener('dragover', event => {
   event.preventDefault();
+  if (!job && !importing) gallery.classList.add('is-dragging');
+});
+gallery.addEventListener('dragleave', event => {
+  if (!gallery.contains(event.relatedTarget)) gallery.classList.remove('is-dragging');
+});
+gallery.addEventListener('drop', event => {
+  event.preventDefault();
+  gallery.classList.remove('is-dragging');
   chooseFiles([...event.dataTransfer.files]);
 });
-$('preset').addEventListener('input', () => {
-  const key = $('preset').value;
-  if (!(key in resizePresets)) return;
-  [$('width').value, $('height').value] = resizePresets[key];
-  framing.value = 'contain';
-  if (key === 'product') {
-    format.value = 'jpeg';
-    $('padding').value = 'white';
+new ResizeObserver(entries => {
+  workspace.style.setProperty('--batch-export-height', entries[0].target.offsetHeight + 'px');
+}).observe(workspace.querySelector('.batch-export'));
+
+workerCapabilities.then(capabilities => {
+  const avifOption = $('format').querySelector('[value="avif"]');
+  if (capabilities) {
+    avifOption.hidden = !capabilities.avif;
+    return;
   }
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  canvas.toBlob(blob => { avifOption.hidden = blob?.type !== 'image/avif'; }, 'image/avif');
 });
-form.addEventListener('input', event => {
-  if (event.target === $('width') || event.target === $('height') || event.target === framing) $('preset').value = 'custom';
-  for (const item of items) releaseOutput(item);
-  status.textContent = '';
-  renderFiles();
-});
-form.addEventListener('submit', previewExports);
-zip.addEventListener('click', downloadZip);
-updateControls();
+refresh();
