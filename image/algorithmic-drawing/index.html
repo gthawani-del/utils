@@ -16,31 +16,73 @@
   </header>
   <main class="drawing-main">
     <h1>Algorithmic Drawing</h1>
-    <p>Create geometric artwork on your device. Reuse the same seed and settings to recreate a design.</p>
     <div class="drawing-workspace">
+      <section class="drawing-start" aria-label="Create artwork">
+        <button class="secondary-button" id="edit-art-brief" type="button" aria-expanded="true" aria-controls="drawing-idea-panel" hidden>Describe a new idea</button>
+        <div id="drawing-idea-panel">
+        <form id="brief-form">
+          <h2 id="drawing-question"><label for="art-brief">What do you want to create?</label></h2>
+          <textarea id="art-brief" maxlength="320" rows="3" required placeholder="A midnight-blue jazz poster with flowing lines and room for a title at the top"></textarea>
+          <div class="drawing-start-actions">
+            <button class="primary-button" type="submit">Create artwork</button>
+            <button class="text-button" id="open-recipe" type="button">Open recipe</button>
+          </div>
+        </form>
+        <div id="drawing-examples" class="drawing-examples" aria-label="Example ideas"></div>
+        </div>
+      </section>
       <div class="drawing-preview">
-        <canvas id="drawing-preview" width="640" height="640" role="img" aria-label="Generated artwork preview">
-          Your browser needs Canvas support to preview drawings.
-        </canvas>
+        <canvas id="drawing-preview" width="640" height="640" role="img" aria-label="Generated artwork preview"></canvas>
       </div>
-      <div class="drawing-controls">
-        <label>Pattern<select id="pattern"><option value="rosette">Rosette</option><option value="waves">Wave Lines</option><option value="contours">Contour Lines</option></select></label>
-        <label>Palette<select id="palette"><option value="fern">Fern</option><option value="ink">Ink</option><option value="clay">Clay</option></select></label>
-        <label>Line density<input id="density" type="range" min="0" max="100" value="54"></label>
-        <div class="drawing-seed">
-          <label>Seed<input id="seed" type="number" inputmode="numeric" min="0" max="4294967295" step="1" value="4173"></label>
-          <button id="new-seed" class="secondary-button" type="button">New seed</button>
+      <section class="drawing-controls" aria-label="Artwork controls">
+        <p id="drawing-interpretation"></p>
+        <div class="drawing-main-actions" aria-label="Variations and export">
+          <button class="secondary-button" id="previous-variation" type="button" disabled>Back</button>
+          <button class="secondary-button" id="new-seed" type="button">Shuffle</button>
+          <button class="secondary-button" id="next-variation" type="button" disabled>Forward</button>
+          <button class="primary-button" id="export-art" type="button">Export</button>
         </div>
-        <label>Size<select id="size"><option value="1080x1080">Square · 1080 × 1080</option><option value="1080x1920">Story · 1080 × 1920</option><option value="1920x1080">Landscape · 1920 × 1080</option></select></label>
-        <label class="drawing-transparent"><input id="transparent" type="checkbox"> Transparent background</label>
-        <div class="drawing-downloads">
-          <button class="primary-button" id="download-webp" type="button">Download WebP</button>
-          <button class="secondary-button" id="download-png" type="button">PNG</button>
-        </div>
+        <details id="drawing-settings">
+          <summary>Settings</summary>
+          <div class="drawing-parameters">
+            <label>Generator<select id="pattern"></select></label>
+            <label>Palette<select id="palette"></select></label>
+            <label>Composition<select id="composition"></select></label>
+            <label>Size<select id="size"><option value="1080x1080">Square · 1080 × 1080</option><option value="1080x1350">Portrait · 1080 × 1350</option><option value="1080x1920">Story · 1080 × 1920</option><option value="1920x1080">Landscape · 1920 × 1080</option></select></label>
+            <label>Density<input id="density" type="range" min="0" max="100"></label>
+            <div id="drawing-mode-fields"></div>
+            <label>Seed<input id="seed" type="number" inputmode="numeric" min="0" max="4294967295" step="1"></label>
+            <label class="drawing-transparent"><input id="transparent" type="checkbox">Transparent background</label>
+            <button class="text-button" id="drawing-reset" type="button">Reset generator settings</button>
+          </div>
+        </details>
+        <button class="text-button drawing-share" id="copy-recipe" type="button">Copy recipe link</button>
         <p id="drawing-status" role="status"></p>
-      </div>
+      </section>
     </div>
+    <details id="drawing-gallery" class="drawing-gallery">
+      <summary>Explore variations</summary>
+      <div id="drawing-seeds" class="drawing-seeds"></div>
+    </details>
   </main>
+  <dialog class="drawing-dialog" id="recipe-dialog" aria-labelledby="recipe-title">
+    <form id="recipe-form">
+      <div class="drawing-dialog-head"><h2 id="recipe-title">Open recipe</h2><button class="text-button" type="button" data-close="recipe-dialog">Close</button></div>
+      <label for="recipe-input">Paste a recipe link or recipe JSON</label>
+      <textarea id="recipe-input" rows="4" required maxlength="5000"></textarea>
+      <button class="primary-button" type="submit">Open artwork</button>
+      <p id="recipe-error" role="status"></p>
+    </form>
+  </dialog>
+  <dialog class="drawing-dialog" id="art-export-dialog" aria-labelledby="export-title">
+    <div class="drawing-dialog-head"><h2 id="export-title">Export artwork</h2><button class="text-button" type="button" data-close="art-export-dialog">Close</button></div>
+    <p id="art-export-size"></p>
+    <div class="drawing-downloads">
+      <button class="primary-button" id="download-png" type="button">Download PNG</button>
+      <button class="secondary-button" id="download-webp" type="button">Download WebP</button>
+    </div>
+    <p id="art-export-status" role="status"></p>
+  </dialog>
   <script type="module" src="/assets/algorithmic-drawing.js"></script>
 </body>
 </html>
