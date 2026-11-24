@@ -6,6 +6,9 @@ const $ = id => document.getElementById(id);
 const controls = Object.fromEntries(['pattern','palette','composition','size','density','seed','transparent'].map(key => [key, $(key)]));
 const status = $('drawing-status');
 const preview = $('drawing-preview');
+const scan = $('drawing-scan');
+const createButton = $('create-artwork');
+const drawingControls = document.querySelector('.drawing-controls');
 const modeFields = $('drawing-mode-fields');
 const gallery = $('drawing-gallery');
 const paletteName = name => name[0].toUpperCase() + name.slice(1);
@@ -50,16 +53,28 @@ function renderGallery() {
   });
 }
 
+function paintPreview(prepared) {
+  if (prepared) {
+    preview.width = prepared.width;
+    preview.height = prepared.height;
+    preview.getContext('2d').drawImage(prepared, 0, 0);
+  } else {
+    paint(preview, recipe, previewEdge());
+  }
+  preview.setAttribute('aria-label', `${modes[recipe.pattern].label}, ${paletteName(recipe.palette)} palette, seed ${recipe.seed}`);
+  $('drawing-interpretation').textContent = [
+    abstract && 'Abstract interpretation', modes[recipe.pattern].label, paletteName(recipe.palette),
+    recipe.composition !== 'balanced' && layouts[recipe.composition], recipe.transparent && 'Transparent',
+  ].filter(Boolean).join(' · ');
+}
+
+function previewEdge() {
+  return matchMedia('(max-width:730px)').matches ? 480 : 640;
+}
+
 function schedulePaint() {
   cancelAnimationFrame(frame);
-  frame = requestAnimationFrame(() => {
-    paint(preview, recipe, matchMedia('(max-width:730px)').matches ? 480 : 640);
-    preview.setAttribute('aria-label', `${modes[recipe.pattern].label}, ${paletteName(recipe.palette)} palette, seed ${recipe.seed}`);
-    $('drawing-interpretation').textContent = [
-      abstract && 'Abstract interpretation', modes[recipe.pattern].label, paletteName(recipe.palette),
-      recipe.composition !== 'balanced' && layouts[recipe.composition], recipe.transparent && 'Transparent',
-    ].filter(Boolean).join(' · ');
-  });
+  frame = requestAnimationFrame(() => paintPreview());
 }
 
 function rebuildFields() {
@@ -76,7 +91,7 @@ function rebuildFields() {
   }));
 }
 
-function setRecipe(art) {
+function setRecipe(art, prepared) {
   recipe = normalizeRecipe(art);
   for (const [key, control] of Object.entries(controls)) {
     if (key === 'transparent') control.checked = recipe.transparent;
@@ -84,7 +99,10 @@ function setRecipe(art) {
   }
   rebuildFields();
   renderHistory();
-  schedulePaint();
+  if (prepared) {
+    cancelAnimationFrame(frame);
+    paintPreview(prepared);
+  } else schedulePaint();
   renderGallery();
 }
 
@@ -140,7 +158,7 @@ $('edit-art-brief').addEventListener('click', () => {
   $('art-brief').focus();
 });
 
-function openArtwork(art, { idea = '', fallback = false } = {}) {
+function openArtwork(art, { idea = '', fallback = false, prepared } = {}) {
   previous = [];
   next = [];
   abstract = fallback;
@@ -148,16 +166,61 @@ function openArtwork(art, { idea = '', fallback = false } = {}) {
   status.textContent = '';
   const focusInBrief = $('drawing-idea-panel').contains(document.activeElement);
   showIdea(false);
-  setRecipe(art);
+  setRecipe(art, prepared);
   if (focusInBrief) $('edit-art-brief').focus({ preventScroll: true });
 }
 
-$('brief-form').addEventListener('submit', event => {
+function showCreationProgress(percent, stage) {
+  scan.style.setProperty('--scan-position', percent + '%');
+  scan.setAttribute('aria-valuenow', String(percent));
+  scan.setAttribute('aria-valuetext', percent + '% · ' + stage);
+  $('drawing-scan-percent').textContent = percent + '%';
+  $('drawing-scan-stage').textContent = stage;
+}
+
+const nextPaint = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+$('art-brief').placeholder = examples[0].brief;
+$('brief-form').addEventListener('submit', async event => {
   event.preventDefault();
-  const idea = $('art-brief').value.trim();
-  if (!idea) return;
-  const result = interpretBrief(idea);
-  openArtwork(result.recipe, { idea, fallback:result.abstract });
+  if (createButton.disabled) return;
+  const brief = $('art-brief');
+  const idea = brief.value.trim() || examples[0].brief;
+  const prepared = document.createElement('canvas');
+  const moveFocus = $('drawing-idea-panel').contains(document.activeElement);
+  createButton.disabled = true;
+  brief.readOnly = true;
+  drawingControls.inert = true;
+  for (const example of $('drawing-examples').children) example.disabled = true;
+  preview.setAttribute('aria-busy', 'true');
+  status.textContent = '';
+  showCreationProgress(15, 'Reading your brief');
+  scan.hidden = false;
+  brief.blur();
+  preview.scrollIntoView({ block:'nearest' });
+  let completed = false;
+  try {
+    await nextPaint();
+    const result = interpretBrief(idea);
+    showCreationProgress(45, 'Drawing artwork');
+    await nextPaint();
+    paint(prepared, result.recipe, previewEdge());
+    openArtwork(result.recipe, { idea, fallback:result.abstract, prepared });
+    showCreationProgress(100, 'Artwork ready');
+    completed = true;
+    await new Promise(resolve => setTimeout(resolve, 280));
+  } catch {
+    status.textContent = 'Could not create the artwork. Try again.';
+  } finally {
+    scan.hidden = true;
+    preview.removeAttribute('aria-busy');
+    createButton.disabled = false;
+    brief.readOnly = false;
+    drawingControls.inert = false;
+    for (const example of $('drawing-examples').children) example.disabled = false;
+    if (completed) status.textContent = 'Artwork ready.';
+    if (moveFocus) (completed ? $('edit-art-brief') : createButton).focus({ preventScroll:true });
+  }
 });
 for (const example of examples) {
   const button = document.createElement('button');

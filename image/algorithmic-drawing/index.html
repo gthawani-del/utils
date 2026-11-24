@@ -22,9 +22,9 @@
         <div id="drawing-idea-panel">
         <form id="brief-form">
           <h2 id="drawing-question"><label for="art-brief">What do you want to create?</label></h2>
-          <textarea id="art-brief" maxlength="320" rows="3" required placeholder="A midnight-blue jazz poster with flowing lines and room for a title at the top"></textarea>
+          <textarea id="art-brief" maxlength="320" rows="3" placeholder="A midnight-blue jazz poster with flowing lines and room for a title at the top"></textarea>
           <div class="drawing-start-actions">
-            <button class="primary-button" type="submit">Create artwork</button>
+            <button class="primary-button" id="create-artwork" type="submit">Create artwork</button>
             <button class="text-button" id="open-recipe" type="button">Open recipe</button>
           </div>
         </form>
@@ -32,7 +32,16 @@
         </div>
       </section>
       <div class="drawing-preview">
-        <canvas id="drawing-preview" width="640" height="640" role="img" aria-label="Generated artwork preview"></canvas>
+        <div class="drawing-canvas-stage">
+          <canvas id="drawing-preview" width="640" height="640" role="img" aria-label="Generated artwork preview"></canvas>
+          <div class="drawing-scan" id="drawing-scan" role="progressbar" aria-label="Creating artwork" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
+            <span class="drawing-scan-line" aria-hidden="true"></span>
+            <span class="drawing-scan-readout" aria-hidden="true">
+              <strong id="drawing-scan-percent">0%</strong>
+              <small id="drawing-scan-stage"></small>
+            </span>
+          </div>
+        </div>
       </div>
       <section class="drawing-controls" aria-label="Artwork controls">
         <p id="drawing-interpretation"></p>

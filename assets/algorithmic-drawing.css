@@ -7,6 +7,14 @@
 .drawing-start h2 label { font:inherit; color:#1e3027; }
 .drawing-start [hidden] { display:none; }
 .drawing-preview { grid-column:1; grid-row:1 / span 2; display:grid; place-items:center; padding:clamp(10px,2vw,22px); min-height:250px; background:#e5ebe6; border-radius:14px; }
+.drawing-canvas-stage { position:relative; display:grid; place-items:center; min-width:0; max-width:100%; }
+.drawing-scan { position:absolute; inset:0; display:grid; place-items:center; overflow:hidden; background:#0f1c35a3; color:#eefaff; pointer-events:none; }
+.drawing-scan[hidden] { display:none; }
+.drawing-scan-line { position:absolute; left:0; right:0; top:clamp(1px,var(--scan-position,0%),calc(100% - 3px)); height:2px; background:#baf7ff; box-shadow:0 0 7px 2px #72dbf0,0 0 23px 5px #61d2ec70; transition:top 190ms ease-out; }
+.drawing-scan-readout { position:relative; display:grid; justify-items:center; gap:3px; padding:9px 16px; border-radius:8px; background:#14223ff0; }
+.drawing-scan-readout strong { font-size:clamp(24px,5vw,36px); font-variant-numeric:tabular-nums; }
+.drawing-scan-readout small { font-size:13px; }
+@media(prefers-reduced-motion:reduce) { .drawing-scan-line { transition:none; visibility:hidden; } }
 .drawing-preview canvas { display:block; width:auto; height:auto; max-width:100%; max-height:65dvh; box-shadow:0 4px 20px #1423181c; background:repeating-conic-gradient(#e6e8e4 0% 25%,#fff 0% 50%) 0 0 / 22px 22px; }
 .drawing-controls { grid-column:2; display:grid; align-content:start; gap:10px; }
 .drawing-start textarea,.drawing-dialog textarea,.drawing-controls select,.drawing-controls input[type="number"] { display:block; width:100%; min-width:0; min-height:44px; padding:9px; color:#1e3027; background:#fff; border:1px solid #899e90; border-radius:8px; font:inherit; }

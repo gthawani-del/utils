@@ -38,8 +38,30 @@ try {
   const rendered = seed => page.waitForFunction(seed => document.querySelector('#drawing-preview')?.getAttribute('aria-label')?.endsWith('seed ' + seed), seed);
 
   await page.goto(origin + '/');
-  assert.equal(await page.getByRole('link', { name: 'Create artwork' }).count(), 1);
+  const quick = page.locator('#quick-tools');
+  const highlighted = quick.locator('a').first();
+  assert.equal(await highlighted.getAttribute('href'), artPath);
+  assert.equal(await highlighted.evaluate(el => el.classList.contains('directory-quick-featured')), true);
+  assert.equal(await page.locator('.directory-art-hero').count(), 0);
+  assert.equal(await highlighted.evaluate(el => el.querySelector('img').clientWidth), await quick.locator('a').nth(1).evaluate(el => el.querySelector('img').clientWidth));
   await page.screenshot({ path: resolve(output, 'home-mobile.png') });
+  await highlighted.click();
+  await rendered(examples[0].settings.seed);
+  assert.equal(await page.locator('#art-brief').inputValue(), '');
+  const progress = page.getByRole('progressbar', { name: 'Creating artwork' });
+  await page.evaluate(() => {
+    const scan = document.querySelector('#drawing-scan');
+    globalThis.scanSteps = [];
+    new MutationObserver(() => {
+      if (!scan.hidden) globalThis.scanSteps.push(scan.getAttribute('aria-valuenow'));
+    }).observe(scan, { attributes: true, attributeFilter: ['aria-valuenow', 'hidden'] });
+  });
+  await page.getByRole('button', { name: 'Create artwork' }).tap();
+  await progress.waitFor({ state: 'hidden' });
+  await page.getByRole('button', { name: 'Describe a new idea' }).waitFor();
+  assert.equal(await page.locator('#art-brief').inputValue(), examples[0].brief);
+  assert.deepEqual(await page.evaluate(() => scanSteps), ['15', '45', '100']);
+  assert.notEqual(await canvas.getAttribute('aria-label'), 'Flow Fields, Midnight palette, seed ' + examples[0].settings.seed);
   await page.goto(origin + '/images');
   assert.equal(await page.locator('#images-art-examples a').count(), 3);
   await page.getByRole('link', { name: 'Violet Waves' }).click();
@@ -96,9 +118,10 @@ try {
 
   const openIdea = page.getByRole('button', { name: 'Describe a new idea' });
   if (await openIdea.isVisible()) await openIdea.click();
-  await page.locator('#art-brief').fill('A midnight-blue jazz poster with flowing lines and room for a title at the top');
+  await page.locator('#art-brief').fill('A midnight-blue jazz poster with gentle flowing lines and room for a title at the top');
   await page.getByRole('button', { name: 'Create artwork' }).click();
   await page.waitForFunction(() => document.querySelector('#drawing-interpretation')?.textContent.includes('Space at top'));
+  await progress.waitFor({ state: 'hidden' });
   await page.locator('#drawing-gallery summary').click();
   await page.locator('#drawing-seeds button').last().waitFor();
   assert.equal(await page.locator('#drawing-seeds button').count(), 6);

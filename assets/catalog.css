@@ -43,9 +43,11 @@
 .directory-category strong { font-size:20px; letter-spacing:-.025em; }
 .directory-category img { width:min(88%,104px); border-radius:10px; mix-blend-mode:multiply; }
 .directory-quick { flex-direction:column; align-items:center; text-align:center; min-height:91px; justify-content:center; padding:6px; border-radius:10px; }
+.directory-quick-featured { background:#e4edf8; color:#203850; box-shadow:inset 0 0 0 1px #7088a4; }
 .directory-quick strong { font-size:14px; line-height:1.25; }
 .directory-quick img { width:48px; border-radius:7px; margin-bottom:3px; mix-blend-mode:multiply; }
 .directory-quick:hover, .directory-category:hover { background:#dfece0; }
+.directory-quick-featured:hover { background:#d8e6f5; }
 .directory-tool { flex-direction:column; overflow:hidden; border:1px solid var(--directory-border); border-radius:16px; background:#fff; }
 .directory-tool:hover { border-color:#628571; }
 .directory-tool img { width:100%; aspect-ratio:2 / 1; object-fit:contain; background:#e9f0e7; }

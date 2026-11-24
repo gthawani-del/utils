@@ -39,7 +39,7 @@ export const tools = [
   { id: 'image-editor', label: 'Image Studio', description: 'Make several edits in one workspace.', href: image, art: 'editor', category: 'studios', group: 'Studios' },
 ];
 
-export const quickTools = ['resize', 'compress', 'convert', 'crop', 'trim-video', 'resize-video']
+export const quickTools = ['drawing', 'resize', 'compress', 'convert', 'crop', 'trim-video', 'resize-video']
   .map(id => tools.find(tool => tool.id === id));
 
 export function matchesTool(tool, query) {
@@ -51,6 +51,7 @@ export function makeToolCard(tool, style) {
   const link = document.createElement('a');
   link.href = tool.href;
   link.className = 'directory-card directory-' + style;
+  if (style === 'quick' && tool.id === 'drawing') link.classList.add('directory-quick-featured');
   const image = document.createElement('img');
   image.src = '/assets/brand/tools/' + tool.art + '.webp';
   image.alt = '';
