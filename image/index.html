@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/assets/app.css">
   <link rel="stylesheet" href="/assets/image-desktop.css">
   <link rel="stylesheet" href="/assets/image-workspace.css">
+  <link rel="stylesheet" href="/assets/crop-workspace.css">
 </head>
 <body class="image-studio-body">
   <header class="site-header">
@@ -127,7 +128,7 @@
             <label id="shortest-wrap" class="hidden">Shortest edge<input id="shortest-edge" type="number" min="1" max="12000" value="1080"></label>
           </div><label class="check-row"><input id="preserve-aspect" type="checkbox" checked> Preserve aspect ratio</label></div>
 
-          <div class="control-section crop-section"><h3>Crop</h3>
+          <div class="control-section crop-section"><h3>Crop</h3><button class="primary-button" id="studio-open-crop" type="button">Open crop workspace</button><div hidden>
             <div class="mobile-crop-presets" aria-label="Crop aspect ratio">
               <button type="button" class="mobile-crop-chip active" data-crop-choice="none">Original</button>
               <button type="button" class="mobile-crop-chip" data-crop-choice="ratio">1:1</button>
@@ -149,7 +150,7 @@
             <div class="form-grid">
             <label class="desktop-crop-select">Crop<select id="crop-mode"><option value="none">None</option><option value="free">Free</option><option value="ratio">1:1</option><option value="ratio-4-5">4:5</option><option value="ratio-16-9">16:9</option><option value="ratio-9-16">9:16</option><option value="custom">Custom ratio</option></select></label>
             <label id="custom-ratio-wrap" class="hidden">Custom ratio<input id="custom-ratio" type="number" min="0.05" max="20" step="0.01" value="1"></label>
-          </div><div id="free-crop" class="form-grid hidden"><label>X<input id="crop-x" type="number" min="0" value="0"></label><label>Y<input id="crop-y" type="number" min="0" value="0"></label><label>Width<input id="crop-width" type="number" min="1"></label><label>Height<input id="crop-height" type="number" min="1"></label></div><button class="primary-button studio-crop-done" id="studio-crop-done" type="button">Done</button>
+          </div><div id="free-crop" class="form-grid hidden"><label>X<input id="crop-x" type="number" min="0" value="0"></label><label>Y<input id="crop-y" type="number" min="0" value="0"></label><label>Width<input id="crop-width" type="number" min="1"></label><label>Height<input id="crop-height" type="number" min="1"></label></div></div>
           </div>
 
           <div class="control-section edit-section">
@@ -458,6 +459,54 @@
       </section>
     </section>
   </main>
+  <dialog id="crop-workspace" class="crop-workspace" aria-labelledby="crop-dialog-title">
+    <div class="crop-dialog-layout">
+      <header class="crop-dialog-header">
+        <button type="button" class="secondary-button" data-workspace-cancel>Cancel</button>
+        <h2 id="crop-dialog-title">Crop</h2>
+        <button type="button" class="primary-button" data-workspace-done>Done</button>
+      </header>
+      <div class="crop-stage" aria-label="Photo framing">
+        <div class="crop-photo" tabindex="0" aria-label="Pan image with arrow keys">
+          <canvas role="img" aria-label="Uncropped photo with framing overlay"></canvas>
+          <div class="crop-frame">
+            <button type="button" class="crop-corner" data-corner="nw" aria-label="Top left crop handle"></button>
+            <button type="button" class="crop-corner" data-corner="ne" aria-label="Top right crop handle"></button>
+            <button type="button" class="crop-corner" data-corner="sw" aria-label="Bottom left crop handle"></button>
+            <button type="button" class="crop-corner" data-corner="se" aria-label="Bottom right crop handle"></button>
+          </div>
+        </div>
+      </div>
+      <section class="crop-controls" aria-label="Crop controls">
+        <div class="crop-ratios" role="group" aria-label="Aspect ratio">
+          <button type="button" data-workspace-ratio="original">Original</button>
+          <button type="button" data-workspace-ratio="free">Free</button>
+          <button type="button" data-workspace-ratio="1">1:1</button>
+          <button type="button" data-workspace-ratio="0.8">4:5</button>
+          <button type="button" data-workspace-ratio="1.7777777777777777">16:9</button>
+          <button type="button" data-workspace-ratio="0.5625">9:16</button>
+          <button type="button" data-workspace-ratio="0.75">3:4</button>
+          <button type="button" data-workspace-ratio="0.7142857142857143">5:7</button>
+        </div>
+        <div class="crop-actions">
+          <button type="button" data-workspace-rotate>Rotate 90°</button>
+          <button type="button" data-workspace-flip>Flip</button>
+          <button type="button" data-workspace-auto>Auto frame</button>
+          <button type="button" data-workspace-zoom="0.88" aria-label="Zoom in">+</button>
+          <button type="button" data-workspace-zoom="1.14" aria-label="Zoom out">−</button>
+          <output id="crop-result-size" aria-label="Crop dimensions"></output>
+        </div>
+        <details>
+          <summary>Straighten &amp; perspective</summary>
+          <div class="crop-sliders">
+            <label>Straighten <input type="range" min="-35" max="35" value="0" data-crop-transform="angle"><output>0°</output></label>
+            <label>Horizontal <input type="range" min="-45" max="45" value="0" data-crop-transform="horizontal"><output>0°</output></label>
+            <label>Vertical <input type="range" min="-45" max="45" value="0" data-crop-transform="vertical"><output>0°</output></label>
+          </div>
+        </details>
+      </section>
+    </div>
+  </dialog>
   <script type="module" src="/assets/image.js"></script>
 </body>
 </html>

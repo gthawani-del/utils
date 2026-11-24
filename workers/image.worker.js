@@ -1,3 +1,4 @@
+import { cropFrameSize, cropInPixels, drawCropSource } from '../lib/image/interactive-crop.js';
 import { SECURITY_BUDGET, validateDimensions } from '../lib/security/budget.js';
 import { sniffBytes } from '../lib/security/sniff.js';
 import { sanitizeSvgText } from '../lib/security/svg.js';
@@ -95,7 +96,21 @@ async function processImage({ buffer, settings = {}, preview = false, watermarkL
     source = cleaned.canvas;
   }
 
-  const crop = calculateCrop(source.width, source.height, settings.crop);
+  const interactive = settings.interactiveCrop;
+  if (interactive && (interactive.turn || interactive.flip || interactive.angle || interactive.horizontal || interactive.vertical)) {
+    if ((interactive.horizontal || interactive.vertical) && source.width * source.height > 16_000_000 && !preview) {
+      if ('close' in source) source.close(); else { source.width = 1; source.height = 1; }
+      return unsupported('Perspective correction supports photos up to 16 megapixels.', 'CROP_RESOURCE_LIMIT');
+    }
+    const frame = cropFrameSize(source.width, source.height, interactive.turn);
+    const previewScale = preview ? Math.min(1, 1400 / Math.max(frame.width, frame.height)) : 1;
+    const oriented = new OffscreenCanvas(Math.max(1, Math.round(frame.width * previewScale)), Math.max(1, Math.round(frame.height * previewScale)));
+    drawCropSource(source, oriented, interactive);
+    if ('close' in source) source.close(); else { source.width = 1; source.height = 1; }
+    source = oriented;
+  }
+  const crop = interactive ? cropInPixels(source.width, source.height, interactive.rect)
+    : calculateCrop(source.width, source.height, settings.crop);
   const mode = settings.resizeMode || 'fit';
   let target;
   if (mode === 'fill' || mode === 'contain') {

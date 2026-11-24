@@ -1,3 +1,5 @@
+import { createCropWorkspace } from '/assets/crop-workspace.js';
+import { cropFrameSize, cropInPixels } from '/lib/image/interactive-crop.js';
 import { SECURITY_BUDGET, validateBatchBudget, validateFileBudget } from '/lib/security/budget.js';
 import { exportFilename } from '/lib/security/filename.js';
 import { WorkerRunner } from '/lib/security/worker-runner.js';
@@ -60,6 +62,32 @@ const els = {
   webPackWidths: [...document.querySelectorAll('[data-web-width]')], webPackFormats: [...document.querySelectorAll('[data-web-format]')], webPackNoUpscale: $('#web-pack-no-upscale'), webPackGenerate: $('#web-pack-generate'), webPackCopy: $('#web-pack-copy'), webPackMarkup: $('#web-pack-markup'), webPackResult: $('#web-pack-result'), webPackStatus: $('#web-pack-status'),
   performanceMaxWidth: $('#performance-max-width'), performanceMaxSize: $('#performance-max-size'), performanceMinQuality: $('#performance-min-quality'), performanceMinQualityValue: $('#performance-min-quality-value'), performanceRun: $('#performance-run'), performanceDownload: $('#performance-download'), performanceResult: $('#performance-result'), performanceResultTitle: $('#performance-result-title'), performanceResultDetail: $('#performance-result-detail'), performanceStatus: $('#performance-status')
 };
+
+let cropItem;
+const cropWorkspace = createCropWorkspace({
+  commit(draft) {
+    if (!cropItem || selectedItem() !== cropItem) return;
+    state.editHistory.push({ interactiveCrop: cropItem.interactiveCrop ?? null });
+    if (state.editHistory.length > 30) state.editHistory.shift();
+    state.redoHistory = [];
+    cropItem.interactiveCrop = draft;
+    updateUndoButton();
+    scheduleEditPreview(0);
+    if (state.mobileMode === 'crop') setMobileMode('adjust');
+  },
+  onError: showCompatibility,
+});
+
+function openInteractiveCrop() {
+  const item = selectedItem();
+  if (!item?.inspect || state.busy) return;
+  if (!item.originalUrl) {
+    showCompatibility('Interactive Crop needs a raster image. Convert this SVG to PNG first.');
+    return;
+  }
+  cropItem = item;
+  cropWorkspace.open(item.originalUrl, item.interactiveCrop ?? null);
+}
 
 initialize();
 
@@ -127,7 +155,10 @@ function wireEvents() {
   els.undoEdit.addEventListener('click', undoEdit);
   els.resetEdits.addEventListener('click', resetEdits);
   els.comparisonRange.addEventListener('input', updateComparisonPosition);
-  for (const button of document.querySelectorAll('.image-sidebar-nav-button')) button.addEventListener('click', () => setDesktopInspectorTool(button.dataset.sidebarTool));
+  for (const button of document.querySelectorAll('.image-sidebar-nav-button')) button.addEventListener('click', () => {
+    setDesktopInspectorTool(button.dataset.sidebarTool);
+    if (button.dataset.sidebarTool === 'crop') openInteractiveCrop();
+  });
   const addLayerButtons = [[els.addTextLayer,'text'],[els.addRectLayer,'rectangle'],[els.addCircleLayer,'circle'],[els.addLineLayer,'line'],[els.addArrowLayer,'arrow'],[els.addBackgroundLayer,'background']];
   for (const [button,type] of addLayerButtons) button.addEventListener('click', () => addDesignLayer(type));
   els.duplicateLayer.addEventListener('click', duplicateSelectedLayer); els.deleteLayer.addEventListener('click', deleteSelectedLayer); els.layerUp.addEventListener('click', () => moveSelectedLayer(1)); els.layerDown.addEventListener('click', () => moveSelectedLayer(-1));
@@ -146,14 +177,17 @@ function wireEvents() {
   els.desktopApplyEdit?.addEventListener('click', applyDesktopEdit);
   els.desktopCancelEdit?.addEventListener('click', cancelDesktopEdit);
   els.replaceText.addEventListener('input', () => updateReplaceButtons(selectedItem()));
-  for (const button of els.mobileToolButtons) button.addEventListener('click', () => setMobileMode(button.dataset.mobileTool));
+  for (const button of els.mobileToolButtons) button.addEventListener('click', () => {
+    if (button.dataset.mobileTool === 'crop') openInteractiveCrop();
+    else setMobileMode(button.dataset.mobileTool);
+  });
   for (const button of els.mobileAdjustButtons) button.addEventListener('click', () => setMobileAdjust(button.dataset.adjustKey));
   for (const button of els.mobileCropButtons) button.addEventListener('click', () => setMobileCrop(button.dataset.cropChoice));
   els.mobileExit.addEventListener('click', exitMobileEditor);
   els.mobileUndo.addEventListener('click', undoEdit);
   els.mobileRedo.addEventListener('click', redoEdit);
   els.mobileExportTop.addEventListener('click', () => setMobileMode('export'));
-  $('#studio-crop-done').addEventListener('click', () => setMobileMode('adjust'));
+  $('#studio-open-crop').addEventListener('click', openInteractiveCrop);
   els.mobileSheetBack.addEventListener('click', () => setMobileMode('more'));
   for (const button of els.mobileMoreButtons) button.addEventListener('click', () => setMobileMode(button.dataset.mobileMoreTarget));
   els.mobileMoreRevert.addEventListener('click', () => { resetToOriginal(); setMobileMode('adjust'); });
@@ -278,6 +312,7 @@ function activateFirstImage(item) {
   if (entryTool) {
     setDesktopInspectorTool(entryTool[2]);
     setMobileMode(entryTool[3]);
+    if (entryTool[2] === 'crop') openInteractiveCrop();
   }
 }
 
@@ -489,6 +524,7 @@ function resetToOriginal({ resetExport = false } = {}) {
   if (!resetExport) writeFields(EXPORT_FIELDS.map(key => els[key]), exportValues);
   els.qualityValue.textContent = els.quality.value;
   item.editor = null;
+  item.interactiveCrop = null;
   setCompareOriginal(false);
   item.cleanupStrokes = []; item.cleanupApplied = false; item.replaceSelection = null;
   item.textReplacements = []; item.replaceHistory = []; item.pendingTextRemoval = null;
@@ -544,8 +580,12 @@ function collectSettings() {
   const item=selectedItem();
   const smartFocus = els.smartCropEnabled.checked ? smartFocusForCurrentSettings(item, crop) : { focusX:.5, focusY:.5 };
   if (crop.mode === 'ratio' && els.smartCropEnabled.checked) crop = { ...crop, focusX:smartFocus.focusX, focusY:smartFocus.focusY };
+  const interactiveCrop = item?.interactiveCrop;
+  const keepCropSize = interactiveCrop && els.resizeMode.value === 'fit'
+    && Number(els.width.value) === item.inspect.dimensions.width
+    && Number(els.height.value) === item.inspect.dimensions.height;
   return {
-    resizeMode: els.resizeMode.value, width: Number(els.width.value), height: Number(els.height.value), percentage: Number(els.percentage.value), longestEdge: Number(els.longest.value), shortestEdge: Number(els.shortest.value), preserveAspect: els.preserveAspect.checked,
+    interactiveCrop, resizeMode: keepCropSize ? 'percentage' : els.resizeMode.value, width: Number(els.width.value), height: Number(els.height.value), percentage: keepCropSize ? 100 : Number(els.percentage.value), longestEdge: Number(els.longest.value), shortestEdge: Number(els.shortest.value), preserveAspect: els.preserveAspect.checked,
     crop, smartCrop: { enabled:els.smartCropEnabled.checked, focusX:smartFocus.focusX, focusY:smartFocus.focusY }, format: els.format.value, quality: Number(els.quality.value) / 100, targetBytes: els.targetSize.value ? Number(els.targetSize.value) * 1024 : 0, background: els.background.value, rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked, edits: collectEdits(), layers: state.layers.map((layer) => ({ ...layer })), watermark: collectWatermark()
   };
 }
@@ -944,6 +984,7 @@ function commitEditChange() {
 function undoEdit() {
   const previous = state.editHistory.pop();
   if (!previous) return;
+  if (restoreCropHistory(previous, state.redoHistory)) return;
   state.redoHistory.push({ edits: collectEdits(), geometry: { rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked } });
   applyEditsToControls(previous.edits);
   els.rotate.value = previous.geometry.rotate; els.flipX.checked = previous.geometry.flipX; els.flipY.checked = previous.geometry.flipY;
@@ -954,10 +995,22 @@ function undoEdit() {
 function redoEdit() {
   const next = state.redoHistory.pop();
   if (!next) return;
+  if (restoreCropHistory(next, state.editHistory)) return;
   state.editHistory.push({ edits: collectEdits(), geometry: { rotate: Number(els.rotate.value), flipX: els.flipX.checked, flipY: els.flipY.checked } });
   applyEditsToControls(next.edits); els.rotate.value = next.geometry.rotate; els.flipX.checked = next.geometry.flipX; els.flipY.checked = next.geometry.flipY;
   state.lastCommittedEdits = normalizeEdits(next.edits); state.lastCommittedGeometry = { ...next.geometry };
   updateUndoButton(); scheduleEditPreview(20);
+}
+
+function restoreCropHistory(entry, opposite) {
+  if (!Object.hasOwn(entry, 'interactiveCrop')) return false;
+  const item = selectedItem();
+  if (item) {
+    opposite.push({ interactiveCrop: item.interactiveCrop ?? null });
+    item.interactiveCrop = entry.interactiveCrop;
+  }
+  updateUndoButton(); scheduleEditPreview(20);
+  return true;
 }
 
 function resetEdits() {
@@ -1243,7 +1296,10 @@ async function generateWebPack() {
   if(!selectedWidths.length){els.webPackStatus.textContent='Choose at least one width.';return;}
   if(!requestedFormats.length){els.webPackStatus.textContent='Choose at least one format.';return;}
   const base=collectSettings();
-  const crop=calculateCrop(item.inspect.dimensions.width,item.inspect.dimensions.height,base.crop);
+  const dimensions = item.inspect.dimensions;
+  const frame = cropFrameSize(dimensions.width, dimensions.height, base.interactiveCrop?.turn);
+  const crop = base.interactiveCrop ? cropInPixels(frame.width, frame.height, base.interactiveCrop.rect)
+    : calculateCrop(dimensions.width, dimensions.height, base.crop);
   let aspect=crop.width/Math.max(1,crop.height);
   const rotation=((Number(base.rotate)||0)%360+360)%360;
   if(rotation===90||rotation===270) aspect=1/aspect;
@@ -1384,6 +1440,7 @@ async function generateCompilerPack() {
   const base = {
     ...collectSettings(),
     crop: { mode: 'none' },
+    interactiveCrop: null,
     layers: layersForItem(item),
     cleanup: cleanupForItem(item),
     textReplacements: item.textReplacements || [],
