@@ -20,27 +20,127 @@
       <p id="batch-intro">Resize, frame, and export a batch of images.</p>
     </header>
     <div class="batch-shell">
-      <div class="batch-results">
-        <div class="batch-gallery">
-          <input id="batch-input" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/svg+xml" multiple hidden>
-          <section class="batch-dropzone" id="batch-dropzone" aria-label="Upload images">
-            <img src="/assets/brand/tools/batch.webp" width="72" height="72" alt="">
-            <h2>Add your images</h2>
-            <p class="batch-drag-copy">Drag and drop your files here.</p>
-            <button class="primary-button" id="batch-pick" type="button">Select images</button>
-            <p id="batch-limits">JPEG, PNG, WebP, AVIF, and supported SVG<br>50 files · 40 MiB each · 250 MiB total</p>
-            <small>Files are processed on your device.</small>
-          </section>
-          <section id="batch-active" hidden aria-label="Selected images">
-            <div class="batch-queue">
-              <div><strong id="batch-file-count"></strong><small id="batch-total"></small></div>
-              <div class="batch-queue-actions">
-                <button class="secondary-button" id="batch-add" type="button">+ Add images</button>
-                <button class="text-button" id="batch-clear" type="button">Clear all</button>
+      <div class="batch-gallery">
+        <input id="batch-input" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/svg+xml" multiple hidden>
+        <section class="batch-dropzone" id="batch-dropzone" aria-label="Upload images">
+          <img src="/assets/brand/tools/batch.webp" width="72" height="72" alt="">
+          <h2>Add your images</h2>
+          <p class="batch-drag-copy">Drag and drop your files here.</p>
+          <button class="primary-button" id="batch-pick" type="button">Select images</button>
+          <p id="batch-limits">JPEG, PNG, WebP, AVIF, and supported SVG<br>50 files · 40 MiB each · 250 MiB total</p>
+          <small>Files are processed on your device.</small>
+        </section>
+        <section id="batch-active" hidden aria-label="Selected images">
+          <div class="batch-queue">
+            <div class="batch-queue-summary">
+              <div class="batch-count-line">
+                <strong id="batch-file-count"></strong>
+                <span id="batch-failures" aria-live="polite" hidden></span>
               </div>
+              <small id="batch-total"></small>
             </div>
-            <ul id="batch-files" class="batch-grid" tabindex="0" aria-label="Image previews"></ul>
-          </section>
+            <div class="batch-queue-actions">
+              <button class="text-button" id="batch-view" type="button" aria-expanded="false" aria-controls="batch-files" hidden>View all</button>
+              <button class="secondary-button" id="batch-add" type="button">+ Add images</button>
+              <button class="text-button" id="batch-clear" type="button">Clear all</button>
+            </div>
+          </div>
+          <ul id="batch-files" class="batch-grid" tabindex="0" aria-label="Image previews"></ul>
+        </section>
+      </div>
+      <div class="batch-dock">
+        <div class="batch-settings">
+          <button type="button" id="batch-sheet" aria-expanded="false" aria-controls="batch-form" hidden>
+            <span id="batch-quick"></span>
+            <span class="batch-sheet-action">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h8m4 0h4M4 17h4m4 0h8"/><circle cx="14" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+              <strong>Settings</strong>
+              <svg class="batch-sheet-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </span>
+          </button>
+          <form id="batch-form" class="batch-settings-form">
+            <section id="batch-resize" aria-labelledby="batch-size-title">
+              <h2 id="batch-size-title">Dimensions</h2>
+              <label>Preset
+                <select id="batch-preset">
+                  <option value="custom">Custom dimensions</option>
+                  <optgroup label="Social media">
+                    <option value="portrait" selected>Social Portrait (4:5) · 1080 × 1350</option>
+                    <option value="square">Social Square (1:1) · 1080 × 1080</option>
+                    <option value="story">Story / Reel (9:16) · 1080 × 1920</option>
+                    <option value="banner">Widescreen Banner (16:9) · 1920 × 1080</option>
+                  </optgroup>
+                  <optgroup label="Web &amp; e-commerce">
+                    <option value="hero">Web Hero / Cover · 1600 × 900</option>
+                    <option value="product">E-Commerce Product · 2000 × 2000</option>
+                  </optgroup>
+                  <optgroup label="Quick scale">
+                    <option value="half">50% Half Size</option>
+                    <option value="max-width">Max Width 1200 px</option>
+                  </optgroup>
+                </select>
+              </label>
+              <div class="batch-size-pair" id="batch-dimensions">
+                <label>Width (px)<input id="batch-width" type="number" min="1" max="12000" value="1080" inputmode="numeric" required></label>
+                <button class="secondary-button" id="batch-lock" type="button" aria-pressed="true" aria-label="Lock output ratio">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 13a4 4 0 0 0 6 0l4-4a4 4 0 0 0-6-6l-2 2M14 11a4 4 0 0 0-6 0l-4 4a4 4 0 0 0 6 6l2-2"/></svg>
+                </button>
+                <label>Height (px)<input id="batch-height" type="number" min="1" max="12000" value="1350" inputmode="numeric" required></label>
+              </div>
+              <fieldset id="batch-framing">
+                <legend>Framing</legend>
+                <div class="batch-segments">
+                  <label><input type="radio" name="framing" value="contain" checked><span>Pad</span></label>
+                  <label><input type="radio" name="framing" value="fill"><span>Crop</span></label>
+                  <label><input type="radio" name="framing" value="fit"><span>Fit</span></label>
+                </div>
+              </fieldset>
+              <p id="batch-frame-help" class="batch-help"></p>
+              <fieldset id="batch-padding-field">
+                <legend>Pad fill</legend>
+                <div class="batch-swatches">
+                  <label><input type="radio" name="padding" value="white" checked><span class="swatch-white">White</span></label>
+                  <label><input type="radio" name="padding" value="black"><span class="swatch-black">Black</span></label>
+                  <label><input type="radio" name="padding" value="blur"><span class="swatch-blur">Blur</span></label>
+                  <label id="batch-transparent"><input type="radio" name="padding" value="transparent"><span class="swatch-clear">Clear</span></label>
+                  <label><input type="radio" name="padding" value="custom"><span class="swatch-custom">Custom</span></label>
+                  <input id="batch-color" type="color" value="#d4e2d8" aria-label="Custom padding color" hidden>
+                </div>
+              </fieldset>
+            </section>
+            <section aria-labelledby="batch-output-title">
+              <h2 id="batch-output-title">Output</h2>
+              <label>Format
+                <select id="batch-format"><option value="jpeg">JPEG</option><option value="webp">WebP</option><option value="png">PNG</option><option value="avif" hidden>AVIF</option></select>
+              </label>
+              <label id="batch-compression-field">Compression
+                <select id="batch-compression"><option value="quality">Choose quality</option><option value="target">Maximum file size</option></select>
+              </label>
+              <label id="batch-quality-field">Quality <output id="batch-quality-value">85%</output>
+                <input id="batch-quality" type="range" min="10" max="100" value="85">
+              </label>
+              <label id="batch-target-field" hidden>Maximum size per image (KB)
+                <input id="batch-target" type="number" min="1" max="61440" value="200" inputmode="numeric" required>
+              </label>
+            </section>
+            <details id="batch-advanced">
+              <summary>Advanced settings</summary>
+              <div class="batch-option-stack">
+                <label class="batch-check"><input id="batch-original" type="checkbox">Keep original dimensions</label>
+                <label class="batch-check"><input id="batch-stretch" type="checkbox">Stretch to fill</label>
+              </div>
+            </details>
+            <details>
+              <summary>File naming &amp; metadata</summary>
+              <div class="batch-option-stack">
+                <label>Filename pattern<input id="batch-pattern" type="text" maxlength="100" placeholder="{name}-{width}x{height}"></label>
+                <small>Leave blank to use the original name. Tokens: {name}, {width}, {height}, {index}.</small>
+                <label>Numbered filename prefix<input id="batch-prefix" type="text" maxlength="40" placeholder="Optional"></label>
+                <label id="batch-camera-field" class="batch-check"><input id="batch-camera" type="checkbox">Keep camera details</label>
+                <small id="batch-camera-help">JPEG to JPEG only. Keeps camera make, model, and capture date. GPS is always removed.</small>
+              </div>
+            </details>
+          </form>
         </div>
         <div class="batch-export">
           <p id="batch-status" role="status">Select images to export.</p>
@@ -51,94 +151,6 @@
             <a id="batch-save" class="secondary-button" hidden>Save ZIP</a>
           </div>
         </div>
-      </div>
-      <div class="batch-settings">
-        <button type="button" id="batch-sheet" aria-expanded="false" aria-controls="batch-form" hidden>
-          <span id="batch-quick"></span><strong>Settings</strong>
-        </button>
-        <form id="batch-form" class="batch-settings-form">
-          <section id="batch-resize" aria-labelledby="batch-size-title">
-            <h2 id="batch-size-title">Dimensions</h2>
-            <label>Preset
-              <select id="batch-preset">
-                <option value="custom">Custom dimensions</option>
-                <optgroup label="Social media">
-                  <option value="portrait" selected>Social Portrait (4:5) · 1080 × 1350</option>
-                  <option value="square">Social Square (1:1) · 1080 × 1080</option>
-                  <option value="story">Story / Reel (9:16) · 1080 × 1920</option>
-                  <option value="banner">Widescreen Banner (16:9) · 1920 × 1080</option>
-                </optgroup>
-                <optgroup label="Web &amp; e-commerce">
-                  <option value="hero">Web Hero / Cover · 1600 × 900</option>
-                  <option value="product">E-Commerce Product · 2000 × 2000</option>
-                </optgroup>
-                <optgroup label="Quick scale">
-                  <option value="half">50% Half Size</option>
-                  <option value="max-width">Max Width 1200 px</option>
-                </optgroup>
-              </select>
-            </label>
-            <div class="batch-size-pair" id="batch-dimensions">
-              <label>Width (px)<input id="batch-width" type="number" min="1" max="12000" value="1080" inputmode="numeric" required></label>
-              <button class="secondary-button" id="batch-lock" type="button" aria-pressed="true" aria-label="Lock output ratio">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 13a4 4 0 0 0 6 0l4-4a4 4 0 0 0-6-6l-2 2M14 11a4 4 0 0 0-6 0l-4 4a4 4 0 0 0 6 6l2-2"/></svg>
-              </button>
-              <label>Height (px)<input id="batch-height" type="number" min="1" max="12000" value="1350" inputmode="numeric" required></label>
-            </div>
-            <fieldset id="batch-framing">
-              <legend>Framing</legend>
-              <div class="batch-segments">
-                <label><input type="radio" name="framing" value="contain" checked><span>Pad</span></label>
-                <label><input type="radio" name="framing" value="fill"><span>Crop</span></label>
-                <label><input type="radio" name="framing" value="fit"><span>Fit</span></label>
-              </div>
-            </fieldset>
-            <p id="batch-frame-help" class="batch-help"></p>
-            <fieldset id="batch-padding-field">
-              <legend>Pad fill</legend>
-              <div class="batch-swatches">
-                <label><input type="radio" name="padding" value="white" checked><span class="swatch-white">White</span></label>
-                <label><input type="radio" name="padding" value="black"><span class="swatch-black">Black</span></label>
-                <label><input type="radio" name="padding" value="blur"><span class="swatch-blur">Blur</span></label>
-                <label id="batch-transparent"><input type="radio" name="padding" value="transparent"><span class="swatch-clear">Clear</span></label>
-                <label><input type="radio" name="padding" value="custom"><span class="swatch-custom">Custom</span></label>
-                <input id="batch-color" type="color" value="#d4e2d8" aria-label="Custom padding color" hidden>
-              </div>
-            </fieldset>
-          </section>
-          <section aria-labelledby="batch-output-title">
-            <h2 id="batch-output-title">Output</h2>
-            <label>Format
-              <select id="batch-format"><option value="jpeg">JPEG</option><option value="webp">WebP</option><option value="png">PNG</option><option value="avif" hidden>AVIF</option></select>
-            </label>
-            <label id="batch-compression-field">Compression
-              <select id="batch-compression"><option value="quality">Choose quality</option><option value="target">Maximum file size</option></select>
-            </label>
-            <label id="batch-quality-field">Quality <output id="batch-quality-value">85%</output>
-              <input id="batch-quality" type="range" min="10" max="100" value="85">
-            </label>
-            <label id="batch-target-field" hidden>Maximum size per image (KB)
-              <input id="batch-target" type="number" min="1" max="61440" value="200" inputmode="numeric" required>
-            </label>
-          </section>
-          <details id="batch-advanced">
-            <summary>Advanced settings</summary>
-            <div class="batch-option-stack">
-              <label class="batch-check"><input id="batch-original" type="checkbox">Keep original dimensions</label>
-              <label class="batch-check"><input id="batch-stretch" type="checkbox">Stretch to fill</label>
-            </div>
-          </details>
-          <details>
-            <summary>File naming &amp; metadata</summary>
-            <div class="batch-option-stack">
-              <label>Filename pattern<input id="batch-pattern" type="text" maxlength="100" placeholder="{name}-{width}x{height}"></label>
-              <small>Leave blank to use the original name. Tokens: {name}, {width}, {height}, {index}.</small>
-              <label>Numbered filename prefix<input id="batch-prefix" type="text" maxlength="40" placeholder="Optional"></label>
-              <label id="batch-camera-field" class="batch-check"><input id="batch-camera" type="checkbox">Keep camera details</label>
-              <small id="batch-camera-help">JPEG to JPEG only. Keeps camera make, model, and capture date. GPS is always removed.</small>
-            </div>
-          </details>
-        </form>
       </div>
     </div>
   </main>

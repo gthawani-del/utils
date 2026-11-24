@@ -32,6 +32,8 @@ let archive;
 let archiveUrl;
 let editItem;
 let dragStart;
+let gridOpen = false;
+let stripPosition = 0;
 let estimateTimer;
 let estimateVersion = 0;
 
@@ -69,6 +71,8 @@ function syncControls() {
   $('sheet').hidden = !active;
   $('dropzone').hidden = active;
   $('active').hidden = !active;
+  if (items.length < 2 && gridOpen) showGrid(false);
+  updateQueueSummary();
   $('dimensions').hidden = !framingVisible;
   $('framing').hidden = !framingVisible || options.framing === 'stretch';
   $('padding-field').hidden = !framingVisible || options.framing !== 'contain';
@@ -98,6 +102,27 @@ function syncControls() {
   $('cancel').hidden = !job;
   $('retry').hidden = busy || !items.some(item => item.error && item.inspect);
   $('save').hidden = busy || !archive;
+}
+
+function updateQueueSummary() {
+  const count = items.filter(item => item.error || item.rejection).length;
+  const label = count ? count + ' failed' : '';
+  const failures = $('failures');
+  if (failures.textContent !== label) failures.textContent = label;
+  failures.hidden = !count;
+  const view = $('view');
+  view.hidden = items.length < 2;
+  view.textContent = gridOpen ? 'Show filmstrip' : 'View all';
+  view.setAttribute('aria-label', gridOpen ? 'Show filmstrip' : `View all ${items.length} images`);
+  view.setAttribute('aria-expanded', String(gridOpen));
+}
+
+function showGrid(open) {
+  if (open) stripPosition = cards.scrollLeft;
+  gridOpen = open;
+  workspace.classList.toggle('show-all', open);
+  if (!open) cards.scrollLeft = stripPosition;
+  updateQueueSummary();
 }
 
 const iconPaths = {
@@ -413,7 +438,11 @@ async function runExport(retry = false) {
       status.textContent = message.name;
     } else if (message.type === 'item-error') {
       const failed = items.find(item => item.id === message.id);
-      if (failed) failed.error = message.message;
+      if (failed) {
+        failed.error = failed.errorLabel.textContent = message.message;
+        failed.errorLabel.hidden = false;
+        updateQueueSummary();
+      }
     }
   };
   try {
@@ -544,8 +573,8 @@ $('lock').onclick = () => {
 $('sheet').onclick = () => {
   const open = workspace.classList.toggle('settings-open');
   $('sheet').setAttribute('aria-expanded', String(open));
-  if (open) $('sheet').scrollIntoView({ block: 'nearest' });
 };
+$('view').onclick = () => showGrid(!gridOpen);
 $('cancel').onclick = () => job?.abort();
 $('retry').onclick = () => runExport(true);
 $('clear').onclick = () => { for (const item of [...items]) removeItem(item); };
@@ -568,8 +597,8 @@ gallery.addEventListener('drop', event => {
   chooseFiles([...event.dataTransfer.files]);
 });
 new ResizeObserver(entries => {
-  workspace.style.setProperty('--batch-export-height', entries[0].target.offsetHeight + 'px');
-}).observe(workspace.querySelector('.batch-export'));
+  document.documentElement.style.setProperty('--batch-dock-height', entries[0].target.offsetHeight + 'px');
+}).observe(workspace.querySelector('.batch-dock'));
 
 workerCapabilities.then(capabilities => {
   const avifOption = $('format').querySelector('[value="avif"]');
