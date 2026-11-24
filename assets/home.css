@@ -47,3 +47,5 @@
  .home-tool { padding:16px 12px; gap:10px; }
  .home-tool strong { font-size:17px; }
 }
+
+.home-tool-icon img { display:block; width:100%; height:auto; border-radius:8px; }

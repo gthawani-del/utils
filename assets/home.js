@@ -5,6 +5,7 @@ const tools = [
   ['Lyrical', 'Turn your song into a lyric video.', '/lyrical', 'lyrical'],
   ['Video Editor', 'Cut and arrange your video clips.', '/media/video-editor', 'video'],
   ['Image Studio', 'Resize, crop and compress images.', '/image', 'image'],
+  ['Algorithmic Drawing', 'Create repeatable geometric artwork.', '/image/algorithmic-drawing', 'drawing'],
   ['Media & Transcription', 'Edit media and turn speech into text.', '/media', 'media'],
 ];
 for (const [name, description, href, symbol] of tools) {
