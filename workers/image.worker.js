@@ -61,7 +61,7 @@ export async function processImage({ buffer, settings = {}, preview = false, wat
   const bytes = new Uint8Array(buffer);
   const inspected = await inspect({ buffer });
   if (inspected.state !== 'completed') return inspected;
-  const { kind, dimensions, exif } = inspected.value;
+  const { kind } = inspected.value;
 
   let blob;
   if (kind === 'svg') {
@@ -71,23 +71,13 @@ export async function processImage({ buffer, settings = {}, preview = false, wat
     blob = new Blob([bytes], { type: mimeFor(kind) });
   }
 
-  let bitmap;
-  let applyExif = kind === 'jpeg';
-  try {
-    bitmap = await createImageBitmap(blob, { imageOrientation: 'none', colorSpaceConversion: 'default', premultiplyAlpha: 'default' });
-  } catch {
-    bitmap = await createImageBitmap(blob);
-    applyExif = false;
-  }
-
-  const preDecoded = validateDimensions(bitmap.width, bitmap.height);
-  if (!preDecoded.ok) { bitmap.close(); return unsupported(preDecoded.reason, 'RESOURCE_LIMIT'); }
-
-  const orientation = applyExif ? exif.orientation : 1;
-  let source = orientation === 1 ? bitmap : drawOriented(bitmap, orientation);
-  if (orientation !== 1) bitmap.close();
+  // The browser applies EXIF during decode, as it does for thumbnails and img previews.
+  let source = await createImageBitmap(blob);
   const sourceCheck = validateDimensions(source.width, source.height);
-  if (!sourceCheck.ok) { if ('close' in source) source.close(); return unsupported(sourceCheck.reason, 'RESOURCE_LIMIT'); }
+  if (!sourceCheck.ok) {
+    source.close();
+    return unsupported(sourceCheck.reason, 'RESOURCE_LIMIT');
+  }
 
   const cleanup = normalizeCleanup(settings.cleanup);
   if (cleanupHasMask(cleanup)) {
@@ -191,26 +181,6 @@ export async function processImage({ buffer, settings = {}, preview = false, wat
     quality: usedQuality,
     metadataStripped: true
   });
-}
-
-function drawOriented(bitmap, orientation) {
-  const swap = [5,6,7,8].includes(orientation);
-  const canvas = new OffscreenCanvas(swap ? bitmap.height : bitmap.width, swap ? bitmap.width : bitmap.height);
-  const ctx = canvas.getContext('2d', { alpha: true });
-  ctx.save();
-  switch (orientation) {
-    case 2: ctx.translate(canvas.width, 0); ctx.scale(-1, 1); break;
-    case 3: ctx.translate(canvas.width, canvas.height); ctx.rotate(Math.PI); break;
-    case 4: ctx.translate(0, canvas.height); ctx.scale(1, -1); break;
-    case 5: ctx.rotate(Math.PI / 2); ctx.scale(1, -1); break;
-    case 6: ctx.translate(canvas.width, 0); ctx.rotate(Math.PI / 2); break;
-    case 7: ctx.translate(canvas.width, canvas.height); ctx.rotate(Math.PI / 2); ctx.scale(-1, 1); break;
-    case 8: ctx.translate(0, canvas.height); ctx.rotate(-Math.PI / 2); break;
-    default: break;
-  }
-  ctx.drawImage(bitmap, 0, 0);
-  ctx.restore();
-  return canvas;
 }
 
 function applyCleanup(source, cleanup) {

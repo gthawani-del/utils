@@ -30,7 +30,7 @@ let job;
 let ratio = 1080 / 1350;
 let archive;
 let archiveUrl;
-let editItem;
+let cropEdit;
 let dragStart;
 let gridOpen = false;
 let stripPosition = 0;
@@ -163,7 +163,7 @@ function preview(item, canvas, maxEdge = 250, focus = item.focus) {
   canvas.width = Math.max(1, Math.round(target.width * scale));
   canvas.height = Math.max(1, Math.round(target.height * scale));
   drawResize(canvas.getContext('2d'), item.image, { x: 0, y: 0, width: item.image.naturalWidth, height: item.image.naturalHeight },
-    { width: canvas.width, height: canvas.height }, { ...settings, batchFocus: focus || {} }, basis);
+    { width: canvas.width, height: canvas.height }, { ...settings, batchFocus: focus || {} }, basis, target);
 }
 
 const visibility = new IntersectionObserver(entries => {
@@ -254,6 +254,8 @@ function refresh() {
     item.errorLabel.hidden = !item.errorLabel.textContent;
     item.crop.hidden = !item.inspect || !item.proxyUrl || options.framing !== 'fill' || ['half', 'max-width'].includes(options.preset);
     item.crop.disabled = item.remove.disabled = busy;
+    item.crop.classList.toggle('is-custom-crop', Boolean(item.focus));
+    item.crop.setAttribute('aria-label', (item.focus ? 'Edit saved crop for ' : 'Reposition ') + item.file.name);
     item.download.hidden = busy || !item.output || !archive;
     if (item.inspect) index++;
   }
@@ -483,59 +485,118 @@ async function runExport(retry = false) {
   }
 }
 
+const cropAxes = { x: 'width', y: 'height' };
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
 function paintCrop() {
-  preview(editItem, $('crop-image'), 440, { x: $('focus-x').valueAsNumber / 100, y: $('focus-y').valueAsNumber / 100 });
+  const { item, source, target, focus } = cropEdit;
+  const cover = batchCover(source.width, source.height, target.width, target.height, focus);
+  for (const [axis, dimension] of Object.entries(cropAxes)) {
+    const travel = source[dimension] - cover[dimension];
+    const percent = travel > .01 ? Math.round(100 * cover[axis] / travel) : 50;
+    $('focus-' + axis).value = percent;
+    for (const button of $('pan-' + axis).querySelectorAll('button')) {
+      button.disabled = Number(button.dataset.step) < 0 ? percent === 0 : percent === 100;
+    }
+  }
+  $('crop-reset').disabled = focus.x === .5 && focus.y === .5;
+  preview(item, $('crop-image'), 640, focus);
 }
 
 async function openCrop(item) {
-  if (job || importing) return;
+  if (job || importing || $('crop').open) return;
   await paintItem(item);
-  if (!item.image) return;
-  editItem = item;
-  const { dimensions: source } = item.inspect;
+  if (!item.image || !items.includes(item) || item.crop.hidden || job || importing || $('crop').open) return;
+  const source = item.inspect.dimensions;
   const target = batchDimensions(source, batchSettings(source, currentOptions()));
+  if (!validateDimensions(target.width, target.height).ok) {
+    status.textContent = 'Enter valid output dimensions before adjusting the crop.';
+    return;
+  }
   const cover = batchCover(source.width, source.height, target.width, target.height);
-  $('focus-x').disabled = source.width - cover.width < .01;
-  $('focus-y').disabled = source.height - cover.height < .01;
-  $('focus-x').value = (item.focus?.x ?? .5) * 100;
-  $('focus-y').value = (item.focus?.y ?? .5) * 100;
+  const active = Object.entries(cropAxes).filter(([, dimension]) => source[dimension] - cover[dimension] > .01);
+  cropEdit = { item, source, target, cover, active, focus: { ...(item.focus || { x: .5, y: .5 }) } };
+  for (const axis of Object.keys(cropAxes)) $('pan-' + axis).hidden = !active.some(([key]) => key === axis);
+  const stage = $('crop-stage');
+  stage.style.setProperty('--frame-ratio', target.width / target.height);
+  stage.classList.toggle('can-pan', active.length > 0);
+  $('crop-help').textContent = active.length ? 'Drag the photo or use the position controls.' : 'This photo already matches the output frame.';
   $('crop').showModal();
   paintCrop();
 }
 
+function setCropPosition(axis, fraction) {
+  const { source, cover, focus } = cropEdit;
+  const dimension = cropAxes[axis];
+  const travel = source[dimension] - cover[dimension];
+  focus[axis] = (travel * fraction + cover[dimension] / 2) / source[dimension];
+}
+
+function stopCropDrag(pointerId) {
+  if (!dragStart || (pointerId !== undefined && pointerId !== dragStart.id)) return;
+  dragStart = null;
+  $('crop-stage').classList.remove('is-panning');
+}
+
 $('crop-close').onclick = () => $('crop').close();
+$('crop-reset').onclick = () => {
+  if (!cropEdit) return;
+  cropEdit.focus = { x: .5, y: .5 };
+  paintCrop();
+};
 $('crop-done').onclick = () => {
-  editItem.focus = { x: $('focus-x').valueAsNumber / 100, y: $('focus-y').valueAsNumber / 100 };
+  if (!cropEdit) return;
+  const { item, focus } = cropEdit;
+  const previous = item.focus || { x: .5, y: .5 };
   $('crop').close();
+  if (focus.x === previous.x && focus.y === previous.y) return;
+  item.focus = focus.x === .5 && focus.y === .5 ? undefined : focus;
   clearArchive();
   status.textContent = 'Crop updated.';
   refresh();
 };
-$('crop').addEventListener('close', () => { editItem = dragStart = null; });
-for (const axis of ['x','y']) $('focus-' + axis).oninput = paintCrop;
+$('crop').addEventListener('close', () => {
+  stopCropDrag();
+  cropEdit = null;
+});
+for (const axis of Object.keys(cropAxes)) {
+  const control = $('focus-' + axis);
+  control.oninput = () => {
+    setCropPosition(axis, control.valueAsNumber / 100);
+    paintCrop();
+  };
+  for (const button of $('pan-' + axis).querySelectorAll('button')) {
+    button.onclick = () => {
+      setCropPosition(axis, clamp(control.valueAsNumber + Number(button.dataset.step), 0, 100) / 100);
+      paintCrop();
+    };
+  }
+}
 $('crop-image').addEventListener('pointerdown', event => {
-  if (!editItem) return;
+  if (!cropEdit?.active.length || dragStart || !event.isPrimary || event.button !== 0) return;
   const canvas = event.currentTarget;
+  const { source, target, focus } = cropEdit;
+  const bounds = canvas.getBoundingClientRect();
+  const cover = batchCover(source.width, source.height, target.width, target.height, focus);
   canvas.setPointerCapture(event.pointerId);
-  dragStart = { x: event.clientX, y: event.clientY, width: canvas.clientWidth, height: canvas.clientHeight,
-    fx: $('focus-x').valueAsNumber, fy: $('focus-y').valueAsNumber };
+  dragStart = { id: event.pointerId, x: event.clientX, y: event.clientY, width: bounds.width, height: bounds.height, cover };
+  $('crop-stage').classList.add('is-panning');
 });
 $('crop-image').addEventListener('pointermove', event => {
-  if (!dragStart || !editItem) return;
-  const source = editItem.inspect.dimensions;
-  const target = batchDimensions(source, batchSettings(source, currentOptions()));
-  const cover = batchCover(source.width, source.height, target.width, target.height);
-  for (const [axis, dimension] of [['x','width'], ['y','height']]) {
-    const control = $('focus-' + axis);
-    if (control.disabled) continue;
+  if (!dragStart || event.pointerId !== dragStart.id || !cropEdit) return;
+  const { source, active } = cropEdit;
+  const { cover } = dragStart;
+  for (const [axis, dimension] of active) {
     const coord = axis === 'x' ? event.clientX : event.clientY;
     const movement = (coord - dragStart[axis]) / dragStart[dimension] * cover[dimension];
-    const next = dragStart['f' + axis] - 100 * movement / (source[dimension] - cover[dimension]);
-    control.value = Math.round(Math.min(100, Math.max(0, next)));
+    const travel = source[dimension] - cover[dimension];
+    setCropPosition(axis, clamp((cover[axis] - movement) / travel, 0, 1));
   }
   paintCrop();
 });
-for (const type of ['pointerup','pointercancel','lostpointercapture']) $('crop-image').addEventListener(type, () => { dragStart = null; });
+for (const type of ['pointerup','pointercancel','lostpointercapture']) {
+  $('crop-image').addEventListener(type, event => stopCropDrag(event.pointerId));
+}
 
 form.noValidate = true;
 form.addEventListener('submit', event => { event.preventDefault(); runExport(); });
@@ -548,7 +609,6 @@ form.addEventListener('input', event => {
       [$('width').value, $('height').value] = size;
       ratio = size[0] / size[1];
       $('lock').setAttribute('aria-pressed', 'true');
-      form.elements.framing.value = 'contain';
     }
   }
   if (field === $('width') || field === $('height')) {

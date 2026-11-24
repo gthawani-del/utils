@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { batchDimensions, batchFilenames, batchSettings, contactSheetLayout } from '../lib/image/batch.js';
+import { batchCover, batchDimensions, batchFilenames, batchSettings, contactSheetLayout } from '../lib/image/batch.js';
+import { drawResize } from '../lib/image/draw-resize.js';
 
 const portrait = { width: 1000, height: 2000 };
 const defaults = { framing: 'contain', width: 1080, height: 1080, format: 'webp', quality: .82, targetBytes: 0, padding: 'white' };
@@ -43,4 +44,24 @@ test('relative presets preserve individual proportions and max width does not en
   const landscape = { width: 3000, height: 2000 };
   assert.deepEqual(batchDimensions(landscape, batchSettings(landscape, { ...defaults, preset: 'max-width' })), { width: 1200, height: 800 });
   assert.deepEqual(batchFilenames([{ name: 'front.jpg' }], 'jpeg', '', '{name}-{width}x{height}-{index}', [portrait]), ['front-1000x2000-001.jpg']);
+});
+
+test('a focal point stays on the original photo as crop ratios change', () => {
+  const focus = { x: .7, y: .5 };
+  assert.equal(batchCover(1000, 500, 400, 400, focus).x, 450);
+  assert.equal(batchCover(1000, 500, 200, 400, focus).x, 575);
+  assert.equal(batchCover(1000, 500, 400, 400, { x: 1 }).x, 500);
+  assert.equal(batchCover(1000, 500, 400, 400, { x: 0 }).x, 0);
+});
+
+test('a rounded proxy canvas samples the exact output crop ratio', () => {
+  const draws = [];
+  const context = { drawImage: (...params) => draws.push(params) };
+  const original = { x: 0, y: 0, width: 1000, height: 500 };
+  const proxy = { x: 0, y: 0, width: 250, height: 125 };
+  const target = { width: 801, height: 641 };
+  const settings = { resizeMode: 'fill', batchFocus: { x: .8, y: .5 } };
+  drawResize(context, 'original', original, target, settings);
+  drawResize(context, 'proxy', proxy, { width: 250, height: 200 }, settings, original, target);
+  assert.deepEqual(draws[1].slice(1, 5).map(value => value * 4), draws[0].slice(1, 5));
 });

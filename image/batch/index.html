@@ -155,12 +155,35 @@
     </div>
   </main>
   <dialog id="batch-crop" class="batch-crop" aria-labelledby="batch-crop-title">
-    <div class="batch-crop-header"><h2 id="batch-crop-title">Reposition crop</h2><button type="button" class="text-button" id="batch-crop-close">Cancel</button></div>
-    <canvas id="batch-crop-image" aria-label="Crop preview"></canvas>
-    <div class="batch-option-stack">
-      <label>Horizontal <input id="batch-focus-x" type="range" min="0" max="100" value="50"></label>
-      <label>Vertical <input id="batch-focus-y" type="range" min="0" max="100" value="50"></label>
-      <button type="button" class="primary-button" id="batch-crop-done">Apply crop</button>
+    <div class="batch-crop-header">
+      <h2 id="batch-crop-title">Adjust crop position</h2>
+      <button type="button" class="text-button" id="batch-crop-close" aria-label="Close without saving">×</button>
+    </div>
+    <div class="batch-crop-stage" id="batch-crop-stage">
+      <canvas id="batch-crop-image" aria-label="Crop preview"></canvas>
+    </div>
+    <p class="batch-help" id="batch-crop-help"></p>
+    <div class="batch-crop-controls">
+      <div class="batch-crop-axis" id="batch-pan-x">
+        <label for="batch-focus-x">Horizontal position</label>
+        <div class="batch-crop-adjust">
+          <button class="secondary-button" type="button" data-pan="x" data-step="-5" aria-label="Frame farther left">←</button>
+          <input id="batch-focus-x" type="range" min="0" max="100" value="50">
+          <button class="secondary-button" type="button" data-pan="x" data-step="5" aria-label="Frame farther right">→</button>
+        </div>
+      </div>
+      <div class="batch-crop-axis" id="batch-pan-y">
+        <label for="batch-focus-y">Vertical position</label>
+        <div class="batch-crop-adjust">
+          <button class="secondary-button" type="button" data-pan="y" data-step="-5" aria-label="Frame farther up">↑</button>
+          <input id="batch-focus-y" type="range" min="0" max="100" value="50">
+          <button class="secondary-button" type="button" data-pan="y" data-step="5" aria-label="Frame farther down">↓</button>
+        </div>
+      </div>
+    </div>
+    <div class="batch-crop-footer">
+      <button type="button" class="secondary-button" id="batch-crop-reset">Reset</button>
+      <button type="button" class="primary-button" id="batch-crop-done">Done</button>
     </div>
   </dialog>
   <script type="module" src="/assets/image-batch.js"></script>
