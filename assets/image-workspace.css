@@ -119,3 +119,15 @@
 }
 
 .image-studio-body .mobile-tool-button img { display:block; width:28px; height:28px; border-radius:6px; mix-blend-mode:multiply; }
+
+@media (min-width:1120px) {
+  .image-studio-body .control-card > .control-header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:12px 14px;
+    border-bottom:1px solid var(--studio-line);
+  }
+  .image-studio-body .control-header h2 { margin:0; font-size:16px; }
+}

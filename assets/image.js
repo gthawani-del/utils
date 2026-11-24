@@ -245,12 +245,7 @@ async function addFiles(files) {
         item.inspect = result.value;
         item.status = 'ready';
         if (result.value.kind !== 'svg') item.originalUrl = trackObjectUrl(file);
-        if (!state.selectedId) {
-          state.selectedId = item.id;
-          state.mobileStartOpen = false;
-          syncMobileEditingState();
-          try { resetToOriginal(); } catch { showCompatibility('The image loaded, but some editor controls could not be initialized. The original image remains available.'); }
-        }
+        if (!state.selectedId) activateFirstImage(item);
         renderList();
         renderSelectedSafely();
         syncMobileEditingState();
@@ -267,18 +262,22 @@ async function addFiles(files) {
     els.workspace.classList.toggle('hidden', state.items.length === 0);
     document.body.classList.toggle('has-image-workspace', state.items.length > 0);
     if (!state.selectedId) {
-      const firstReady = state.items.find((item) => item.status === 'ready');
-      if (firstReady) {
-        state.selectedId = firstReady.id;
-        state.mobileStartOpen = false;
-        syncMobileEditingState();
-        try { resetToOriginal({ resetExport: true }); } catch {}
-        if (entryTool) {
-          setDesktopInspectorTool(entryTool[2]); setMobileMode(entryTool[3]);
-        }
-      }
+      const firstReady = state.items.find(item => item.inspect);
+      if (firstReady) activateFirstImage(firstReady);
     }
     renderList(); renderSelectedSafely(); syncMobileEditingState();
+  }
+}
+
+function activateFirstImage(item) {
+  state.selectedId = item.id;
+  state.mobileStartOpen = false;
+  syncMobileEditingState();
+  try { resetToOriginal({ resetExport: true }); }
+  catch { showCompatibility('The image loaded, but some editor controls could not be initialized. The original image remains available.'); }
+  if (entryTool) {
+    setDesktopInspectorTool(entryTool[2]);
+    setMobileMode(entryTool[3]);
   }
 }
 
