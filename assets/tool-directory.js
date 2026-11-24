@@ -14,6 +14,7 @@ export const tools = [
   { id: 'compress', label: 'Compress Image', description: 'Reduce file size or set a maximum in KB.', href: batch + '?tool=compress', art: 'compress', category: 'images', group: 'Quick edits', terms: 'reduce optimize kb' },
   { id: 'convert', label: 'Convert Image', description: 'Switch between JPEG, PNG, WebP and supported AVIF.', href: batch + '?tool=convert', art: 'convert', category: 'images', group: 'Quick edits', terms: 'jpg png webp avif' },
   { id: 'crop', label: 'Crop Image', description: 'Reframe a photo using a preset ratio or free crop.', href: editor('crop'), art: 'crop', category: 'images', group: 'Quick edits', terms: 'frame aspect ratio' },
+  { id: 'extend', label: 'Extend Photo', description: 'Generate more background around an edge of a photo on your device.', href: editor('extend'), art: 'extend', category: 'images', group: 'Quick edits', terms: 'outpaint expand background canvas' },
   { id: 'watermark', label: 'Add Watermark', description: 'Place a logo or text over your image.', href: editor('watermark'), art: 'watermark', category: 'images', group: 'Quick edits' },
   { id: 'text', label: 'Add Text', description: 'Place editable text on a photo.', href: editor('text'), art: 'text', category: 'images', group: 'Quick edits' },
   { id: 'replace', label: 'Replace Text', description: 'Select an area, erase the old text and add new text.', href: editor('replace'), art: 'replace', category: 'images', group: 'Quick edits' },

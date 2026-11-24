@@ -1,3 +1,4 @@
+import { createExtendPhoto } from '/assets/extend-photo.js';
 import { createCropWorkspace } from '/assets/crop-workspace.js';
 import { cropFrameSize, cropInPixels } from '/lib/image/interactive-crop.js';
 import { SECURITY_BUDGET, validateBatchBudget, validateFileBudget } from '/lib/security/budget.js';
@@ -20,6 +21,7 @@ import { detectWatermarkRegions, boxesToCleanupStrokes } from '/lib/image/waterm
 import { shouldUseBrowserProcessor, processBrowserImage, optimizeBrowserImage } from '/lib/image/browser-processor.js';
 
 const toolEntries = {
+  extend: ['Extend Photo', 'Generate more background around a photo on your device.', 'crop', 'crop'],
   crop: ['Crop Image', 'Frame a photo using a preset ratio or a custom crop.', 'crop', 'crop'],
   cleanup: ['Clean Up Image', 'Brush over small marks and preview the result.', 'cleanup', 'cleanup'],
   text: ['Add Text', 'Place editable text on your image.', 'text', 'text'],
@@ -63,6 +65,22 @@ const els = {
   performanceMaxWidth: $('#performance-max-width'), performanceMaxSize: $('#performance-max-size'), performanceMinQuality: $('#performance-min-quality'), performanceMinQualityValue: $('#performance-min-quality-value'), performanceRun: $('#performance-run'), performanceDownload: $('#performance-download'), performanceResult: $('#performance-result'), performanceResultTitle: $('#performance-result-title'), performanceResultDetail: $('#performance-result-detail'), performanceStatus: $('#performance-status')
 };
 
+const extendPhoto = createExtendPhoto({
+  async addCopy(file) {
+    const batch = validateBatchBudget([...state.items.map(item => item.file), file]);
+    if (!batch.ok) throw new Error(batch.reason);
+    await addFiles([file]);
+    const copy = state.items.find(item => item.file === file && item.inspect);
+    if (!copy) throw new Error('The copy could not open in Image Studio. You can still download the PNG.');
+    const crop = $('#crop-workspace');
+    if (crop.open) crop.close();
+    selectItem(copy.id);
+    setDesktopInspectorTool('adjust');
+    setMobileMode('adjust');
+  },
+  onError: showCompatibility,
+});
+
 let cropItem;
 const cropWorkspace = createCropWorkspace({
   commit(draft) {
@@ -76,7 +94,17 @@ const cropWorkspace = createCropWorkspace({
     if (state.mobileMode === 'crop') setMobileMode('adjust');
   },
   onError: showCompatibility,
+  extend(image, draft) {
+    if (cropItem) extendPhoto.open(image, draft, cropItem.file.name);
+  },
 });
+
+function openExtendPhoto() {
+  const item = selectedItem();
+  if (!item?.inspect || state.busy) return;
+  if (!item.originalUrl) return showCompatibility('Extend Photo needs a raster image. Convert this SVG to PNG first.');
+  extendPhoto.open(item.originalUrl, item.interactiveCrop, item.file.name);
+}
 
 function openInteractiveCrop() {
   const item = selectedItem();
@@ -178,7 +206,10 @@ function wireEvents() {
   els.desktopCancelEdit?.addEventListener('click', cancelDesktopEdit);
   els.replaceText.addEventListener('input', () => updateReplaceButtons(selectedItem()));
   for (const button of els.mobileToolButtons) button.addEventListener('click', () => {
-    if (button.dataset.mobileTool === 'crop') openInteractiveCrop();
+    if (button.dataset.mobileTool === 'crop') {
+      if (requestedTool === 'extend') openExtendPhoto();
+      else openInteractiveCrop();
+    }
     else setMobileMode(button.dataset.mobileTool);
   });
   for (const button of els.mobileAdjustButtons) button.addEventListener('click', () => setMobileAdjust(button.dataset.adjustKey));
@@ -188,6 +219,7 @@ function wireEvents() {
   els.mobileRedo.addEventListener('click', redoEdit);
   els.mobileExportTop.addEventListener('click', () => setMobileMode('export'));
   $('#studio-open-crop').addEventListener('click', openInteractiveCrop);
+  $('#studio-open-extend').addEventListener('click', openExtendPhoto);
   els.mobileSheetBack.addEventListener('click', () => setMobileMode('more'));
   for (const button of els.mobileMoreButtons) button.addEventListener('click', () => setMobileMode(button.dataset.mobileMoreTarget));
   els.mobileMoreRevert.addEventListener('click', () => { resetToOriginal(); setMobileMode('adjust'); });
@@ -312,7 +344,8 @@ function activateFirstImage(item) {
   if (entryTool) {
     setDesktopInspectorTool(entryTool[2]);
     setMobileMode(entryTool[3]);
-    if (entryTool[2] === 'crop') openInteractiveCrop();
+    if (requestedTool === 'extend') openExtendPhoto();
+    else if (requestedTool === 'crop') openInteractiveCrop();
   }
 }
 

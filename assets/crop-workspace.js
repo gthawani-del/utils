@@ -1,7 +1,7 @@
 import { chooseSmartFocus, detectInformationRegions } from '/lib/image/smart-crop.js';
 import { boundedCrop, cropFrameSize, cropInPixels, dragCropCorner, drawCropSource, ratioCrop, scaleCrop } from '/lib/image/interactive-crop.js';
 
-export function createCropWorkspace({ commit, onError }) {
+export function createCropWorkspace({ commit, onError, extend }) {
   const dialog = document.getElementById('crop-workspace');
   const stage = dialog.querySelector('.crop-stage');
   const photo = dialog.querySelector('.crop-photo');
@@ -11,6 +11,10 @@ export function createCropWorkspace({ commit, onError }) {
   const pointer = new Map();
   const sliders = [...dialog.querySelectorAll('[data-crop-transform]')];
   const ratios = [...dialog.querySelectorAll('[data-workspace-ratio]')];
+  const lock = dialog.querySelector('[data-workspace-lock]');
+  const orientations = [...dialog.querySelectorAll('[data-workspace-orientation]')];
+  const reset = dialog.querySelector('[data-workspace-reset]');
+  const done = dialog.querySelector('[data-workspace-done]');
   let image;
   let original;
   let draft;
@@ -35,8 +39,40 @@ export function createCropWorkspace({ commit, onError }) {
     const { width, height } = dimensions();
     const bounds = stage.getBoundingClientRect();
     const ratio = Math.min(Math.max(1, bounds.width - 30) / width, Math.max(1, bounds.height - 30) / height);
-    photo.style.width = Math.max(1, width * ratio) + 'px';
-    photo.style.height = Math.max(1, height * ratio) + 'px';
+    placePhoto(width * ratio, height * ratio);
+  }
+
+  function placePhoto(width, height, x = 0, y = 0) {
+    photo.style.width = Math.max(1, width) + 'px';
+    photo.style.height = Math.max(1, height) + 'px';
+    photo.style.transform = `translate(${x}px, ${y}px)`;
+  }
+
+  function holdFrame(bounds, base) {
+    const width = bounds.width * base.width / draft.rect.width;
+    const height = bounds.height * base.height / draft.rect.height;
+    const stageBounds = stage.getBoundingClientRect();
+    const left = bounds.left + bounds.width * base.x - width * draft.rect.x;
+    const top = bounds.top + bounds.height * base.y - height * draft.rect.y;
+    placePhoto(width, height, left + width / 2 - stageBounds.left - stageBounds.width / 2,
+      top + height / 2 - stageBounds.top - stageBounds.height / 2);
+  }
+
+  function adjusted() {
+    return Boolean(draft.turn || draft.flip || draft.angle || draft.horizontal || draft.vertical
+      || draft.rect.width < 1 || draft.rect.height < 1);
+  }
+
+  function freshDraft() {
+    return {
+      preset: 'original', ratio: image.naturalWidth / image.naturalHeight, orientation: null,
+      rect: boundedCrop({}), turn: 0, flip: false, angle: 0, horizontal: 0, vertical: 0,
+    };
+  }
+
+  function frameRatio() {
+    const { width, height } = dimensions();
+    return draft.rect.width * width / (draft.rect.height * height);
   }
 
   function paint() {
@@ -50,12 +86,19 @@ export function createCropWorkspace({ commit, onError }) {
   function update({ repaint = false } = {}) {
     updateFrame();
     for (const button of ratios) button.setAttribute('aria-pressed', String(button.dataset.workspaceRatio === draft.preset));
+    lock.setAttribute('aria-pressed', String(Boolean(draft.ratio)));
+    const ratio = frameRatio();
+    for (const button of orientations) {
+      const active = button.dataset.workspaceOrientation === (ratio < .999 ? 'portrait' : ratio > 1.001 ? 'landscape' : null);
+      button.setAttribute('aria-pressed', String(active));
+    }
+    reset.disabled = !adjusted() && draft.preset === 'original';
+    done.disabled = !adjusted() && !original;
     for (const control of sliders) {
       control.value = draft[control.dataset.cropTransform];
       control.nextElementSibling.textContent = control.value + '°';
     }
     if (repaint) {
-      layout();
       cancelAnimationFrame(rendering);
       rendering = requestAnimationFrame(() => { if (dialog.open) paint(); });
     }
@@ -74,21 +117,28 @@ export function createCropWorkspace({ commit, onError }) {
     if (current !== request) return;
     image = source;
     original = previous;
-    draft = previous ? { ...previous, rect: { ...previous.rect } } : {
-      preset: 'original', ratio: source.naturalWidth / source.naturalHeight,
-      rect: boundedCrop({}), turn: 0, flip: false, angle: 0, horizontal: 0, vertical: 0,
-    };
+    draft = previous ? { ...previous, rect: { ...previous.rect } } : freshDraft();
+    dialog.querySelector('details').open = false;
     if (!dialog.open) dialog.showModal();
+    layout();
     update({ repaint: true });
   }
 
-  function changeRatio(preset) {
+  function changeRatio(preset, orientation = null) {
     const { width, height } = dimensions();
     draft.preset = preset;
-    if (preset === 'free') { draft.ratio = 0; update(); return; }
-    draft.ratio = preset === 'original' ? width / height : Number(preset);
+    draft.orientation = orientation;
+    if (preset === 'free' && !orientation) {
+      draft.ratio = 0;
+      update();
+      return;
+    }
+    const baseRatio = preset === 'original' ? width / height : preset === 'free' || preset === 'locked' ? frameRatio() : Number(preset);
+    draft.ratio = orientation === 'portrait' ? Math.min(baseRatio, 1 / baseRatio)
+      : orientation === 'landscape' ? Math.max(baseRatio, 1 / baseRatio) : baseRatio;
     const rect = draft.rect;
     draft.rect = ratioCrop(width, height, draft.ratio, rect.x + rect.width / 2, rect.y + rect.height / 2);
+    layout();
     update();
   }
 
@@ -98,14 +148,32 @@ export function createCropWorkspace({ commit, onError }) {
     cancelAnimationFrame(rendering);
   });
   dialog.querySelector('[data-workspace-cancel]').addEventListener('click', () => dialog.close());
-  dialog.querySelector('[data-workspace-done]').addEventListener('click', () => {
+  done.addEventListener('click', () => {
     if (!draft) return;
     const next = { ...draft, rect: { ...draft.rect } };
-    const hasEdit = next.turn || next.flip || next.angle || next.horizontal || next.vertical || next.rect.width < 1 || next.rect.height < 1;
-    if (hasEdit || original) commit(hasEdit ? next : null);
+    const hasEdit = adjusted();
+    if (hasEdit ? JSON.stringify(next) !== JSON.stringify(original) : original) commit(hasEdit ? next : null);
     dialog.close();
   });
   for (const button of ratios) button.addEventListener('click', () => changeRatio(button.dataset.workspaceRatio));
+  lock.addEventListener('click', () => {
+    draft.ratio = draft.ratio ? 0 : frameRatio();
+    draft.preset = draft.ratio ? 'locked' : 'free';
+    draft.orientation = null;
+    update();
+  });
+  for (const button of orientations) button.addEventListener('click', () => {
+    const orientation = button.dataset.workspaceOrientation;
+    if (button.getAttribute('aria-pressed') !== 'true') changeRatio(draft.preset, orientation);
+  });
+  reset.addEventListener('click', () => {
+    draft = freshDraft();
+    layout();
+    update({ repaint: true });
+  });
+  dialog.querySelector('[data-workspace-extend]').addEventListener('click', () => {
+    if (image && draft) extend(image, { ...draft, rect: { ...draft.rect } });
+  });
   dialog.querySelector('[data-workspace-auto]').addEventListener('click', () => {
     const dims = dimensions();
     const sample = document.createElement('canvas');
@@ -119,6 +187,7 @@ export function createCropWorkspace({ commit, onError }) {
     const focus = chooseSmartFocus(dims.width, dims.height, ratio,
       detectInformationRegions(pixels.data, pixels.width, pixels.height));
     draft.rect = boundedCrop({ ...rect, x: focus.focusX - rect.width / 2, y: focus.focusY - rect.height / 2 });
+    layout();
     update();
   });
   dialog.querySelector('[data-workspace-rotate]').addEventListener('click', () => {
@@ -127,12 +196,16 @@ export function createCropWorkspace({ commit, onError }) {
     draft.rect = boundedCrop({ x: 1 - y - height, y: x, width: height, height: width });
     if (draft.ratio) draft.ratio = 1 / draft.ratio;
     // Keep a selected portrait preset portrait. Rotate the source underneath it.
-    if (draft.preset !== 'free') changeRatio(draft.preset);
+    if (draft.preset !== 'free' && draft.preset !== 'locked' && (draft.preset !== 'original' || draft.orientation)) changeRatio(draft.preset, draft.orientation);
+    layout();
     update({ repaint: true });
   });
   dialog.querySelector('[data-workspace-flip]').addEventListener('click', () => {
     draft.flip = !draft.flip;
+    draft.angle = -draft.angle;
+    draft.vertical = -draft.vertical;
     draft.rect = boundedCrop({ ...draft.rect, x: 1 - draft.rect.x - draft.rect.width });
+    layout();
     update({ repaint: true });
   });
   for (const control of sliders) control.addEventListener('input', () => {
@@ -140,44 +213,53 @@ export function createCropWorkspace({ commit, onError }) {
     update({ repaint: true });
   });
   for (const button of dialog.querySelectorAll('[data-workspace-zoom]')) button.addEventListener('click', () => {
-    draft.rect = scaleCrop(draft.rect, Number(button.dataset.workspaceZoom));
+    const base = draft.rect;
+    const bounds = photo.getBoundingClientRect();
+    draft.rect = scaleCrop(base, Number(button.dataset.workspaceZoom));
+    holdFrame(bounds, base);
     update();
   });
 
-  function point(event) {
-    const bounds = photo.getBoundingClientRect();
+  function point(event, bounds) {
     return { x: (event.clientX - bounds.left) / bounds.width, y: (event.clientY - bounds.top) / bounds.height };
   }
 
   function startGesture() {
     const values = [...pointer.values()];
     if (!values.length) { gesture = null; return; }
-    const [one, two] = values;
-    gesture = { rect: { ...draft.rect }, one, two, corner: two ? null : one.corner };
+    const bounds = photo.getBoundingClientRect();
+    const [first, second] = values;
+    gesture = { rect: { ...draft.rect }, bounds, one: point(first, bounds),
+      two: second && point(second, bounds), corner: second ? null : first.corner };
   }
 
   photo.addEventListener('pointerdown', event => {
     if (event.button !== 0 || pointer.size === 2) return;
-    pointer.set(event.pointerId, { ...point(event), corner: event.target.closest('[data-corner]')?.dataset.corner });
+    if (pointer.size) for (const value of pointer.values()) value.corner = null;
+    pointer.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY, corner: event.target.closest('[data-corner]')?.dataset.corner });
     photo.setPointerCapture(event.pointerId);
     startGesture();
   });
   photo.addEventListener('pointermove', event => {
     if (!gesture || !pointer.has(event.pointerId)) return;
-    pointer.set(event.pointerId, { ...pointer.get(event.pointerId), ...point(event) });
-    const [one, two] = pointer.values();
+    Object.assign(pointer.get(event.pointerId), { clientX: event.clientX, clientY: event.clientY });
+    const [one, two] = [...pointer.values()].map(value => point(value, gesture.bounds));
     const base = gesture.rect;
     if (two) {
-      const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+      const distance = (a, b) => Math.hypot((a.x - b.x) * gesture.bounds.width, (a.y - b.y) * gesture.bounds.height);
+      const factor = distance(gesture.one, gesture.two) / Math.max(1, distance(one, two));
       const midX = (gesture.one.x + gesture.two.x) / 2;
       const midY = (gesture.one.y + gesture.two.y) / 2;
-      const scaled = scaleCrop(base, distance(gesture.one, gesture.two) / Math.max(.001, distance(one, two)),
-        (midX - base.x) / base.width, (midY - base.y) / base.height);
-      draft.rect = boundedCrop({ ...scaled, x: scaled.x + midX - (one.x + two.x) / 2, y: scaled.y + midY - (one.y + two.y) / 2 });
+      const scaled = scaleCrop(base, factor, (midX - base.x) / base.width, (midY - base.y) / base.height);
+      const scale = scaled.width / base.width;
+      draft.rect = boundedCrop({ ...scaled, x: scaled.x + (midX - (one.x + two.x) / 2) * scale,
+        y: scaled.y + (midY - (one.y + two.y) / 2) * scale });
+      holdFrame(gesture.bounds, base);
     } else if (gesture.corner) {
       draft.rect = dragCropCorner(base, gesture.corner, one.x - gesture.one.x, one.y - gesture.one.y, draft.ratio);
     } else {
       draft.rect = boundedCrop({ ...base, x: base.x + gesture.one.x - one.x, y: base.y + gesture.one.y - one.y });
+      holdFrame(gesture.bounds, base);
     }
     update();
   });
@@ -190,6 +272,7 @@ export function createCropWorkspace({ commit, onError }) {
     event.preventDefault();
     const [x, y] = delta;
     const corner = event.target.dataset.corner;
+    layout();
     draft.rect = corner ? dragCropCorner(draft.rect, corner, x, y, draft.ratio)
       : boundedCrop({ ...draft.rect, x: draft.rect.x + x, y: draft.rect.y + y });
     update();

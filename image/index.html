@@ -128,7 +128,7 @@
             <label id="shortest-wrap" class="hidden">Shortest edge<input id="shortest-edge" type="number" min="1" max="12000" value="1080"></label>
           </div><label class="check-row"><input id="preserve-aspect" type="checkbox" checked> Preserve aspect ratio</label></div>
 
-          <div class="control-section crop-section"><h3>Crop</h3><button class="primary-button" id="studio-open-crop" type="button">Open crop workspace</button><div hidden>
+          <div class="control-section crop-section"><h3>Crop</h3><button class="primary-button" id="studio-open-crop" type="button">Open crop workspace</button><button class="secondary-button" id="studio-open-extend" type="button">Extend Photo</button><div hidden>
             <div class="mobile-crop-presets" aria-label="Crop aspect ratio">
               <button type="button" class="mobile-crop-chip active" data-crop-choice="none">Original</button>
               <button type="button" class="mobile-crop-chip" data-crop-choice="ratio">1:1</button>
@@ -474,27 +474,40 @@
             <button type="button" class="crop-corner" data-corner="ne" aria-label="Top right crop handle"></button>
             <button type="button" class="crop-corner" data-corner="sw" aria-label="Bottom left crop handle"></button>
             <button type="button" class="crop-corner" data-corner="se" aria-label="Bottom right crop handle"></button>
+            <button type="button" class="crop-edge" data-corner="n" aria-label="Top edge crop handle"></button>
+            <button type="button" class="crop-edge" data-corner="s" aria-label="Bottom edge crop handle"></button>
+            <button type="button" class="crop-edge" data-corner="w" aria-label="Left edge crop handle"></button>
+            <button type="button" class="crop-edge" data-corner="e" aria-label="Right edge crop handle"></button>
           </div>
         </div>
       </div>
       <section class="crop-controls" aria-label="Crop controls">
         <div class="crop-ratios" role="group" aria-label="Aspect ratio">
           <button type="button" data-workspace-ratio="original">Original</button>
-          <button type="button" data-workspace-ratio="free">Free</button>
+          <button type="button" data-workspace-ratio="free">Freeform</button>
           <button type="button" data-workspace-ratio="1">1:1</button>
           <button type="button" data-workspace-ratio="0.8">4:5</button>
           <button type="button" data-workspace-ratio="1.7777777777777777">16:9</button>
           <button type="button" data-workspace-ratio="0.5625">9:16</button>
           <button type="button" data-workspace-ratio="0.75">3:4</button>
+          <button type="button" data-workspace-ratio="0.6666666666666666">2:3</button>
+          <button type="button" data-workspace-ratio="0.6">3:5</button>
           <button type="button" data-workspace-ratio="0.7142857142857143">5:7</button>
         </div>
-        <div class="crop-actions">
+        <div class="crop-actions" role="group" aria-label="Framing options">
+          <button type="button" data-workspace-lock aria-pressed="true">Lock ratio</button>
+          <button type="button" data-workspace-orientation="portrait" aria-pressed="false">Portrait</button>
+          <button type="button" data-workspace-orientation="landscape" aria-pressed="false">Landscape</button>
+          <output id="crop-result-size" aria-label="Crop dimensions"></output>
+        </div>
+        <div class="crop-actions" role="group" aria-label="Crop actions">
           <button type="button" data-workspace-rotate>Rotate 90°</button>
           <button type="button" data-workspace-flip>Flip</button>
           <button type="button" data-workspace-auto>Auto frame</button>
           <button type="button" data-workspace-zoom="0.88" aria-label="Zoom in">+</button>
           <button type="button" data-workspace-zoom="1.14" aria-label="Zoom out">−</button>
-          <output id="crop-result-size" aria-label="Crop dimensions"></output>
+          <button type="button" data-workspace-reset>Reset</button>
+          <button type="button" data-workspace-extend>Extend Photo</button>
         </div>
         <details>
           <summary>Straighten &amp; perspective</summary>
@@ -504,6 +517,36 @@
             <label>Vertical <input type="range" min="-45" max="45" value="0" data-crop-transform="vertical"><output>0°</output></label>
           </div>
         </details>
+      </section>
+    </div>
+  </dialog>
+  <dialog id="extend-workspace" class="crop-workspace extend-workspace" aria-labelledby="extend-dialog-title">
+    <div class="crop-dialog-layout">
+      <header class="crop-dialog-header">
+        <h2 id="extend-dialog-title">Extend Photo</h2>
+        <button class="secondary-button" type="button" data-extend-close>Close</button>
+      </header>
+      <div class="extend-stage">
+        <canvas role="img" aria-label="Photo extension preview"></canvas>
+      </div>
+      <section class="crop-controls" aria-label="Photo extension controls">
+        <fieldset class="extend-fields">
+          <legend class="sr-only">Extension size and direction</legend>
+          <label>Extend to <select name="extend-side">
+            <option value="left">Left</option><option value="right">Right</option>
+            <option value="top">Top</option><option value="bottom">Bottom</option>
+          </select></label>
+          <label>Add <select name="extend-amount">
+            <option value=".1">10%</option><option value=".2">20%</option><option value=".3">30%</option>
+          </select></label>
+        </fieldset>
+        <p class="extend-status" role="status"></p>
+        <div class="extend-actions">
+          <button class="primary-button" type="button" data-extend-generate>Generate preview</button>
+          <button class="secondary-button" type="button" data-extend-compare aria-pressed="false" hidden>Show original</button>
+          <button class="secondary-button" type="button" data-extend-download hidden>Download PNG</button>
+          <button class="secondary-button" type="button" data-extend-add hidden>Open copy in Studio</button>
+        </div>
       </section>
     </div>
   </dialog>

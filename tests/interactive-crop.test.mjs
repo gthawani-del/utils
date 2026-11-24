@@ -27,3 +27,16 @@ test('pinch and locked corners preserve proportions and opposite anchor', () => 
 test('moving a crop outside the photo clamps the frame within the image', () => {
   assert.deepEqual(boundedCrop({ x: -1, y: 2, width: .2, height: .4 }), { x: 0, y: .6, width: .2, height: .4 });
 });
+
+
+test('edge handles resize just one dimension when unlocked and preserve the opposite edge when locked', () => {
+  const rect = { x: .2, y: .25, width: .6, height: .5 };
+  const free = dragCropCorner(rect, 'w', .1, .5, 0);
+  assert.ok(Math.abs(free.x - .3) < 1e-8 && Math.abs(free.width - .5) < 1e-8);
+  assert.equal(free.y, rect.y);
+  assert.equal(free.height, rect.height);
+  const locked = dragCropCorner(rect, 'n', 0, .2, 1);
+  assert.ok(Math.abs(locked.width / locked.height - rect.width / rect.height) < 1e-8);
+  assert.ok(Math.abs(locked.y + locked.height - .75) < 1e-8);
+  assert.ok(Math.abs(locked.x + locked.width / 2 - .5) < 1e-8);
+});
