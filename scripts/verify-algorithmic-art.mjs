@@ -169,9 +169,26 @@ try {
   await renderBrief('Create a red flower');
   const secondFlower = await canvasHash();
   assert.notEqual(secondFlower, firstFlower);
+  await renderBrief('Make a spiral laser pink in color');
+  assert.equal(await page.locator('#drawing-interpretation').textContent(), 'Spiral · Pink');
+  const firstSpiral = await canvasHash();
+  assert.notEqual(firstSpiral, secondFlower);
+  const pinkPixels = await canvas.evaluate(el => {
+    const pixels = el.getContext('2d').getImageData(0, 0, el.width, el.height).data;
+    let count = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i] > 150 && pixels[i] > pixels[i + 1] + 45 && pixels[i + 2] > pixels[i + 1] + 30) count++;
+    }
+    return count;
+  });
+  assert.ok(pinkPixels > 1000);
+  await canvas.screenshot({ path: resolve(output, 'laser-pink-spiral.png') });
+  await renderBrief('Make a spiral laser pink in color');
+  const secondSpiral = await canvasHash();
+  assert.notEqual(secondSpiral, firstSpiral);
   await renderBrief('A blue bicycle');
   assert.match(await page.locator('#brief-error').textContent(), /Try a subject/);
-  assert.equal(await canvasHash(), secondFlower);
+  assert.equal(await canvasHash(), secondSpiral);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.screenshot({ path: resolve(output, 'studio-mobile.png'), fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });

@@ -206,7 +206,7 @@ $('brief-form').addEventListener('submit', async event => {
     await nextPaint();
     const result = interpretBrief(idea);
     if (!result.recipe) {
-      briefError.textContent = 'Try a subject this tool can draw, such as a flower, flowing lines, waves, or branching forms. Use a short English description.';
+      briefError.textContent = 'Try a subject this tool can draw, such as a spiral, flower, flowing lines, waves, or branching forms. Use a short English description.';
       return;
     }
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];

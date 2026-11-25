@@ -30,7 +30,7 @@ test('transparent drawings skip the background and retain the artwork', () => {
 });
 
 test('new generators vary with the seed while palette changes preserve paths', () => {
-  for (const pattern of ['flow', 'interference', 'branches']) {
+  for (const pattern of ['flow', 'interference', 'branches', 'spiral']) {
     const drawing = recordDrawing({ pattern });
     assert.ok(drawing.length > 100, pattern);
     assert.deepEqual(recordDrawing({ pattern }), drawing);
@@ -67,5 +67,17 @@ test('red flower brief selects a floral drawing and explicit red palette', () =>
   assert.equal(interpretBrief('Symmetric flower mandala').recipe.pattern, 'rosette');
   assert.equal(interpretBrief('A blue bicycle').recipe, null);
   assert.equal(interpretBrief('बारिश').recipe, null);
+  assert.deepEqual(recipeFromInput(recipeHash(recipe)), recipe);
+});
+
+
+test('spiral briefs select geometry and palette independently', () => {
+  const { recipe, abstract } = interpretBrief('Make a spiral laser pink in color');
+  assert.equal(recipe.pattern, 'spiral');
+  assert.equal(recipe.palette, 'pink');
+  assert.equal(abstract, false);
+  assert.equal(interpretBrief('Neon pink vortex').recipe.palette, 'pink');
+  assert.equal(interpretBrief('Pink flower').recipe.pattern, 'flower');
+  assert.equal(interpretBrief('Pink bicycle').recipe, null);
   assert.deepEqual(recipeFromInput(recipeHash(recipe)), recipe);
 });
