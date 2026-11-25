@@ -145,6 +145,33 @@ try {
     assert.ok(download.suggestedFilename().includes('1080x1350'));
   }
   await page.getByRole('button', { name: 'Close', exact: true }).click();
+  async function renderBrief(brief) {
+    const describe = page.getByRole('button', { name: 'Describe a new idea' });
+    if (await describe.isVisible()) await describe.tap();
+    await page.locator('#art-brief').fill(brief);
+    await page.getByRole('button', { name: 'Create artwork' }).tap();
+    await progress.waitFor({ state: 'hidden' });
+  }
+  const canvasHash = async () => digest(await canvas.evaluate(el => el.toDataURL()));
+  await renderBrief('Create a red flower');
+  assert.equal(await page.locator('#drawing-interpretation').textContent(), 'Flower · Red');
+  const firstFlower = await canvasHash();
+  const redPetals = await canvas.evaluate(el => {
+    const pixels = el.getContext('2d').getImageData(0, 0, el.width, el.height).data;
+    let count = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i] > 120 && pixels[i + 1] < 90 && pixels[i + 2] < 110) count++;
+    }
+    return count;
+  });
+  assert.ok(redPetals > 1000);
+  await canvas.screenshot({ path: resolve(output, 'red-flower.png') });
+  await renderBrief('Create a red flower');
+  const secondFlower = await canvasHash();
+  assert.notEqual(secondFlower, firstFlower);
+  await renderBrief('A blue bicycle');
+  assert.match(await page.locator('#brief-error').textContent(), /Try a subject/);
+  assert.equal(await canvasHash(), secondFlower);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.screenshot({ path: resolve(output, 'studio-mobile.png'), fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });

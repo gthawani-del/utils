@@ -58,3 +58,14 @@ test('briefs select useful settings and recipes reopen the same resolved choices
   assert.equal(recipeFromInput('#art=%'), null);
   assert.equal(recipeFromInput(JSON.stringify({ ...jazz.recipe, version: 2 })), null);
 });
+
+test('red flower brief selects a floral drawing and explicit red palette', () => {
+  const { recipe, abstract } = interpretBrief('Create a red flower');
+  assert.equal(recipe.pattern, 'flower');
+  assert.equal(recipe.palette, 'red');
+  assert.equal(abstract, false);
+  assert.equal(interpretBrief('Symmetric flower mandala').recipe.pattern, 'rosette');
+  assert.equal(interpretBrief('A blue bicycle').recipe, null);
+  assert.equal(interpretBrief('बारिश').recipe, null);
+  assert.deepEqual(recipeFromInput(recipeHash(recipe)), recipe);
+});

@@ -181,11 +181,14 @@ function showCreationProgress(percent, stage) {
 const nextPaint = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
 $('art-brief').placeholder = examples[0].brief;
+$('art-brief').addEventListener('input', () => { $('brief-error').textContent = ''; });
 $('brief-form').addEventListener('submit', async event => {
   event.preventDefault();
   if (createButton.disabled) return;
   const brief = $('art-brief');
   const idea = brief.value.trim() || examples[0].brief;
+  const briefError = $('brief-error');
+  briefError.textContent = '';
   const prepared = document.createElement('canvas');
   const moveFocus = $('drawing-idea-panel').contains(document.activeElement);
   createButton.disabled = true;
@@ -202,6 +205,12 @@ $('brief-form').addEventListener('submit', async event => {
   try {
     await nextPaint();
     const result = interpretBrief(idea);
+    if (!result.recipe) {
+      briefError.textContent = 'Try a subject this tool can draw, such as a flower, flowing lines, waves, or branching forms. Use a short English description.';
+      return;
+    }
+    const seed = crypto.getRandomValues(new Uint32Array(1))[0];
+    result.recipe.seed = seed === recipe.seed ? (seed + 1) >>> 0 : seed;
     showCreationProgress(45, 'Drawing artwork');
     await nextPaint();
     paint(prepared, result.recipe, previewEdge());
@@ -210,7 +219,7 @@ $('brief-form').addEventListener('submit', async event => {
     completed = true;
     await new Promise(resolve => setTimeout(resolve, 280));
   } catch {
-    status.textContent = 'Could not create the artwork. Try again.';
+    briefError.textContent = 'Could not create the artwork. Try again.';
   } finally {
     scan.hidden = true;
     preview.removeAttribute('aria-busy');

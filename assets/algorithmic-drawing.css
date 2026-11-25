@@ -37,8 +37,8 @@
 .drawing-controls input[type="range"] { width:100%; min-height:34px; }
 .drawing-controls .drawing-transparent { display:flex; align-items:center; gap:7px; min-height:40px; }
 .drawing-share { justify-self:start; padding-left:0; }
-#drawing-status,#recipe-error,#art-export-status { margin:0; color:#475f53; }
-:is(#drawing-status,#recipe-error,#art-export-status):empty { display:none; }
+#drawing-status,#recipe-error,#art-export-status,#brief-error { margin:0; color:#475f53; }
+:is(#drawing-status,#recipe-error,#art-export-status,#brief-error):empty { display:none; }
 .drawing-gallery { border-top:1px solid #cfddd2; margin-top:22px; }
 .drawing-seeds { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; padding:7px 0; }
 .drawing-seeds button { padding:0; min-width:0; overflow:hidden; border:1px solid #b3c7ba; border-radius:8px; background:#fff; cursor:pointer; }
@@ -57,3 +57,5 @@
   .drawing-preview canvas { max-height:46dvh; }
   .drawing-seeds { grid-template-columns:repeat(3,minmax(0,1fr)); }
 }
+
+#brief-error:not(:empty) { margin-top:8px; color:#8c2637; }
